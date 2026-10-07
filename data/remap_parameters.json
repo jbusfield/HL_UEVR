@@ -1,0 +1,31 @@
+{
+    "8e05f7bd-a167-4769-9c59-8570af12edf3": null,
+    "_profileLabels": {
+        "8e05f7bd-a167-4769-9c59-8570af12edf3": "MountPawn",
+        "default": "Default"
+    },
+    "_profileState": {
+        "currentEditingProfile": "default"
+    },
+    "default": {
+        "right_stick_y": [
+            {
+                "negative_actions": {
+                    "b_button": {
+                        "state": "on"
+                    }
+                },
+                "negative_threshold": 23000,
+                "positive_actions": {
+                    "a_button": {
+                        "state": "on"
+                    }
+                },
+                "positive_threshold": 23000,
+                "state": "on",
+                "threshold": 23000,
+                "unpress": true
+            }
+        ]
+    }
+}

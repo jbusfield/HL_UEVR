@@ -1,0 +1,29 @@
+{
+    "uevr_particles_active_profile": 1,
+    "uevr_particles_allow_delete": false,
+    "uevr_particles_asset": "NiagaraSystem /Game/VFX/Niagara/MechanicsFX/BroomFlight/VFX_NS_BroomBoost_Gain.VFX_NS_BroomBoost_Gain",
+    "uevr_particles_effect_enabled": false,
+    "uevr_particles_effect_list": 1,
+    "uevr_particles_finder_effect_enabled": true,
+    "uevr_particles_finder_effect_list": 1,
+    "uevr_particles_finder_emitter_type": 1,
+    "uevr_particles_finder_loop_enable": false,
+    "uevr_particles_finder_loop_end": 18.200000762939453,
+    "uevr_particles_finder_loop_start": 0.0,
+    "uevr_particles_finder_tool_list": 15,
+    "uevr_particles_finder_tool_search_text": "",
+    "uevr_particles_label": "",
+    "uevr_particles_list": 1,
+    "uevr_particles_loop": false,
+    "uevr_particles_loopEnd": 5.0,
+    "uevr_particles_loopStart": 0.0,
+    "uevr_particles_loop_enable": true,
+    "uevr_particles_loop_end": 3.0,
+    "uevr_particles_loop_start": 1.0,
+    "uevr_particles_rename_profile_input": "Wand Trail",
+    "uevr_particles_scale": [
+        0.004000000189989805,
+        0.004000000189989805,
+        0.004000000189989805
+    ]
+}

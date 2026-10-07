@@ -1,0 +1,74 @@
+{
+    "currentReticuleID": "3714a8c8-9b5e-4961-a00b-0d4b9318c24a",
+    "reticuleList": [
+        {
+            "class": "StaticMesh /Engine/EngineMeshes/Sphere.Sphere",
+            "id": "_default",
+            "label": "Default",
+            "options": {
+                "collisionChannel": 0,
+                "ignorePawn": true,
+                "materialName": "Material /Engine/EngineMaterials/Widget3DPassThrough.Widget3DPassThrough",
+                "position_2d": [
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.008,
+                    0.008,
+                    0.008
+                ],
+                "scale_2d": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "type": "Mesh"
+        },
+        {
+            "class": "StaticMesh /Engine/BasicShapes/Sphere.Sphere",
+            "id": "3714a8c8-9b5e-4961-a00b-0d4b9318c24a",
+            "label": "Dot",
+            "options": {
+                "collisionChannel": 0,
+                "ignorePawn": true,
+                "materialName": "Material /Game/VFX/MasterMaterials/Mesh/VFX_M_GraphornDoorInternalGlow.VFX_M_GraphornDoorInternalGlow",
+                "position_2d": [
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.0088,
+                    0.0099,
+                    0.0099
+                ],
+                "scale_2d": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "type": "Mesh"
+        },
+        {
+            "class": "WidgetBlueprintGeneratedClass /Game/UI/HUD/Reticles/UI_BP_Reticule.UI_BP_Reticule_C",
+            "id": "2fcef0e9-de1b-4051-b8b0-92a9a3991393",
+            "label": "New Widget",
+            "options": {
+                "collisionChannel": 0,
+                "ignorePawn": true,
+                "position_2d": [
+                    0.0,
+                    0.0
+                ],
+                "removeFromViewport": true,
+                "scale_2d": [
+                    1.0,
+                    1.0
+                ],
+                "twoSided": true
+            },
+            "type": "Widget"
+        }
+    ],
+    "reticuleTargetMethod": 5
+}

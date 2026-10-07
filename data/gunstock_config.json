@@ -1,0 +1,25 @@
+{
+    "uevr_gunstock_BP_WandTool_C_Mesh_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_BP_WandTool_C_Mesh_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_BP_WandTool_C_Mesh_use_default": true,
+    "uevr_gunstock_BP_WandTool_C_Mesh_use_default_offhand_location_offset": true,
+    "uevr_gunstock_default_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_default_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_disable_configuration": false
+}

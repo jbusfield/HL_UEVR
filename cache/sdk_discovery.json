@@ -1,0 +1,114 @@
+{
+  "entries": {
+    "frendertarget_vtable_indices": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "display_gamma_index": 4,
+        "render_target_texture_index": 1
+      }
+    },
+    "frhitexture_get_native_resource": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "vtable_index": 7
+      }
+    },
+    "fscene_offsets": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "frame_count_offset": 10272,
+        "get_frame_count_vtable_index": 106,
+        "increment_frame_count_vtable_index": 105,
+        "start_frame_vtable_index": 104
+      }
+    },
+    "fsceneview_constructor": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "rva": 94922640
+      }
+    },
+    "ftexture_render_target_resource_vtable_offset": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "offset": 80
+      }
+    },
+    "ftexture_rhi_resource_offset": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "offset": 16
+      }
+    },
+    "utexture_render_resource_offset": {
+      "module": {
+        "engine_version": "",
+        "file_size": 450656768,
+        "image_size": 466362368,
+        "path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\HogwartsLegacy.exe",
+        "time_date_stamp": 1762966782,
+        "version_ls": 131072,
+        "version_ms": 262171,
+        "write_time": 134098570130866806
+      },
+      "payload": {
+        "offset": 160
+      }
+    }
+  },
+  "schema_version": 1
+}

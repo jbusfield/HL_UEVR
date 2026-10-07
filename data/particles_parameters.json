@@ -1,0 +1,34 @@
+{
+    "_profileLabels": {
+        "default": "Wand Trail"
+    },
+    "_profileState": {
+        "currentEditingProfile": "default"
+    },
+    "default": {
+        "asset": "NiagaraSystem /Game/VFX/Niagara/MechanicsFX/BroomFlight/VFX_NS_BroomBoost_Gain.VFX_NS_BroomBoost_Gain",
+        "emitters": {
+            "Boost": false,
+            "Trail": true,
+            "Trail001": false
+        },
+        "location": [
+            0,
+            0,
+            0
+        ],
+        "loop": false,
+        "loopEnd": 5.0,
+        "loopStart": 0.0,
+        "rotation": [
+            0,
+            0,
+            0
+        ],
+        "scale": [
+            0.004,
+            0.004,
+            0.004
+        ]
+    }
+}

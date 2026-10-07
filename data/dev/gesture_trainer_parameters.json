@@ -1,0 +1,125 @@
+{
+    "_profileState": {
+        "currentEditingProfile": "calibration"
+    },
+    "calibration": {
+        "L": [
+            0.328275,
+            -0.0524139,
+            0.0518835
+        ],
+        "L_uu": [
+            32.8275,
+            -5.24139,
+            5.18835
+        ],
+        "frame": "ue_controller_local",
+        "length_m": 0.336457,
+        "ok": true,
+        "rms_m": 0.000223002,
+        "samples": 90,
+        "status": "done",
+        "units": "meters"
+    },
+    "gestures": {
+        "01130a59-8349-487b-a048-d572b4a0c925": {
+            "label": "Revelio"
+        },
+        "196bf8bb-15a1-4bd9-884d-f9d8902eab64": {
+            "label": "Transformation"
+        },
+        "2f68b9d6-860f-420d-a71e-9d1b50664a78": {
+            "label": "Incendio"
+        },
+        "35b5c2fa-1885-4a66-ae32-2ce6c8e0ac0e": {
+            "label": "Alohomora"
+        },
+        "3fda9604-4711-406e-883a-7677df63e3e2": {
+            "label": "Tormentum"
+        },
+        "48d334e5-3ead-4321-9945-b9396ed6b555": {
+            "label": "AvadaKedavra"
+        },
+        "4fe99f62-a418-4187-8626-11252238610e": {
+            "label": "Levioso"
+        },
+        "54394fdc-592b-49f0-9235-1c76b165dc0d": {
+            "label": "Flipendo"
+        },
+        "543fdef8-cb71-4673-a19a-10c286cdc7d1": {
+            "label": "Conjuration"
+        },
+        "55b93ca5-775b-4966-b6e9-f514574eb9c5": {
+            "label": "Vanishment"
+        },
+        "568eba19-650e-4cbb-8950-0555f99f3a0d": {
+            "label": "Descendo"
+        },
+        "59a76eaf-c091-4602-abc0-3c2b8331f90a": {
+            "label": "Expelliarmus"
+        },
+        "62e58a1d-e872-460e-99e0-371cd037851d": {
+            "label": "ArrestoMomentum"
+        },
+        "70dbf630-bc51-4200-99f1-07005607764e": {
+            "label": "Diffindo"
+        },
+        "77efafa4-2014-4d05-87c4-e483ee8d16ce": {
+            "label": "Disillusionment"
+        },
+        "7df0a3a9-7d1d-4f1b-bab4-6f561444e5c5": {
+            "label": "Wingardium"
+        },
+        "843e395a-c0f4-4258-800f-dd54604da087": {
+            "label": "Oppugno"
+        },
+        "9129eb26-87d8-47d3-b286-b7c6414c0b6f": {
+            "label": "Confringo"
+        },
+        "97577d5f-d892-4f00-b8f0-96177d3194b3": {
+            "label": "Bombarda"
+        },
+        "9d698d2b-fbb6-48e6-b528-ef5011fda17f": {
+            "label": "Nutritio"
+        },
+        "a4bb9e91-7508-4b6b-9870-eaf941320099": {
+            "label": "Placato"
+        },
+        "a6a01f11-7218-497c-a538-d10892d6ee63": {
+            "label": "Right Arrow"
+        },
+        "a9a47c51-556d-4788-8980-5f825fda57ab": {
+            "label": "Depulso"
+        },
+        "b38654bd-941e-4d6e-b3dd-a62961335c98": {
+            "label": "Crucio"
+        },
+        "b466ec16-46dc-46cb-bd3c-51cd5a5aad47": {
+            "label": "Imperius"
+        },
+        "bd267535-16ae-4cf7-b280-70e66fb158a1": {
+            "label": "Lumos"
+        },
+        "c1dea723-c708-4362-9769-6a78c9cd6d5b": {
+            "label": "Glacius"
+        },
+        "cf625607-1dc0-417f-8dba-cf32058d3539": {
+            "label": "Left Arrow"
+        },
+        "d0ffa68b-dc8d-49d3-9e00-fa0ed813e982": {
+            "label": "TransformationOverland"
+        },
+        "d5b966c1-670d-4ea8-82e9-ada6e9f5d298": {
+            "label": "Reparo"
+        },
+        "e922ca39-8442-4b9f-9c25-67f1a7ec5182": {
+            "label": "Sanctuarium"
+        },
+        "eb0c7e84-53af-44d6-80e8-4ee5d51fcdac": {
+            "label": "Petrificus"
+        },
+        "fdb803e1-7fa1-4b27-9724-ec4dc0b5f110": {
+            "label": "Accio"
+        }
+    }
+}

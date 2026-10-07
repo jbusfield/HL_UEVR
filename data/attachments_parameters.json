@@ -1,0 +1,98 @@
+{
+    "attachmentOffsets": [
+        {
+            "animation": "wand",
+            "any_child": false,
+            "any_parent": false,
+            "child": "Mesh",
+            "id": "BP_WandTool_C_Mesh",
+            "location": [
+                -2.0,
+                0.0,
+                2.0
+            ],
+            "melee": false,
+            "parent": "BP_WandTool_C",
+            "rotation": [
+                165.8000030517578,
+                -10.899999618530273,
+                8.100000381469727
+            ],
+            "scale": [
+                1.0,
+                1.0000004768371582,
+                1.0000004768371582
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SK_Feedcan_Graphorn",
+            "id": "BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn",
+            "location": [
+                0.0,
+                0.0,
+                -2.5999999046325684
+            ],
+            "melee": false,
+            "parent": "BP_FeedTool_CreatureFeed_C",
+            "rotation": [
+                90.19999694824219,
+                0.5,
+                0.30000001192092896
+            ],
+            "scale": [
+                0.9999996423721313,
+                1.0000007152557373,
+                1.0000003576278687
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        }
+    ],
+    "baseOffsets": {
+        "location": [
+            0,
+            0,
+            0
+        ],
+        "rotation": [
+            90.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1,
+            1,
+            1
+        ]
+    },
+    "leftHandOffsets": {
+        "flip_x": false,
+        "flip_y": false,
+        "flip_z": false,
+        "location": [
+            0,
+            0,
+            0
+        ],
+        "rotation": [
+            0,
+            0,
+            0
+        ],
+        "scale": [
+            1,
+            1,
+            1
+        ]
+    }
+}

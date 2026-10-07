@@ -1,0 +1,49 @@
+{
+    "uevr_reticule_add_widget_use_button_override": false,
+    "uevr_reticule_delete_mesh_override": false,
+    "uevr_reticule_delete_widget_override": false,
+    "uevr_reticule_list": 4,
+    "uevr_reticule_material_finder_list": 1,
+    "uevr_reticule_material_finder_search_text": "",
+    "uevr_reticule_mesh_class": "StaticMesh /Engine/BasicShapes/Sphere.Sphere",
+    "uevr_reticule_mesh_collisionChannel": 0,
+    "uevr_reticule_mesh_finder_list": 1,
+    "uevr_reticule_mesh_finder_search_text": "",
+    "uevr_reticule_mesh_id": "3714a8c8-9b5e-4961-a00b-0d4b9318c24a",
+    "uevr_reticule_mesh_ignorePawn": true,
+    "uevr_reticule_mesh_label": "Dot",
+    "uevr_reticule_mesh_materialName": "Material /Game/VFX/MasterMaterials/Mesh/VFX_M_GraphornDoorInternalGlow.VFX_M_GraphornDoorInternalGlow",
+    "uevr_reticule_mesh_position_2d": [
+        0.0,
+        0.0
+    ],
+    "uevr_reticule_mesh_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_reticule_mesh_scale": [
+        0.008799999952316284,
+        0.00989999994635582,
+        0.00989999994635582
+    ],
+    "uevr_reticule_target_method": 5,
+    "uevr_reticule_widget_class": "WidgetBlueprintGeneratedClass /Game/UI/HUD/Reticles/UI_BP_Reticule.UI_BP_Reticule_C",
+    "uevr_reticule_widget_collisionChannel": 0,
+    "uevr_reticule_widget_finder_list": 1,
+    "uevr_reticule_widget_finder_search_text": "",
+    "uevr_reticule_widget_id": "2fcef0e9-de1b-4051-b8b0-92a9a3991393",
+    "uevr_reticule_widget_ignorePawn": true,
+    "uevr_reticule_widget_label": "New Widget",
+    "uevr_reticule_widget_minHitDistance": 10,
+    "uevr_reticule_widget_position_2d": [
+        0.0,
+        0.0
+    ],
+    "uevr_reticule_widget_removeFromViewport": true,
+    "uevr_reticule_widget_scale_2d": [
+        1.0,
+        1.0
+    ],
+    "uevr_reticule_widget_twoSided": true
+}

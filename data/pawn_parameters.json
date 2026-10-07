@@ -1,0 +1,70 @@
+{
+    "032d4953-21bc-4bca-9279-2dda5cfd47f8": {
+        "armsAnimationMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "armsMeshFOVFixID": "",
+        "armsMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "basePawnName": "Pawn.MountComponent.RiderCharacter",
+        "bodyMeshFOVFixID": "",
+        "bodyMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "hideAnimationArms": true,
+        "hidePawnArmsBones": false,
+        "hidePawnArmsMesh": true,
+        "hidePawnBodyMesh": true,
+        "hideSettingsHiddenInGame": false,
+        "hideSettingsHiddenInGamePropagate": false,
+        "hideSettingsRenderInDepthPass": true,
+        "hideSettingsRenderInMainPass": true,
+        "hideSettingsVisibility": false,
+        "hideSettingsVisibilityPropagate": false,
+        "pawnUpperArmLeft": "shoulder_front_right",
+        "pawnUpperArmRight": "shoulder_front_left"
+    },
+    "0b85914c-52d9-4d81-a4ef-99e752471dc4": {
+        "armsAnimationMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "armsMeshFOVFixID": "",
+        "armsMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "basePawnName": "Pawn.MyPlayer",
+        "bodyMeshFOVFixID": "",
+        "bodyMeshName": "Pawn.MountComponent.RiderCharacter.Mesh",
+        "hideAnimationArms": true,
+        "hidePawnArmsBones": false,
+        "hidePawnArmsMesh": true,
+        "hidePawnBodyMesh": true,
+        "hideSettingsHiddenInGame": false,
+        "hideSettingsHiddenInGamePropagate": false,
+        "hideSettingsRenderInDepthPass": true,
+        "hideSettingsRenderInMainPass": true,
+        "hideSettingsVisibility": false,
+        "hideSettingsVisibilityPropagate": false,
+        "pawnUpperArmLeft": "shoulder_front_right",
+        "pawnUpperArmRight": "shoulder_front_left"
+    },
+    "_profileLabels": {
+        "032d4953-21bc-4bca-9279-2dda5cfd47f8": "MountPawn",
+        "0b85914c-52d9-4d81-a4ef-99e752471dc4": "CartRider",
+        "default": "Default"
+    },
+    "_profileState": {
+        "currentEditingProfile": "032d4953-21bc-4bca-9279-2dda5cfd47f8"
+    },
+    "default": {
+        "armsAnimationMeshName": "Pawn.Mesh",
+        "armsMeshFOVFixID": "",
+        "armsMeshName": "Pawn.Mesh",
+        "basePawnName": "Pawn",
+        "bodyMeshFOVFixID": "",
+        "bodyMeshName": "Pawn.Mesh",
+        "hideAnimationArms": true,
+        "hidePawnArmsBones": false,
+        "hidePawnArmsMesh": true,
+        "hidePawnBodyMesh": true,
+        "hideSettingsHiddenInGame": false,
+        "hideSettingsHiddenInGamePropagate": false,
+        "hideSettingsRenderInDepthPass": true,
+        "hideSettingsRenderInMainPass": true,
+        "hideSettingsVisibility": false,
+        "hideSettingsVisibilityPropagate": false,
+        "pawnUpperArmLeft": "LeftShoulder",
+        "pawnUpperArmRight": "RightShoulder"
+    }
+}

@@ -1,0 +1,75 @@
+{
+    "_profileLabels": {
+        "default": "Default"
+    },
+    "_profileState": {
+        "currentEditingProfile": "default"
+    },
+    "default": {
+        "block": {
+            "inFront": 0.75,
+            "maxDropCm": 45.0,
+            "maxPointForward": 0.6,
+            "maxRaiseCm": 10.0,
+            "maxTiltDeg": 58.0,
+            "palmFacing": 0.5,
+            "releaseSlack": 0.25
+        },
+        "chest": {
+            "offsetForward": 5.0,
+            "offsetZ": -35.0,
+            "triggerDistance": 15.0,
+            "triggerThreshold": 128
+        },
+        "componentGrab": {
+            "maxDistance": 10.0
+        },
+        "face": {
+            "ear": {
+                "forwardDotThreshold": 0.8,
+                "triggerDistance": 25.0
+            },
+            "eyes": {
+                "forwardDotThreshold": 0.85,
+                "triggerDistance": 15.0
+            },
+            "head": {
+                "forwardDotMaxThreshold": 0.65,
+                "forwardDotMinThreshold": 0.0,
+                "triggerDistance": 25.0
+            },
+            "mouth": {
+                "forwardDotMaxThreshold": 0.65,
+                "forwardDotMinThreshold": 0.35,
+                "triggerDistance": 25.0
+            },
+            "triggerThreshold": 128
+        },
+        "flick": {
+            "maxThresholdAngleSpeed": 2813.0,
+            "minThresholdAngleSpeed": 1000.0,
+            "minThresholdAngleSpeedDown": 518.0,
+            "minThresholdAngleSpeedUp": 4.0,
+            "upDotThreshold": 0.75
+        },
+        "holster": {
+            "triggerAngle": -60.0
+        },
+        "punch": {
+            "cooldownTime": 0.8,
+            "forwardDotThreshold": 0.75,
+            "maxThresholdSpeed": 320,
+            "minThresholdSpeed": 180
+        },
+        "reload": {
+            "triggerDistance": 20.0
+        },
+        "swipe": {
+            "cooldownTime": 0.5,
+            "directionThreshold": 0.001,
+            "maxThresholdSpeed": 320,
+            "minThresholdSpeed": 180,
+            "snapTurnYawThreshold": 45.0
+        }
+    }
+}

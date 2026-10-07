@@ -1,0 +1,18 @@
+{
+    "attachments": [
+        {
+            "id": "BP_WandTool_C_Mesh",
+            "label": "BP_WandTool_C_Mesh",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        }
+    ]
+}
