@@ -1,7 +1,7 @@
 {
     "alignConfidenceThreshold": 0.8,
     "minAngularDeviation": 50,
-    "uevr_input_active_profile": 6,
+    "uevr_input_active_profile": 5,
     "uevr_input_adjustBodyMeshPosition": true,
     "uevr_input_adjustForAnimation": true,
     "uevr_input_adjustForEyeOffset": false,

@@ -130,16 +130,17 @@ function M.hideBodyMesh(currentPawn, visible)
 					child:SetVisibility(visible, false)
 					--child:SetRenderInMainPass(visible)
 					--child:SetRenderCustomDepth(visible)
-				elseif string.find(childName, "Robe") then
+				elseif string.find(childName, "Robe") or string.find(childName, "Upper") then
+					local target = string.find(childName, "Upper") and currentPawn.Mesh or child
 					if visible then
-						child:UnHideBoneByName(uevrUtils.fname_from_string("LeftArm"), 0)
-						child:UnHideBoneByName(uevrUtils.fname_from_string("RightArm"), 0)
+						target:UnHideBoneByName(uevrUtils.fname_from_string("LeftArm"), 0)
+						target:UnHideBoneByName(uevrUtils.fname_from_string("RightArm"), 0)
 					else
-						child:HideBoneByName(uevrUtils.fname_from_string("LeftArm"), 0)
-						child:HideBoneByName(uevrUtils.fname_from_string("RightArm"), 0)
+						target:HideBoneByName(uevrUtils.fname_from_string("LeftArm"), 0)
+						target:HideBoneByName(uevrUtils.fname_from_string("RightArm"), 0)
 					end
 				end
-			end
+							end
 		end
 	end
 end
@@ -788,7 +789,7 @@ end)
 
 local function handleMountChange(mountType, isFlying)
 	clearHippogriffRiderAlignment()
-	print("mountType", mountType)
+	--print("mountType", mountType)
 	if mountType == M.EMountTypes.Avatar_Ground then
 		pawnModule.setCurrentProfileByLabel("Default")
 		input.setCurrentProfileByLabel("Default")

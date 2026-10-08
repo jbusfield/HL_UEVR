@@ -206,7 +206,7 @@ local isDeveloperMode = false
 if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
-local versionTxt = "v2.0.0"
+local versionTxt = "v2.0.2"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local configDefinition = {
 	{
@@ -905,29 +905,49 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	end
 end)
 
+local function isWearingRobeAndGloves()
+	local character = mounts.getMountType() ~= nil and mounts.getMountPawn(pawn) or pawn
+	local mesh = uevrUtils.getValid(character, {"Mesh"})
+	local wearingRobe = uevrUtils.getChildComponent(mesh, "Robe") ~= nil
+	local wearingGloves = uevrUtils.getChildComponent(mesh, "Gloves") ~= nil
+	--print("wearingRobe", wearingRobe, "wearingGloves", wearingGloves)
+	return wearingRobe, wearingGloves
+end
 
 function getCustomIKComponent(rigID)
+	local upperMeshName = isWearingRobeAndGloves() and "Robe" or "Upper"
 	if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying then
 		if status.isDisguised then
 			return {{descriptor = "Pawn.Mesh", animation = "Gloves", optional = true}}
 		else
-			return {{descriptor = "Pawn.Mesh(Robe)"}, {descriptor = "Pawn.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.Mesh(Arms)", animation = "Arms", optional = true}}
+			return {{descriptor = "Pawn.Mesh(".. upperMeshName ..")"}, {descriptor = "Pawn.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.Mesh(Arms)", animation = "Arms", optional = true}}
 		end
 	elseif mounts.getMountType() == mounts.EMountTypes.Cart_Rider then
-		return {{descriptor = "Pawn.MyPlayer.Mesh(Robe)"}, {descriptor = "Pawn.MyPlayer.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.MyPlayer.Mesh(Arms)", animation = "Arms", optional = true}}
+		return {{descriptor = "Pawn.MyPlayer.Mesh(".. upperMeshName ..")"}, {descriptor = "Pawn.MyPlayer.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.MyPlayer.Mesh(Arms)", animation = "Arms", optional = true}}
 	elseif mounts.getMountType() ~= nil then
-		return {{descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(Robe)"}, {descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(Arms)", animation = "Arms", optional = true}}
+		return {{descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(".. upperMeshName ..")"}, {descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.MountComponent.RiderCharacter.Mesh(Arms)", animation = "Arms", optional = true}}
 	end
-    --return {{descriptor = "Pawn.Mesh(Robe)"}, {descriptor = "Pawn.Mesh(Gloves)", animation = "Gloves", optional = true}, {descriptor = "Pawn.Mesh(Arms)", animation = "Arms", optional = true}}
 end
 
 function getCustomHandComponent(key)
+	--print("getCustomHandComponent", key)
 	if status.isDisguised then
 		hands.setOffset({X=0, Y=0, Z=0, Pitch=0, Yaw=180, Roll=0})
 		if key == "Gloves" then
 			return uevrUtils.getValid(pawn,{"Mesh"})
 		end
 	else
+		local wearingRobe, wearingGloves = isWearingRobeAndGloves()
+		if key == "Arms" and not wearingRobe then
+			return nil
+		end
+		if key == "Gloves" and not wearingGloves and not wearingRobe then
+			if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying  then
+				return uevrUtils.getObjectFromDescriptor("Pawn.Mesh(Arms)", false)
+			elseif mounts.getMountType() ~= nil then
+				return uevrUtils.getObjectFromDescriptor("Pawn.MountComponent.RiderCharacter.Mesh(Arms)", false)
+			end
+		end
 		hands.setOffset(nil)
 		if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying  then
 			return uevrUtils.getObjectFromDescriptor("Pawn.Mesh(".. key ..")", false)

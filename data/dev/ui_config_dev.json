@@ -7,7 +7,7 @@
     "uevr_ui_controllerMouseWhenActivePriority": "0",
     "uevr_ui_controllerMouseWhenInGameState": 2,
     "uevr_ui_controllerMouseWhenInGameStatePriority": "0",
-    "uevr_ui_currentViewportWidgets": "UI_BP_PhoenixHUDWidget_C\nUI_BP_Tutorial_Modal_C\n",
+    "uevr_ui_currentViewportWidgets": "UI_BP_AspectRatioWidget_C\nUI_BP_PhoenixHUDWidget_C\nUI_BP_Subtitle_HUD_C\n",
     "uevr_ui_decouplePitchWhenActive": 1,
     "uevr_ui_decouplePitchWhenActivePriority": "0",
     "uevr_ui_decouplePitchWhenInGameState": 1,
