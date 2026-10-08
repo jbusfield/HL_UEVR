@@ -49,9 +49,13 @@ Once you are on your mount, you can optionally grab you mount with you left hand
 <BR><BR>
 [![Watch Video](https://img.youtube.com/vi/TaxyOO4Irfo/maxresdefault.jpg)](https://www.youtube.com/watch?v=TaxyOO4Irfo)
 
+### Custom Gestures
+- Cast Protego - Block with your left hand (hold your left hand up in front of you with palm away from you). Hold longer for Stupefy
+- Heal - Left grip near mouth
+- Open Inventory - Left grip near your ear
 
 ## Notes:
-- Transition screen blinking is ok. In the past the game may have crashed instead. It clears itself eventually
+- Transition screen blinking is ok. In the past, the game may have crashed instead. It clears itself eventually
 - The final Fastido challenge flips the left controller stick directions on purpose. This is not a bug.
   
 ## Contributors
