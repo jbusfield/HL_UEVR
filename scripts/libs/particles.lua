@@ -288,6 +288,7 @@ local function resolveParticleAsset(assetRef)
 	end
 	local loaded = uevrUtils.getLoadedAsset(assetRef)
 	if loaded ~= nil then
+		print("#######################", assetRef)
 		return loaded
 	end
 	-- Finder lists resident assets by full name; AssetRegistry can miss Niagara.

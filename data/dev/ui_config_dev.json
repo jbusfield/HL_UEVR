@@ -17,7 +17,7 @@
     "uevr_ui_fadeCameraWhenInGameState": 1,
     "uevr_ui_fadeCameraWhenInGameStatePriority": "0",
     "uevr_ui_gameStateList": 3,
-    "uevr_ui_handsWhenActive": 3,
+    "uevr_ui_handsWhenActive": 1,
     "uevr_ui_handsWhenActivePriority": "0",
     "uevr_ui_handsWhenInGameState": 3,
     "uevr_ui_handsWhenInGameStatePriority": "0",

@@ -24,7 +24,7 @@
         "left_shoulder_bone_name": "LeftShoulder",
         "mesh": "Custom",
         "mesh_location_offset": [
-            -5.56,
+            -5.8611,
             0.0399,
             -18.664
         ],
@@ -69,18 +69,21 @@
                 "start_stretch_ratio": 0.0,
                 "twist_bones": [
                     {
+                        "_fname": null,
                         "bone": "LeftForeArmTwist1",
-                        "pitch": 0,
+                        "pitch": 0.33,
                         "roll": 0.7269999980926514,
                         "yaw": 0.0
                     },
                     {
+                        "_fname": null,
                         "bone": "LeftForeArmTwist2",
                         "pitch": 0.0,
                         "roll": 0.5460000038146973,
                         "yaw": 0.0
                     },
                     {
+                        "_fname": null,
                         "bone": "LeftForeArmTwist3",
                         "pitch": 0.0,
                         "roll": 0.24199999868869781,
@@ -118,18 +121,21 @@
                 "start_stretch_ratio": 0.0,
                 "twist_bones": [
                     {
+                        "_fname": null,
                         "bone": "RightForeArmTwist1",
-                        "pitch": 0,
+                        "pitch": 0.33,
                         "roll": 0.7580000162124634,
                         "yaw": 0.0
                     },
                     {
+                        "_fname": null,
                         "bone": "RightForeArmTwist2",
                         "pitch": 0.0,
                         "roll": 0.5,
                         "yaw": 0.0
                     },
                     {
+                        "_fname": null,
                         "bone": "RightForeArmTwist3",
                         "pitch": 0.0,
                         "roll": 0.24300000071525574,

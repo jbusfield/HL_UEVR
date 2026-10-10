@@ -4,6 +4,7 @@ local mounts = require('helpers/mounts')
 local controllers = require('libs/controllers')
 local ui = require('libs/ui')
 local widgetModule = require('libs/widget')
+local particles = require('libs/particles')
 
 local M = {}
 
@@ -148,10 +149,7 @@ end
 
 ----------------- Accio fix for flying pages ------------------
 local function getPagePaper(page)
-	local mesh = plugin.getProperty(page, "SK_Paper")
-	if mesh == nil then mesh = plugin.getProperty(page, "Sphere") end
-	if mesh == nil then mesh = plugin.getProperty(page, "BookRoot") end
-	return mesh
+	return page.SK_Paper or page.Sphere or page.BookRoot
 end
 
 local function findNearbyAccioPage(pawn)
@@ -195,16 +193,16 @@ local function pullAccioPage(pawn, page)
 			if mesh.DetachFromParent ~= nil then
 				mesh:DetachFromParent(true, false)
 			end
-			plugin.setProperty(page, "bFollowSpline", false)
-			plugin.setProperty(page, "bStartFlying", false)
-			plugin.setProperty(page, "BookSpeed", 0)
-			plugin.setProperty(page, "BookSpeedMod", 0)
-			local abp = plugin.getProperty(page, "ABP")
+			page.bFollowSpline = false
+			page.bStartFlying = false
+			page.BookSpeed = 0
+			page.BookSpeedMod = 0
+			local abp = page.ABP
 			if abp ~= nil then
-				plugin.executeFunction(abp, "AccioPull", true)
-				plugin.setProperty(abp, "bAccio", true)
-				plugin.setProperty(abp, "bPanic", false)
-				plugin.setProperty(abp, "bFlap", false)
+				abp:AccioPull(true)
+				abp.bAccio = true
+				abp.bPanic = false
+				abp.bFlap = false
 			end
 		end
 		local wandMesh = uevrUtils.getValid(getWand(pawn), {"Mesh"})
@@ -220,11 +218,11 @@ local function pullAccioPage(pawn, page)
 				if wandMesh ~= nil and mesh.K2_AttachToComponent ~= nil then
 					mesh:K2_AttachToComponent(wandMesh, "", 2, 2, 0, false)
 				end
-				local abp = plugin.getProperty(page, "ABP")
-				if abp ~= nil then plugin.setProperty(abp, "bCollect", true) end
-				plugin.executeFunction(page, "OnSpellEffective", pawn)
-				plugin.executeFunction(page, "InteractionInitiated")
-				plugin.executeFunction(page, "DestroyActorTimer")
+				local abp = page.ABP
+				if abp ~= nil then abp.bCollect = true end
+				page:OnSpellEffective(pawn)
+				page:InteractionInitiated()
+				page:DestroyActorTimer()
 			end
 			mesh:K2_SetWorldLocation(dest, false, reusable_hit_result, true)
 			delay(20, step)
@@ -354,23 +352,54 @@ function M.clearAccioFX()
 			if string.find(name, "/Accio/", 1, true) then
 				pc.bIsActive = false
 				pc.bRenderingEnabled = false
-				plugin.executeFunction(pc, "Deactivate")
-				plugin.executeFunction(pc, "SetRenderingEnabled", false)
-				plugin.executeFunction(pc, "SetVisibility", false, true)
+				pc:Deactivate()
+				pc:SetRenderingEnabled(false)
+				pc:SetVisibility(false, true)
 			end
 		end
 	end
 end
 
-local function castPewPew(pawn)
+local wandTrailMesh = nil
+local wandTrailTriggerHeld = false
+
+-- local function castPewPew(pawn)
+-- 	local wand = getWand(pawn)
+-- 	if wand ~= nil then
+-- 		wand:CastPewPewSpell()
+-- 	end
+-- end
+-- CastSpellImmediate with wand aim + bTriggerCastAnim=false: fires without ABL_WandCast_* (FullBody stays idle).
+local function getSpellHelper()
+	if uevrUtils.getValid(status.spellHelper) == nil or status.spellHelper.CastSpellImmediate == nil then
+		status.spellHelper = uevrUtils.find_first_of("Class /Script/Phoenix.SpellHelper", false)
+	end
+	return status.spellHelper
+end
+
+local function getWandTip()
+	---@type any
+	local mesh = uevrUtils.getValid(wandTrailMesh)
+	return mesh and mesh:GetSocketLocation(uevrUtils.fname_from_string("MuzzleSocket"))
+end
+
+
+local function castPewPew(pawn, noAnim)
 	local wand = getWand(pawn)
-	if wand ~= nil then
+	if wand == nil then return end
+	-- the animated cast is what draws a holstered wand. Get rid of and M.isWandDrawn(pawn for manual wand drawing
+	if noAnim and not status.isDeathlyHallows and M.isWandDrawn(pawn) then
+		local helper = getSpellHelper()
+		local aim = M.getWandAim(pawn)
+		local source = getWandTip()
+		if helper == nil or aim == nil or source == nil then return end
+		helper:CastSpellImmediate(nil, source, wand.SpellPewPew, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
+	else
 		wand:CastPewPewSpell()
 	end
 end
-
-function M.castPewPew(pawn)
-	castPewPew(pawn)
+function M.castPewPew(pawn, noAnim)
+	castPewPew(pawn, noAnim or false)
 end
 
 -- old way using wandpos.dll
@@ -393,14 +422,6 @@ function M.getWandAim(pawn)
         return upVector
     end
     return nil
-end
-
--- CastSpellImmediate with wand aim + bTriggerCastAnim=false: fires without ABL_WandCast_* (FullBody stays idle).
-local function getSpellHelper()
-	if uevrUtils.getValid(status.spellHelper) == nil or status.spellHelper.CastSpellImmediate == nil then
-		status.spellHelper = uevrUtils.find_first_of("Class /Script/Phoenix.SpellHelper", false)
-	end
-	return status.spellHelper
 end
 
 local function isChannelingSpellName(pawn,name)
@@ -431,23 +452,19 @@ local function castSpellNoAnim(pawn, spellTool)
 		end
 	end
 
-	-- if lookup == "Spell_Accio" then
-	-- 	local page = findNearbyAccioPage(pawn)
-	-- 	if page ~= nil then
-	-- 		pullAccioPage(pawn, page)
-	-- 		return false
-	-- 	end
-	-- end
+	if lookup == "Spell_Accio" then
+		local page = findNearbyAccioPage(pawn)
+		if page ~= nil then
+			pullAccioPage(pawn, page)
+			return false
+		end
+	end
 
 	if lookup ~= nil and isChannelingSpellName(pawn,lookup) then return false end
 	local helper = getSpellHelper()
 	local aim = M.getWandAim(pawn)
 	if helper == nil or record == nil or aim == nil then return false end
-	local source = spellTool.GetMuzzleLocation and spellTool:GetMuzzleLocation()
-	if source == nil then
-		local mesh = uevrUtils.getValid(getWand(pawn), {"Mesh"})
-		if mesh ~= nil then source = mesh:K2_GetComponentLocation() end
-	end
+	local source = getWandTip()
 	if source == nil then return false end
 	helper:CastSpellImmediate(nil, source, record, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
 	return true
@@ -653,7 +670,7 @@ local function castSpellByName(pawn, spellName, muteVoice)
 			status.currentFlickSpellName = spellName
 		end
 		if spellName == "Spell_Alohomora" then
-			if mute then 
+			if mute then
 				beginSpellVoiceSuppress(pawn, 2000)
 			end
 			castAlohomora(pawn)
@@ -826,6 +843,19 @@ function M.castSpell(pawn, spellName, muteVoice)
 	castSpellByName(pawn, spellName, muteVoice)
 end
 
+
+function M.getWandTrailMesh()
+	return wandTrailMesh
+end
+function M.setWandTrailMesh(mesh)
+	wandTrailMesh = mesh
+end
+function M.destroyWandTrail()
+	wandTrailMesh = nil
+	particles.destroy("Wand Trail")
+	wandTrailTriggerHeld = false
+end
+
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	if status.isAlohomoraCasting or status.isPetrificusCasting then
 		uevrUtils.pressButton(state, XINPUT_GAMEPAD_X)
@@ -849,6 +879,56 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 			status.isOppugnoCasting = false
 		end)
 	end
+
+	if ui.isRemapDisabled() == false then
+		local held = state.Gamepad.bRightTrigger > 128
+		-- Hide the trigger from the game for the first 200ms so vanilla never sees a tap. Longer holds pass through
+		-- for slotted spell casting, and are kept held until the game has seen at least 0.5s (vanilla tap cutoff is ~300-400ms).
+		if not status.isDeathlyHallows then
+			local now = os.clock()
+			if held then
+				status.rightTriggerStart = status.rightTriggerStart or now
+				if state.Gamepad.wButtons & 0xF000 ~= 0 then status.rightTriggerStart = math.min(status.rightTriggerStart, now - 0.2) end
+				if now - status.rightTriggerStart < 0.2 then state.Gamepad.bRightTrigger = 0 end
+			elseif status.rightTriggerStart ~= nil then
+				if now - status.rightTriggerStart < 0.2 then
+					castPewPew(pawn, true)
+				else
+					status.rightTriggerHoldUntil = math.max(now, status.rightTriggerStart + 0.8)
+				end
+				status.rightTriggerStart = nil
+			end
+			if status.rightTriggerHoldUntil ~= nil then
+				if now < status.rightTriggerHoldUntil then state.Gamepad.bRightTrigger = 255 else status.rightTriggerHoldUntil = nil end
+			end
+		end
+
+		--wand effects when trigger is held
+		if held == wandTrailTriggerHeld then return end
+		wandTrailTriggerHeld = held
+		if held then
+			-- Fresh instance each press so ribbon history does not stretch from the last pose
+			particles.destroy("Wand Trail")
+			if wandTrailMesh ~= nil then
+				local tip = particles.create("Wand Trail")
+				if tip ~= nil then
+					tip:attachTo(wandTrailMesh, "MuzzleSocket")
+				end
+			end
+		else
+			local tip = particles.get("Wand Trail")
+			if tip ~= nil then
+				tip:detach(true)
+				setTimeout(700, function()
+					if tip ~= nil and tip.destroy ~= nil then
+						tip:destroy()
+					end
+				end)
+			end
+		end
+
+	end
+
 end)
 
 -- While Wingardium is holding, pin the target to the wand ray.
@@ -1184,8 +1264,9 @@ end
 uevr.params.sdk.callbacks.on_script_reset(function()
 	M.reset()
 end)
-uevrUtils.registerLevelChangeCallback(function(level)
+uevrUtils.registerLevelChangeCallback(function(level, levelName)
 	M.reset()
+	status.isDeathlyHallows = levelName ~= nil and string.find(levelName, "DeathlyHallows", 1, true) ~= nil
 	hookLevelFunctions()
 end, 1)
 

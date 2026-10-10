@@ -1,5 +1,5 @@
 {
-    "uevr_pawn_active_profile": 2,
+    "uevr_pawn_active_profile": 3,
     "uevr_pawn_basePawnName": "Pawn",
     "uevr_pawn_hidePawnArmsAnimationMesh": true,
     "uevr_pawn_hidePawnArmsBones": false,
@@ -16,8 +16,8 @@
     "uevr_pawn_pawnArmsMeshList": 1,
     "uevr_pawn_pawnBodyFOVFix": "",
     "uevr_pawn_pawnBodyMeshList": 1,
-    "uevr_pawn_pawnUpperArmLeft": 1,
-    "uevr_pawn_pawnUpperArmRight": 1,
+    "uevr_pawn_pawnUpperArmLeft": 25,
+    "uevr_pawn_pawnUpperArmRight": 89,
     "uevr_pawn_rename_profile_input": "CartRider",
     "uevr_pawn_selectedPawnArmsAnimationMesh": "Pawn.Mesh",
     "uevr_pawn_selectedPawnArmsMesh": "Pawn.Mesh",

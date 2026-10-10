@@ -1,5 +1,5 @@
 {
-    "active_profile": 2,
+    "active_profile": 1,
     "handsWhenActive": 1,
     "handsWhenActivePriority": "0",
     "inputWhenActive": 1,
@@ -21,9 +21,9 @@
     "rightAccessoryWhenActivePriority": "0",
     "rightArmWhenActive": 1,
     "rightArmWhenActivePriority": "0",
-    "uevr_gesture_trainer_active_profile": 1,
+    "uevr_gesture_trainer_active_profile": 2,
     "uevr_gesture_trainer_gesture_delete_override": false,
-    "uevr_gesture_trainer_gesture_label": "Oppugno",
+    "uevr_gesture_trainer_gesture_label": "Confringo",
     "uevr_gesture_trainer_gesture_picker": 1,
     "uevr_input_config_adjustBodyMeshPosition": true,
     "uevr_input_config_adjustForAnimation": true,

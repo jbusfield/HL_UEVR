@@ -1,5 +1,5 @@
 {
-    "uevr_collision_active": false,
+    "uevr_collision_active": true,
     "uevr_collision_active_profile": 1,
     "uevr_collision_attachTo": 2,
     "uevr_collision_bool_channel1": 1,
@@ -76,7 +76,7 @@
         10.0
     ],
     "uevr_collision_generate_overlap_events": true,
-    "uevr_collision_half_height": 20.0,
+    "uevr_collision_half_height": 17.299999237060547,
     "uevr_collision_object_finder_channel1": 1,
     "uevr_collision_object_finder_channel10": 1,
     "uevr_collision_object_finder_channel11": 1,
@@ -121,14 +121,14 @@
         1.8997999429702759,
         0.800000011920929
     ],
-    "uevr_collision_radius": 8.5,
+    "uevr_collision_radius": 2.9000000953674316,
     "uevr_collision_rename_profile_input": "",
     "uevr_collision_rotation": [
-        -73.69999694824219,
+        -69.69999694824219,
         0.0,
-        -13.399999618530273
+        -20.20009994506836
     ],
-    "uevr_collision_shape": 1,
+    "uevr_collision_shape": 3,
     "uevr_collision_show_overlapped_components": true,
     "uevr_collision_visible": false
 }

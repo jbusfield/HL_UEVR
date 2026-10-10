@@ -475,7 +475,37 @@
             "screen2DWhenActivePriority": "0"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/HUD/Challenges/UI_BP_AccioActivity.UI_BP_AccioActivity_C": {
-            "label": "UI_BP_AccioActivity_C"
+            "alignment": [
+                0.0,
+                0.0
+            ],
+            "autoAdjustUIWhenActive": 1,
+            "autoAdjustUIWhenActivePriority": "0",
+            "controllerMouseWhenActive": 1,
+            "controllerMouseWhenActivePriority": "0",
+            "decouplePitchWhenActive": 1,
+            "decouplePitchWhenActivePriority": "0",
+            "fadeCameraWhenActive": 1,
+            "fadeCameraWhenActivePriority": "0",
+            "handsWhenActive": 1,
+            "handsWhenActivePriority": "0",
+            "inputWhenActive": 1,
+            "inputWhenActivePriority": "0",
+            "label": "UI_BP_AccioActivity_C",
+            "lockedUIWhenActive": 2,
+            "lockedUIWhenActivePriority": "0",
+            "pawnArmBonesWhenActive": 1,
+            "pawnArmBonesWhenActivePriority": "0",
+            "remapWhenActive": 1,
+            "remapWhenActivePriority": "0",
+            "roomscaleWhenActive": 1,
+            "roomscaleWhenActivePriority": "0",
+            "scale": [
+                1.0,
+                1.0
+            ],
+            "screen2DWhenActive": 1,
+            "screen2DWhenActivePriority": "0"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/HUD/ConjurationHUD/UI_BP_ConjurationHUD.UI_BP_ConjurationHUD_C": {
             "alignment": [
@@ -507,6 +537,9 @@
             ],
             "screen2DWhenActive": 1,
             "screen2DWhenActivePriority": "0"
+        },
+        "WidgetBlueprintGeneratedClass /Game/UI/HUD/FightClub/UI_BP_FightClub.UI_BP_FightClub_C": {
+            "label": "UI_BP_FightClub_C"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/HUD/Notifications/UI_BP_RevelioPageNotification.UI_BP_RevelioPageNotification_C": {
             "label": "UI_BP_RevelioPageNotification_C"

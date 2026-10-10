@@ -31,31 +31,6 @@ local locomotion = require('helpers/locomotion')
 --local dev = require('libs/uevr_dev')
 --dev.init()
 
-
--- Notes: The final Fastido challenge flips the left controller stick directions on purpose. This is not a bug.
--- Transition screen blinking on and off is expected behavior. In the past the game may have crashed instead. It clears itself eventually
-
--- Changes
--- True glyph drawing detection for casting spells via glyphs
--- Built in low latency voice casting
--- 		Fabricaste, Mutatio, Evanesco
---      Sanctuarium, Nutritio, Placato
---      Viaspecto, Obscura, Oppugno (ancient magic throw), Tormentum (ancient magic)
--- Voice and glyph casting not limited to your current four spell slots
--- Removed character pausing after spell casting for most spells (not yet Basic Cast)
--- True fix for left eye flickering without needing flicker fixer
--- Fixed color flashes in one eye
--- IK arms support
--- Full body support
--- Controller based mouse movement in menus
--- Improved player directional movement
--- Mount (Broom, Hippogriff, Graphorn) directional control by gripping mount with either or both hands
--- Accurate wand aim plus optional reticule alignment for left/right or both eye dominance
--- Fixed accio flying page problem
--- Better food, drink and treats interaction
--- Improved cutscene transitions
--- World based widgets with proper lighting thanks to LukasBlaster
-
 local BROOM_ACCESSORY_KEY = "Broom"
 local function getBroomAccessoryMesh(hand)
 	if uevrUtils.isInCutscene() then return nil end
@@ -206,7 +181,13 @@ local isDeveloperMode = false
 if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
-local versionTxt = "v2.0.2"
+
+-- v2.0.3
+-- Basic cast no longer pauses character movement
+-- Accio flying page problem fixed
+-- The game's Levioso glyph drawing shape also works in addition to the quick version shown in the spell screen
+-- Fixed Viaspecto missing glyph
+local versionTxt = "v2.0.3"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local configDefinition = {
 	{
@@ -549,11 +530,9 @@ local HandsType = {
 	IKArms = 2,
 }
 
-local wandTrailMesh = nil
-local wandTrailTriggerHeld = false
 
 gestureTrainer.registerGetMeshCallback(function()
-	return wandTrailMesh, "MuzzleSocket"
+	return spells.getWandTrailMesh(), "MuzzleSocket"
 end)
 
 
@@ -629,6 +608,7 @@ spellNameRemap["Bombarda"] = "Spell_Expulso"
 spellNameRemap["BeastTool_Food"] = "ITEM_CreatureFeed"
 spellNameRemap["BeastTool_Brush"] = "Item_CreaturePettingBrush"
 spellNameRemap["BeastTool_Bag"] = "ITEM_CaptureDevice"
+spellNameRemap["LeviosoAlt"] = "Spell_Levioso"
 
 local function onSpellRecognize(pawn, spellName, muteVoice)
 	if spellName == nil then return end
@@ -683,7 +663,8 @@ end)
 
 gestures.registerFlickCallback(function(strength, hand)
 	--debounce so the spell goes to the intended wand location instead of where the wand is when the gesture is released
-	if uevrUtils.isInCutscene() then return end
+	-- the camera snap on cutscene exit reads as a flick
+	if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 0.5 then return end
 	delay(200, function()
 		spells.castCurrentFlickSpell(pawn)
 	end)
@@ -847,9 +828,7 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 	if gripHand == Handed.Right then
 		status.wandAttached = attachment ~= nil and id == "BP_WandTool_C_Mesh"
 		if attachment == nil then
-			wandTrailMesh = nil
-			particles.destroy("Wand Trail")
-			wandTrailTriggerHeld = false
+			spells.destroyWandTrail()
 			return
 		end
 		attachment:SetVisibility(true, true)
@@ -863,7 +842,7 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 				end
 			end
 		end
-		wandTrailMesh = mesh
+		spells.setWandTrailMesh(mesh)
 	end
 end)
 
@@ -879,30 +858,6 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	if gripEarRight then regenerateHands(configui.getValue("hands_type")) end
 	if gripMouthLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
 
-	--wand effects when trigger is held
-	local held = state ~= nil and state.Gamepad ~= nil and state.Gamepad.bRightTrigger > 128
-	if held == wandTrailTriggerHeld then return end
-	wandTrailTriggerHeld = held
-	if held then
-		-- Fresh instance each press so ribbon history does not stretch from the last pose
-		particles.destroy("Wand Trail")
-		if wandTrailMesh ~= nil then
-			local tip = particles.create("Wand Trail")
-			if tip ~= nil then
-				tip:attachTo(wandTrailMesh, "MuzzleSocket")
-			end
-		end
-	else
-		local tip = particles.get("Wand Trail")
-		if tip ~= nil then
-			tip:detach(true)
-			setTimeout(700, function()
-				if tip ~= nil and tip.destroy ~= nil then
-					tip:destroy()
-				end
-			end)
-		end
-	end
 end)
 
 local function isWearingRobeAndGloves()
@@ -1086,6 +1041,8 @@ uevrUtils.registerCutsceneChangeCallback(function(isInCutscene)
 
     if isInCutscene then
 		hideLetterbox()
+    else
+		status.cutsceneEndTime = os.clock()
     end
 end, 5)
 
@@ -1207,8 +1164,9 @@ end)
 ui.registerWidgetChangeCallback("UI_BP_Tutorial_NonModal_C", function(active, widget)
 	print("UI_BP_Tutorial_NonModal_C: ", active, widget and widget.TutorialName:to_string())
 	ui.setCustomState("handsEnabled", (active and widget.TutorialName:to_string() == "Stupefy") or nil, 1)
-	input.setRotationModeRotationDisabled(active)
-	input.setBodyYawWritesSuppressed(active)
+	--input.setRotationModeRotationDisabled(active)
+	--input.setBodyYawWritesSuppressed(active)
+	--mounts.hideViewableMesh(pawn, not active)
 end)
 
 configui.onUpdate("hands_type", function(value)
@@ -1453,7 +1411,6 @@ end)
 -- 	isPaused = not isPaused
 -- 	uevrUtils.pauseGame(isPaused)
 -- end)
-
 
 
 

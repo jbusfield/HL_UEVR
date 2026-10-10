@@ -131,7 +131,8 @@ function M.hideBodyMesh(currentPawn, visible)
 					--child:SetRenderInMainPass(visible)
 					--child:SetRenderCustomDepth(visible)
 				elseif string.find(childName, "Robe") or string.find(childName, "Upper") then
-					local target = string.find(childName, "Upper") and currentPawn.Mesh or child
+					-- the Deathly Hallows robe follows Mesh's master pose, so bone hiding must go on Mesh
+					local target = (string.find(childName, "Upper") or string.find(childName, "DeathlyHallows", 1, true)) and currentPawn.Mesh or child
 					if visible then
 						target:UnHideBoneByName(uevrUtils.fname_from_string("LeftArm"), 0)
 						target:UnHideBoneByName(uevrUtils.fname_from_string("RightArm"), 0)

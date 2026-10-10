@@ -6,7 +6,7 @@
         "currentEditingProfile": "default"
     },
     "default": {
-        "active": false,
+        "active": true,
         "attachTo": 2,
         "channels": [
             1,
@@ -50,24 +50,24 @@
             10.0
         ],
         "generate_overlap_events": true,
-        "half_height": 20.0,
+        "half_height": 17.299999237060547,
         "position": [
             4.0,
             1.8998,
             0.8
         ],
-        "radius": 8.5,
+        "radius": 2.9000000953674316,
         "rotation": [
-            -73.7,
+            -69.7,
             0.0,
-            -13.4
+            -20.2001
         ],
         "scale": [
             1.0,
             1.0,
             1.0
         ],
-        "shape": 1,
+        "shape": 3,
         "visible": false
     }
 }
