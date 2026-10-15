@@ -6,7 +6,7 @@
         "currentEditingProfile": "default"
     },
     "default": {
-        "active": true,
+        "active": false,
         "attachTo": 2,
         "channels": [
             1,

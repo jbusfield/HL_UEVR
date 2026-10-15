@@ -4,21 +4,21 @@
     "broom_accessory_end_time": 0.0,
     "broom_accessory_existing_guid": 1,
     "broom_accessory_item_activation_distance": 35.0,
-    "broom_accessory_item_activation_hand": 14,
+    "broom_accessory_item_activation_hand": 15,
     "broom_accessory_item_attach_type": 1,
     "broom_accessory_item_grip_animation": 1,
     "broom_accessory_item_grip_priority": "1",
-    "broom_accessory_item_id": "09cb7699-03f3-4e78-9fed-e52ca5ddfa6a",
-    "broom_accessory_item_label": "LeftHandBroom",
+    "broom_accessory_item_id": "343406b6-ced7-42f3-9c64-c9604ea6690f",
+    "broom_accessory_item_label": "RightHandBroom",
     "broom_accessory_item_location": [
-        11.600000381469727,
-        -1.399999976158142,
-        -5.699999809265137
+        14.300000190734863,
+        -1.2000000476837158,
+        -7.300000190734863
     ],
     "broom_accessory_item_rotation": [
-        -22.899999618530273,
-        15.300000190734863,
-        -172.39999389648438
+        -23.0,
+        16.899999618530273,
+        -143.5
     ],
     "broom_accessory_item_socket_list": 2,
     "broom_accessory_item_socket_name": "handSocket",
@@ -97,24 +97,24 @@
     "hippogriff_accessory_end_time": 0.0,
     "hippogriff_accessory_existing_guid": 1,
     "hippogriff_accessory_item_activation_distance": 50.0,
-    "hippogriff_accessory_item_activation_hand": 14,
+    "hippogriff_accessory_item_activation_hand": 15,
     "hippogriff_accessory_item_attach_type": 1,
     "hippogriff_accessory_item_grip_animation": 1,
     "hippogriff_accessory_item_grip_priority": "1",
-    "hippogriff_accessory_item_id": "92cbbfc2-000c-4b6d-87e2-3851f11cbf76",
-    "hippogriff_accessory_item_label": "LeftGrip",
+    "hippogriff_accessory_item_id": "bfd002ef-11f9-478a-87ae-db118cd0748f",
+    "hippogriff_accessory_item_label": "RightGrip",
     "hippogriff_accessory_item_location": [
-        9.399999618530273,
-        -0.10000000149011612,
+        -7.099999904632568,
+        0.0,
         -1.7999999523162842
     ],
     "hippogriff_accessory_item_rotation": [
         0.0,
-        -0.10000000149011612,
-        166.39999389648438
+        -177.6999969482422,
+        0.0
     ],
     "hippogriff_accessory_item_socket_list": 95,
-    "hippogriff_accessory_item_socket_name": "Rider_Hand_IK_target_left",
+    "hippogriff_accessory_item_socket_name": "Rider_Hand_IK_target_right",
     "hippogriff_accessory_item_test_left_hand": false,
     "hippogriff_accessory_item_test_right_hand": false,
     "hippogriff_accessory_marker_picker": 1,
@@ -126,6 +126,7 @@
     "microphone_volume": 1.0,
     "min_confidence": 0.5,
     "mute_spell_voice": false,
+    "respect_spell_cooldowns": false,
     "uevr_input_config_pawnRotationMode": 4,
     "uevr_input_config_smoothTurnSpeed": 60,
     "uevr_input_config_snapAngle": 30,
@@ -145,6 +146,125 @@
     "uevr_ui_headLockedUISize": 2.0,
     "uevr_ui_headLockedUIType": 1,
     "uevr_ui_reduceMotionSickness": false,
+    "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_attachTo": 3,
+    "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_exposure": 0,
+    "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_location": [
+        -1.100100040435791,
+        4.199900150299072,
+        -3.2000999450683594
+    ],
+    "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_rotation": [
+        -156.39999389648438,
+        -90.5999984741211,
+        -165.89999389648438
+    ],
+    "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_scale": [
+        0.10000000149011612,
+        0.01889999955892563,
+        0.01889999955892563
+    ],
+    "uevr_widgetcomponent_user_3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890_attachTo": 4,
+    "uevr_widgetcomponent_user_3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890_exposure": 0,
+    "uevr_widgetcomponent_user_3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_widgetcomponent_user_3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_widgetcomponent_user_3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890_scale": [
+        0.10000000149011612,
+        0.10000000149011612,
+        0.10000000149011612
+    ],
+    "uevr_widgetcomponent_user_98ab8991-47a8-4c80-a3cc-31ab419a6ce4_attachTo": 3,
+    "uevr_widgetcomponent_user_98ab8991-47a8-4c80-a3cc-31ab419a6ce4_exposure": 0,
+    "uevr_widgetcomponent_user_98ab8991-47a8-4c80-a3cc-31ab419a6ce4_location": [
+        -1.600100040435791,
+        5.099899768829346,
+        -0.8999999761581421
+    ],
+    "uevr_widgetcomponent_user_98ab8991-47a8-4c80-a3cc-31ab419a6ce4_rotation": [
+        -180.0,
+        -90.0,
+        90.0
+    ],
+    "uevr_widgetcomponent_user_98ab8991-47a8-4c80-a3cc-31ab419a6ce4_scale": [
+        0.10000000149011612,
+        0.029899999499320984,
+        0.029899999499320984
+    ],
+    "uevr_widgetcomponent_user_bd9be329-16f8-4052-991b-11e99150f38c_attachTo": 4,
+    "uevr_widgetcomponent_user_bd9be329-16f8-4052-991b-11e99150f38c_exposure": 0,
+    "uevr_widgetcomponent_user_bd9be329-16f8-4052-991b-11e99150f38c_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_widgetcomponent_user_bd9be329-16f8-4052-991b-11e99150f38c_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_widgetcomponent_user_bd9be329-16f8-4052-991b-11e99150f38c_scale": [
+        0.10000000149011612,
+        0.10000000149011612,
+        0.10000000149011612
+    ],
+    "uevr_widgetcomponent_user_default_attachTo": 3,
+    "uevr_widgetcomponent_user_default_exposure": 0.0,
+    "uevr_widgetcomponent_user_default_location": [
+        -0.4000999927520752,
+        -0.3000999987125397,
+        -0.5
+    ],
+    "uevr_widgetcomponent_user_default_rotation": [
+        16.5,
+        -90.0,
+        90.0
+    ],
+    "uevr_widgetcomponent_user_default_scale": [
+        0.02500000037252903,
+        0.02500000037252903,
+        0.02500000037252903
+    ],
+    "uevr_widgetcomponent_user_f405ba27-169b-484e-b7ac-10a31020164e_attachTo": 3,
+    "uevr_widgetcomponent_user_f405ba27-169b-484e-b7ac-10a31020164e_exposure": 0,
+    "uevr_widgetcomponent_user_f405ba27-169b-484e-b7ac-10a31020164e_location": [
+        0.6998999714851379,
+        4.400000095367432,
+        -3.400099992752075
+    ],
+    "uevr_widgetcomponent_user_f405ba27-169b-484e-b7ac-10a31020164e_rotation": [
+        -34.20009994506836,
+        89.4000015258789,
+        4.599899768829346
+    ],
+    "uevr_widgetcomponent_user_f405ba27-169b-484e-b7ac-10a31020164e_scale": [
+        0.10000000149011612,
+        0.01889999955892563,
+        0.019899999722838402
+    ],
+    "uevr_widgetcomponent_user_fe110750-d193-45a5-b5de-e661422d4a6f_attachTo": 2,
+    "uevr_widgetcomponent_user_fe110750-d193-45a5-b5de-e661422d4a6f_exposure": 0,
+    "uevr_widgetcomponent_user_fe110750-d193-45a5-b5de-e661422d4a6f_location": [
+        0.20000000298023224,
+        2.700000047683716,
+        4.400000095367432
+    ],
+    "uevr_widgetcomponent_user_fe110750-d193-45a5-b5de-e661422d4a6f_rotation": [
+        -12.600099563598633,
+        82.9000015258789,
+        34.09989929199219
+    ],
+    "uevr_widgetcomponent_user_fe110750-d193-45a5-b5de-e661422d4a6f_scale": [
+        0.07400000095367432,
+        0.0430000014603138,
+        0.04190000146627426
+    ],
     "use_agc": false,
     "use_auto_targeting": true,
     "use_controller_mouse": true,
@@ -155,6 +275,7 @@
     "use_mount_hand_controlled_movement": true,
     "use_voice_detection": true,
     "use_volumetric_fog": false,
+    "use_widget_hand_placement": false,
     "voice_min_confidence": 0.4,
     "voice_test": "Wingardium"
 }

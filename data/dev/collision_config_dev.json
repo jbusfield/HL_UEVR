@@ -1,5 +1,5 @@
 {
-    "uevr_collision_active": true,
+    "uevr_collision_active": false,
     "uevr_collision_active_profile": 1,
     "uevr_collision_attachTo": 2,
     "uevr_collision_bool_channel1": 1,

@@ -280,7 +280,8 @@
         "694b7501-aae7-428b-8599-c4eff148f0bd": "CartRider",
         "8a582d3e-c558-40ae-bc76-394c1dd6bf88": "Graphorn",
         "95df2b35-cb20-4b16-859b-bcc0d0b47082": "HippogriffAir",
-        "default": "Default"
+        "default": "Default",
+        "e2987287-6ef4-4c0d-8bf1-ec8dc0cc0ad1": "Swimming"
     },
     "_profileState": {
         "currentEditingProfile": "default"
@@ -317,6 +318,51 @@
             "X": 0.0,
             "Y": 0.0,
             "Z": -17.5441
+        },
+        "smoothTurnSpeed": 60,
+        "snapAngle": 30,
+        "useControllerDesiredRotation": 1,
+        "useControllerRotationPitch": 1,
+        "useControllerRotationRoll": 1,
+        "useControllerRotationYaw": 1,
+        "useMeshHeightForHeadOffset": false,
+        "usePawnControlRotation": 1,
+        "useRootOffset": true,
+        "useRootOffsetLocalZ": false,
+        "useSnapTurn": false
+    },
+    "e2987287-6ef4-4c0d-8bf1-ec8dc0cc0ad1": {
+        "adjustBodyMeshPosition": true,
+        "adjustForAnimation": true,
+        "adjustForEyeOffset": false,
+        "aimCamera": "None",
+        "aimMethod": 1,
+        "eyeOffset": 0.18299999833106995,
+        "fixSpatialAudio": true,
+        "headBoneName": "head",
+        "headOffset": {
+            "X": 18.2229,
+            "Y": 0.0,
+            "Z": 0.0
+        },
+        "isDisabledOverride": false,
+        "optimizeBodyLocationCalculations": true,
+        "optimizeBodyRotationCalculations": true,
+        "orientRotationToMovement": 1,
+        "overridePlayerControllerYaw": false,
+        "pawnPositionAnimationScale": 0.2,
+        "pawnPositionMode": 1,
+        "pawnPositionSweepMovement": true,
+        "pawnRotationLockedSmoothTime": 0.0,
+        "pawnRotationMode": 4,
+        "pawnRotationModeDisableInEarlyUpdate": false,
+        "pawnRotationModeDisableRotation": false,
+        "pawnRotationModeUseRootPitchRoll": false,
+        "rootBoneName": "Reference",
+        "rootOffset": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": -49.077
         },
         "smoothTurnSpeed": 60,
         "snapAngle": 30,

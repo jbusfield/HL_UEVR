@@ -30,6 +30,7 @@ local status = {}
 
 status.mountType = nil
 status.isFlying = false
+status.isSwimming = false
 status.pitchZero = 20
 status.rollZero = 0
 status.autoflyEnabled = true
@@ -222,11 +223,12 @@ local function getAverageControllerAxes()
 	local right = controllers.getControllerRotation(Handed.Right)
 	if left == nil or right == nil then return nil end
 	if isHippogriff() or status.mountType == M.EMountTypes.Broom_Flying or status.mountType == M.EMountTypes.Graphorn_Ground then
-		if status.isGripping ~= nil and status.isGripping[Handed.Left] then
+		if status.isGripping == nil or (not status.isGripping[Handed.Left] and not status.isGripping[Handed.Right]) then return nil end
+		if status.isGripping[Handed.Left] then
 			pitch = pitch + left.Pitch
 			roll = roll + left.Roll
 		end
-		if status.isGripping ~= nil and status.isGripping[Handed.Right] then
+		if status.isGripping[Handed.Right] then
 			pitch = pitch + right.Pitch
 			roll = roll + right.Roll
 		end
@@ -275,6 +277,10 @@ function M.getIsFlying()
 	return status.isFlying == true
 end
 
+function M.getIsSwimming()
+	return status.isSwimming == true
+end
+
 function M.getMountType()
 	return status.mountType
 end
@@ -305,8 +311,12 @@ end
 
 function M.getMountInfo(pawn)
 	local isFlying = false
+	local isSwimming = false
 	local mountType = M.EMountTypes.Avatar_Ground
 	if uevrUtils.validate_object(pawn) ~= nil then
+		if pawn.IsSwimming ~= nil then
+			isSwimming = pawn:IsSwimming()
+		end
 		if pawn.GetMountComponent ~= nil then
 			local mountComponent = pawn:GetMountComponent()
 			if mountComponent ~= nil and mountComponent.IsFlying ~= nil then
@@ -341,7 +351,7 @@ function M.getMountInfo(pawn)
 			-- end
 		end
 	end
-	return mountType, isFlying
+	return mountType, isFlying, isSwimming
 end
 
 local function executeOnMountChangeCallback(...)
@@ -357,11 +367,12 @@ function M.updateMountLocomotionMode(pawn, locomotionMode)
 	local newLocomotionMode = nil
 	local lastMountType = status.mountType
 	local wasFlying = status.isFlying
-	status.mountType, status.isFlying = M.getMountInfo(pawn)
+	local wasSwimming = status.isSwimming
+	status.mountType, status.isFlying, status.isSwimming = M.getMountInfo(pawn)
 	if wasFlying and not status.isFlying then
 		clearAutoflyLock()
 	end
-	if lastMountType ~= status.mountType or wasFlying ~= status.isFlying then
+	if lastMountType ~= status.mountType or wasFlying ~= status.isFlying or wasSwimming ~= status.isSwimming then
 		status.broomNeutralHipFlex = nil
 		status.broomNeutralTime = 0
 		status.broomRoot = nil
@@ -370,10 +381,10 @@ function M.updateMountLocomotionMode(pawn, locomotionMode)
 		status.broomLevelRoll = BROOM_NEUTRAL_REFERENCE_ROLL
 		status.broomHighSpeedAlpha = 0
 		if lastMountType ~= status.mountType then
-			executeOnMountChangeCallback(status.mountType, status.isFlying)
+			executeOnMountChangeCallback(status.mountType, status.isFlying, status.isSwimming)
 		end
-		if wasFlying ~= status.isFlying then
-			executeOnFlyingChangedCallback(status.mountType, status.isFlying)
+		if wasFlying ~= status.isFlying or wasSwimming ~= status.isSwimming then
+			executeOnFlyingChangedCallback(status.mountType, status.isFlying, status.isSwimming)
 		end
 
 		--animal mounts need to use locomotion mode 0
@@ -788,12 +799,12 @@ uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device,
 	end
 end)
 
-local function handleMountChange(mountType, isFlying)
+local function handleMountChange(mountType, isFlying, isSwimming)
 	clearHippogriffRiderAlignment()
 	--print("mountType", mountType)
 	if mountType == M.EMountTypes.Avatar_Ground then
 		pawnModule.setCurrentProfileByLabel("Default")
-		input.setCurrentProfileByLabel("Default")
+		input.setCurrentProfileByLabel(isSwimming and "Swimming" or "Default")
 		remap.setCurrentProfileByLabel("Default")
 		ik.setCurrentProfileByLabel("Default")
 		input.setStickTurnDisabled(false, "mount")
@@ -836,20 +847,22 @@ local function handleMountChange(mountType, isFlying)
 	end
 end
 
-local function handleFlyingChange(mountType, isFlying)
+local function handleFlyingChange(mountType, isFlying, isSwimming)
 	if isHippogriff() then
 		input.setCurrentProfileByLabel(isFlying and "HippogriffAir" or "HippogriffGround")
+	elseif mountType == M.EMountTypes.Avatar_Ground then
+		input.setCurrentProfileByLabel(isSwimming and "Swimming" or "Default")
 	end
 end
 
 uevrUtils.registerLevelChangeCallback(function()
-	handleMountChange(M.getMountType(), M.getIsFlying())
+	handleMountChange(M.getMountType(), M.getIsFlying(), M.getIsSwimming())
 end)
-uevrUtils.registerUEVRCallback("on_mount_changed", function(mountType, isFlying)
-	handleMountChange(mountType, isFlying)
+uevrUtils.registerUEVRCallback("on_mount_changed", function(mountType, isFlying, isSwimming)
+	handleMountChange(mountType, isFlying, isSwimming)
 end)
-uevrUtils.registerUEVRCallback("on_flying_changed", function(mountType, isFlying)
-	handleFlyingChange(mountType, isFlying)
+uevrUtils.registerUEVRCallback("on_flying_changed", function(mountType, isFlying, isSwimming)
+	handleFlyingChange(mountType, isFlying, isSwimming)
 end)
 
 

@@ -19,6 +19,7 @@ local animation = require('libs/animation')
 local collision = require('libs/collision')
 local laser = require('libs/laser')
 local particles = require('libs/particles')
+local widgetcomponent = require('libs/widgetcomponent')
 local plugin = require('libs/core/plugin')
 local widgetModule = require('libs/widget')
 local gestureTrainer = require('libs/config/gesture_trainer')
@@ -172,6 +173,7 @@ scopes.setDefaultPitchOffset(90.0)
 ik.init()
 collision.init()
 particles.init()
+widgetcomponent.init()
 hands.setAutoCreateHands(false)
 ik.setAutoCreateArms(false)
 
@@ -182,12 +184,15 @@ if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
 
--- v2.0.3
--- Basic cast no longer pauses character movement
--- Accio flying page problem fixed
--- The game's Levioso glyph drawing shape also works in addition to the quick version shown in the spell screen
--- Fixed Viaspecto missing glyph
-local versionTxt = "v2.0.3"
+-- v2.0.4
+-- Added ability to attach UI widgets to hands
+-- Voice/Gesture Spells can optionally respect cooldowns
+-- Fixed issue with toad teleport
+-- Swimming now more natural
+-- Fixed issue with wand occasioanlly disappearing
+-- Fixed issue with letterboxes sometimes showing
+
+local versionTxt = "v2.0.4"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local configDefinition = {
 	{
@@ -259,6 +264,12 @@ local configDefinition = {
 					label = "Controller Based Mouse Movement in Menus",
 					initialValue = true
 				},
+				{
+					widgetType = "checkbox",
+					id = "respect_spell_cooldowns",
+					label = "Voice/Gesture Spells Respect Cooldowns",
+					initialValue = false
+				},
 
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
@@ -278,6 +289,19 @@ local configDefinition = {
 						label = "Raise your left arm in front of your face with palm out for Protego",
 					},
 				{ widgetType = "unindent", width = 20 },
+			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
+			{ widgetType = "new_line" },
+
+			{ widgetType = "indent", width = 20 }, { widgetType = "text", label = "Widgets" }, { widgetType = "begin_rect", },
+				{
+					widgetType = "checkbox",
+					id = "use_widget_hand_placement",
+					label = "Enable Hand Placement",
+					initialValue = false
+				},
+				{ widgetType = "begin_group", id = "use_widget_hand_placement_group" },{ widgetType = "indent", width = 20 },
+					expandArray(widgetcomponent.getConfigurationWidgets),
+				{ widgetType = "unindent", width = 20 },{ widgetType = "end_group", },
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
 
@@ -553,9 +577,23 @@ local function getEV100()
 	end
 	return status.renderSettings ~= nil and status.renderSettings.LastFrameExposure.Filtered.AutoExposureEV100 or nil
 end
+widgetcomponent.setEV100Function(getEV100)
 
-setInterval(1000, function()
-	widgetModule.setWidgetComponentExposure(status.handSpellComponent, getEV100(), configui.getValue("hand_spell_icon_exposure"))
+widgetcomponent.registerGetAvailableParentsCallback(function()
+	local result = {}
+	local handsType = configui.getValue("hands_type")
+	result[1] = {label="Right Hand", socket=(handsType == HandsType.IKArms and status["ikWandSocket"] or "WandSocket"), value=(handsType == HandsType.Forearms and hands.getHandComponent(Handed.Right) or status["ikMeshComponent"])}
+	result[2] = {label="Left Hand", socket="SKT_LeftHand", value=(handsType == HandsType.Forearms and hands.getHandComponent(Handed.Left) or status["ikMeshComponent"])}
+	--result[3] = {label="Right Controller", value=controllers.getController(Handed.Right)}
+	--result[4] = {label="Left Controller", value=controllers.getController(Handed.Left)}
+
+    return result
+end)
+
+configui.onUpdate("hand_spell_icon_exposure", function(value)
+	if status.handSpellWidgetComponent ~= nil then
+		status.handSpellWidgetComponent:setExposure(value)
+	end
 end)
 
 local function updateHandSpellIconTransform()
@@ -603,6 +641,7 @@ end
 
 local spellNameRemap = {}
 spellNameRemap["BasicShot"] = "Spell_PewPew"
+spellNameRemap["AvadaKedavra"] = "Spell_Avadakedavra"
 spellNameRemap["Alteration"] = "Spell_Transformation"
 spellNameRemap["Bombarda"] = "Spell_Expulso"
 spellNameRemap["BeastTool_Food"] = "ITEM_CreatureFeed"
@@ -615,11 +654,15 @@ local function onSpellRecognize(pawn, spellName, muteVoice)
 	if uevrUtils.isInCutscene() then return end
 
 	if uevrUtils.getValid(status.handSpellComponent) == nil and getHandComponents() ~= nil then
-		local transform = uevrUtils.get_transform(nil, nil, {X=0.08, Y=0.08, Z=0.08})
-		status.handSpellComponent, status.handSpellIcon = widgetModule.createImageComponent(40, { relativeTransform = transform, twoSided = true, drawSize = uevrUtils.vector2D(120, 120) })
+		status.handSpellComponent, status.handSpellIcon, status.handSpellWidgetComponent = widgetcomponent.createImageComponent(40, {
+			scale = {0.08, 0.08, 0.08},
+			twoSided = true,
+			drawSize = {120, 120},
+			useExposure = true,
+			exposure = configui.getValue("hand_spell_icon_exposure"),
+		})
 		if status.handSpellComponent ~= nil then
 			attachHandSpellIcon()
-			widgetModule.applyWidgetComponentExposureFix(status.handSpellComponent, getEV100(), configui.getValue("hand_spell_icon_exposure"))
 		end
 	end
 	if status.handSpellIcon ~= nil then
@@ -715,6 +758,7 @@ local function getWeaponMesh()
 		return nil
 	end
 	wand:ActivateFx()
+	if wand.SK_Wand ~= nil and wand.SK_Wand.bHiddenInGame then wand:ShowWand(pawn) end
 	return wand.Mesh
 end
 
@@ -832,6 +876,7 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 			return
 		end
 		attachment:SetVisibility(true, true)
+		--attachment:SetHiddenInGame(false, false)
 		local mesh = attachment
 		-- MuzzleSocket is on SK_Wand; grip attachment is often the StaticMesh "Mesh"
 		if attachment.DoesSocketExist == nil or not attachment:DoesSocketExist(uevrUtils.fname_from_string("MuzzleSocket")) then
@@ -922,12 +967,14 @@ ik.registerOnDestroyCallback(function(ikInstance)
 	--detach attachments first so they dont get "lost" when hands are destroyed
 	attachments.detachGripAttachments(Handed.Right)
 	attachments.detachGripAttachments(Handed.Left)
+	widgetcomponent.detachAll()
 end)
 
 hands.registerOnDestroyCallback(function()
 	--detach attachments first so they dont get "lost" when hands are destroyed
 	attachments.detachGripAttachments(Handed.Right)
 	attachments.detachGripAttachments(Handed.Left)
+	widgetcomponent.detachAll()
 end)
 
 local function checkIsDisguised()
@@ -988,9 +1035,23 @@ local function updatePlayerVisibility()
 		--pawn.Mesh:SetRenderCustomDepth(render)
 	end
 end
+
+-- local function updateIsSwimming()
+-- 	local isSwimming = pawn:IsSwimming()
+-- 	if isSwimming ~= status.isSwimming then
+-- 		status.isSwimming = isSwimming
+-- 		if isSwimming then
+-- 			input.setCurrentProfileByLabel("Swimming")
+-- 		else
+-- 			input.setCurrentProfileByLabel("Default")
+-- 		end
+-- 	end
+-- end
+
 setInterval(200, function()
     updatePlayerVisibility()
 	updateReticule()
+	--updateIsSwimming()
 end)
 
 uevrUtils.registerUEVRCallback("on_mount_changed", function(mountType, isFlying)
@@ -1029,19 +1090,10 @@ hook_function("Class /Script/Phoenix.UIManager", "OnFadeOutComplete", true, nil,
 	end
 , true)
 
-local function hideLetterbox()
-	local widget = uevrUtils.find_first_of("Class /Script/CameraStack.CameraAspectRatioWidget", false)
-	if widget == nil then return end
-	widget:SetVisibility(1)
-	widget.RenderOpacity = 0
-end
-
 uevrUtils.registerCutsceneChangeCallback(function(isInCutscene)
     updatePlayerVisibility()
 
-    if isInCutscene then
-		hideLetterbox()
-    else
+    if not isInCutscene then
 		status.cutsceneEndTime = os.clock()
     end
 end, 5)
@@ -1114,6 +1166,21 @@ local function hookLevelFunctions()
 		end
 	, true)
 
+	-- Toad statue fast travel turns the pawn to face out of the destination statue and steps it forward; input.lua would override that yaw
+	hook_function("BlueprintGeneratedClass /Game/RiggedObjects/Characters/Creatures/Toads/GiantPurpleToad/BP_FastTravel_Statue_TOad.BP_FastTravel_Statue_Toad_C", "InteractionInitiated", false, nil,
+		function(fn, obj, locals, result)
+			uevrUtils.setIsInCutsceneOverride(true)
+		end
+	, true)
+
+	hook_function("BlueprintGeneratedClass /Game/RiggedObjects/Characters/Creatures/Toads/GiantPurpleToad/BP_FastTravel_Statue_TOad.BP_FastTravel_Statue_Toad_C", "EndTeleport", false, nil,
+		function(fn, obj, locals, result)
+			delay(1000, function()
+				uevrUtils.setIsInCutsceneOverride(uevrUtils.getValid(pawn) ~= nil and pawn.InCinematic or nil)
+			end)
+		end
+	, true)
+
 	hook_function("WidgetBlueprintGeneratedClass /Game/UI/Actor/UI_BP_Astronomy_minigame.UI_BP_Astronomy_minigame_C", "ConstellationImageLoaded", true, nil,
 	function(fn, obj, locals, result)
 		print("Astronomy MiniGame ConstellationImageLoaded\n")
@@ -1125,6 +1192,15 @@ local function hookLevelFunctions()
 		end)
 	end
 , true)
+
+	-- the camera stack re-shows the letterbox/pillarbox bars whenever it constrains aspect ratio
+	for _, fnName in ipairs({"UI_UpdateLetterbox", "UI_UpdatePillarbox"}) do
+		hook_function("WidgetBlueprintGeneratedClass /Game/Data/Camera/UI_BP_AspectRatioWidget.UI_BP_AspectRatioWidget_C", fnName, false, nil,
+			function(fn, obj, locals, result)
+				obj:UI_HideBars()
+			end
+		, true)
+	end
 
 end
 
@@ -1190,6 +1266,10 @@ configui.onUpdate("mute_spell_voice", function(value)
 	spells.setMuteSpellVoice(value)
 end)
 
+configui.onUpdate("respect_spell_cooldowns", function(value)
+	spells.setRespectCooldowns(value)
+end)
+
 local function dispatchVoiceSettings()
 	local params = {
 		use_agc = configui.getValue("use_agc"),
@@ -1200,6 +1280,7 @@ local function dispatchVoiceSettings()
 		override_voices = {
 			Descendo = { override = "Diffindo", confidence = 0.15 },
 			Confringo = { override = "Diffindo", confidence = 0.18 },
+			Depulso = { override = "Oppugno", confidence = 0.3 },
 			Lumos = {
 				{ override = "Levioso", confidence = 0.3 },
 				{ override = "Expelliarmus", confidence = 0.3 }
@@ -1238,6 +1319,13 @@ end)
 
 configui.onCreateOrUpdate("use_mount_hand_controlled_movement", function(value)
 	configui.setHidden("use_mount_hand_controlled_movement_group", not value)
+end)
+
+configui.onCreateOrUpdate("use_widget_hand_placement", function(value)
+	configui.setHidden("use_widget_hand_placement_group", not value)
+	for _, entry in ipairs(widgetcomponent.getLabeledWidgets()) do
+		widgetcomponent.setEnabled(entry.label, value)
+	end
 end)
 
 configui.onCreateOrUpdate("follow_broom_roll", function(value)
@@ -1317,6 +1405,7 @@ accessories.createConfigCallbacks(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_")
 accessories.createConfigCallbacks(GRAPHORN_ACCESSORY_KEY, "graphorn_")
 configui.create(configDefinition)
 spells.setMuteSpellVoice(configui.getValue("mute_spell_voice"))
+spells.setRespectCooldowns(configui.getValue("respect_spell_cooldowns"))
 
 
 -- In third person, this is the camera that orbits around the pawn. Instead of fighting it we use it directly because changing
@@ -1363,7 +1452,8 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
 			uevrUtils.setIsInCutsceneOverride(inCinematic)
 		end
 
-		if not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness") then
+		--if not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness") then
+		if not status.isInAlohomora and (not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness")) then
 			updateOrbitCamera(pawn)
 		end
 
@@ -1399,10 +1489,6 @@ uevrUtils.registerPostEngineTickCallback(function(engine, deltaTime)
 end)
 
 uevr.params.sdk.callbacks.on_script_reset(function()
-	-- level change unloads the actor itself; only a script reload orphans it
-	if uevrUtils.getValid(status.handSpellComponent) ~= nil then
-		uevrUtils.destroy_actor(status.handSpellComponent:get_outer())
-	end
 	cleanup()
 end)
 
@@ -1410,6 +1496,7 @@ end)
 -- register_key_bind("F2", function()
 -- 	isPaused = not isPaused
 -- 	uevrUtils.pauseGame(isPaused)
+-- 	print("Paused: " .. tostring(isPaused))
 -- end)
 
 

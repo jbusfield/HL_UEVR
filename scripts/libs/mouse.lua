@@ -74,6 +74,7 @@ function M.updateMousePosition()
 	if playerController ~= nil then
         local controllerDir = controllers.getControllerDirection(Handed.Right)
         local controllerLoc = controllers.getControllerLocation(Handed.Right)
+        if controllerDir == nil or controllerLoc == nil then return end
         controllerLoc = controllerLoc + controllerDir * 300
         local result, x, y = projectWorldToScreen(controllerLoc)
         if result then

@@ -34,7 +34,7 @@
     "uevr_gesture_flick_maxThresholdAngleSpeed": 2813.0,
     "uevr_gesture_flick_minActiveFrames": 3,
     "uevr_gesture_flick_minAngleDelta": 40.0,
-    "uevr_gesture_flick_minThresholdAngleSpeed": 1000.0,
+    "uevr_gesture_flick_minThresholdAngleSpeed": 801.0,
     "uevr_gesture_flick_minThresholdAngleSpeedDown": 518.0,
     "uevr_gesture_flick_minThresholdAngleSpeedUp": 4.0,
     "uevr_gesture_flick_noiseFloorDeg": 2.0,

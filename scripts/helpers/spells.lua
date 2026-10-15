@@ -275,6 +275,10 @@ local function beginSpellVoiceSuppress(pawn, seconds)
 	end)
 end
 
+function M.setRespectCooldowns(val)
+	status.respectCooldowns = val == true
+end
+
 function M.setMuteSpellVoice(val)
 	status.muteSpellVoice = val == true
 end
@@ -314,6 +318,25 @@ local function isSpellAvailable(spellRecord)
 		end
 	end
 	return false
+end
+
+local function isOnCooldown(pawn, spellRecord)
+	return status.respectCooldowns and pawn:GetCooldownPercent(spellRecord) < 1
+end
+
+-- CastSpellImmediate bypasses the game's cooldown so apply it manually. Map keys omit the "Spell_" prefix
+local function startCooldown(pawn, spellRecord)
+	if not status.respectCooldowns then return end
+	if status.spellUpgradeMap == nil then
+		local result = plugin.executeFunction(status.spellManager, "GetSpellUpgradeMap")
+		status.spellUpgradeMap = result and result.ReturnValue
+	end
+	local state = status.spellUpgradeMap and status.spellUpgradeMap[string.sub(spellRecord.LookupName:to_string(), 7)]
+	local params = state and state.SpellUpgradeParameters
+	if params == nil or params.CooldownTime <= 0 then return end
+	local time = params.CooldownTime
+	if not pawn.bInCombatMode then time = time / params.NonCombatCooldownMultiplier end
+	pawn:AdjustCooldown(spellRecord.LookupName, time, true)
 end
 
 --spells like lumos will remain active unless cancelled
@@ -425,7 +448,7 @@ function M.getWandAim(pawn)
 end
 
 local function isChannelingSpellName(pawn,name)
-	local isChanneling = name == "Spell_Lumos" or name == "Spell_Incendio" or name == "Spell_Reparo" or name == "Spell_Disillusionment" or name == "Spell_Wingardium" or name == "Spell_Conjuration" or name == "Spell_Transformation" or name == "Spell_Vanishment"
+	local isChanneling = name == "Spell_AvadaKedavra" or name == "Spell_Lumos" or name == "Spell_Incendio" or name == "Spell_Reparo" or name == "Spell_Disillusionment" or name == "Spell_Wingardium" or name == "Spell_Conjuration" or name == "Spell_Transformation" or name == "Spell_Vanishment"
 	if not pawn.bInCombatMode then
 		-- When in combat mode accio works like a combat spell with no pawn stopping on cast
 		isChanneling = isChanneling or name == "Spell_Accio"
@@ -467,6 +490,7 @@ local function castSpellNoAnim(pawn, spellTool)
 	local source = getWandTip()
 	if source == nil then return false end
 	helper:CastSpellImmediate(nil, source, record, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
+	startCooldown(pawn, record)
 	return true
 end
 
@@ -481,7 +505,7 @@ local function castCurrentFlickSpell(pawn)
 			if status.currentFlickSpell ~= nil and UEVR_UObjectHook.exists(status.currentFlickSpell) then
 				pcall(function() --GetSpellToolRecord can be nil even if the test for currentFlickSpell succeeds
 					local spellToolRecord = status.currentFlickSpell:GetSpellToolRecord()
-					if spellToolRecord ~= nil and isSpellAvailable(spellToolRecord) then
+					if spellToolRecord ~= nil and isSpellAvailable(spellToolRecord) and not isOnCooldown(pawn, spellToolRecord) then
 						wand:CancelCurrentSpell()
 						local spellTool = wand:ActivateSpellTool(spellToolRecord, true)
 						if spellTool == nil then spellTool = status.currentFlickSpell end
@@ -724,7 +748,7 @@ local function castSpellByName(pawn, spellName, muteVoice)
 							M.print("Found spell tool record for " .. lookupName .. " ")
 							local isUnlocked = isSpellAvailable(spellToolRecord) --spellManager:IsUnlocked(spellToolRecord.LookupName)
 							M.print(lookupName .. " is unlocked: " .. (isUnlocked and "true" or "false"))
-							if isUnlocked then
+							if isUnlocked and not isOnCooldown(pawn, spellToolRecord) then
 								if mute then
 									beginSpellVoiceSuppress(pawn, 2000)
 								end
