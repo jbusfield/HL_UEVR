@@ -187,11 +187,9 @@ if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
 
--- v2.0.5
--- Added Stick casting option
--- Allowed user control of wand position and rotation
+-- v2.0.6
 
-local versionTxt = "v2.0.5"
+local versionTxt = "v2.0.6"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
