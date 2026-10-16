@@ -1,5 +1,4 @@
 {
-    "active_profile": 2,
     "handsWhenActive": 1,
     "handsWhenActivePriority": "0",
     "inputWhenActive": 1,
@@ -21,10 +20,13 @@
     "rightAccessoryWhenActivePriority": "0",
     "rightArmWhenActive": 1,
     "rightArmWhenActivePriority": "0",
-    "uevr_gesture_trainer_active_profile": 1,
-    "uevr_gesture_trainer_gesture_delete_override": false,
-    "uevr_gesture_trainer_gesture_label": "Crucio",
-    "uevr_gesture_trainer_gesture_picker": 1,
+    "uevr_collision_scale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "uevr_gesture_trainer_active_profile": 2,
+    "uevr_ik_animation_mesh": "",
     "uevr_input_config_adjustBodyMeshPosition": true,
     "uevr_input_config_adjustForAnimation": true,
     "uevr_input_config_adjustForEyeOffset": false,
@@ -64,6 +66,23 @@
     "uevr_input_config_usePawnControlRotation": 1,
     "uevr_input_config_useRootOffset": true,
     "uevr_input_config_useRootOffsetLocalZ": false,
+    "uevr_input_headBoneName": "head",
+    "uevr_input_rootBoneName": "Reference",
+    "uevr_pawn_hideSettingsHiddenInGame": false,
+    "uevr_pawn_hideSettingsHiddenInGamePropagate": false,
+    "uevr_pawn_hideSettingsRenderInDepthPass": true,
+    "uevr_pawn_hideSettingsRenderInMainPass": true,
+    "uevr_pawn_hideSettingsVisibility": false,
+    "uevr_pawn_hideSettingsVisibilityPropagate": false,
+    "uevr_reticule_mesh_position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_reticule_mesh_scale_2d": [
+        1.0,
+        1.0
+    ],
     "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_attachTo": 3,
     "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_exposure": 0,
     "uevr_widgetcomponent_user_3b363951-91bd-436d-8595-1c4cdf365ef3_location": [
