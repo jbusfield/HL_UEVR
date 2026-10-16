@@ -12,7 +12,7 @@ local interaction = require('libs/interaction')
 local ui = require('libs/ui')
 local remap = require('libs/remap')
 local gestures = require('libs/gestures')
---local gunstock = require('libs/gunstock')
+local gunstock = require('libs/gunstock')
 local scopes = require('libs/scope')
 local ik = require('libs/ik')
 local animation = require('libs/animation')
@@ -168,7 +168,7 @@ pawnModule.init()
 remap.init()
 input.init()
 gestures.init()
---gunstock.showConfiguration()
+gunstock.showConfiguration()
 scopes.setDefaultPitchOffset(90.0)
 ik.init()
 collision.init()
@@ -178,22 +178,25 @@ hands.setAutoCreateHands(false)
 ik.setAutoCreateArms(false)
 
 uevrUtils.set_roomscale_active(true)
+attachments.setGunstockOffsetsEnabled(false)
+hands.setGunstockOffsetsEnabled(true)
+ik.setGunstockOffsetsEnabled(true)
 
 local isDeveloperMode = false
 if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
 
--- v2.0.4
--- Added ability to attach UI widgets to hands
--- Voice/Gesture Spells can optionally respect cooldowns
--- Fixed issue with toad teleport
--- Swimming now more natural
--- Fixed issue with wand occasioanlly disappearing
--- Fixed issue with letterboxes sometimes showing
+-- v2.0.5
+-- Added Stick casting option
+-- Allowed user control of wand position and rotation
 
-local versionTxt = "v2.0.4"
+local versionTxt = "v2.0.5"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
+local wandAttachmentId = "BP_WandTool_C_Mesh"
+local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
+local wandPosInitial = wandOffset.location
+local wandRotInitial = wandOffset.rotation
 local configDefinition = {
 	{
 		panelLabel = "Hogwarts Legacy Config",
@@ -270,6 +273,30 @@ local configDefinition = {
 					label = "Voice/Gesture Spells Respect Cooldowns",
 					initialValue = false
 				},
+				{
+					widgetType = "checkbox",
+					id = "enable_stick_casting",
+					label = "Enable Stick Casting",
+					initialValue = false
+				},
+				{ widgetType = "tree_node", id = "wand_adjustment_tree", label = "Wand Adjustment" },
+				{
+					widgetType = "drag_float3",
+					id = "wand_position",
+					label = "Wand Position",
+					speed = 0.1,
+					range = {-50, 50},
+					initialValue = wandPosInitial,
+				},
+				{
+					widgetType = "drag_float3",
+					id = "wand_rotation",
+					label = "Wand Rotation",
+					speed = 0.5,
+					range = {-180, 180},
+					initialValue = wandRotInitial,
+				},
+				{ widgetType = "tree_pop" },
 
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
@@ -892,6 +919,27 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 end)
 
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
+	if configui.getValue("enable_stick_casting") then
+		if state.Gamepad.bRightTrigger > 128 then
+			if state.Gamepad.sThumbRY > 22000 then
+				uevrUtils.pressButton(state, XINPUT_GAMEPAD_Y)
+				state.Gamepad.sThumbRX = 0
+				state.Gamepad.sThumbRY = 0
+			elseif state.Gamepad.sThumbRY < -22000 then
+				uevrUtils.pressButton(state, XINPUT_GAMEPAD_A)
+				state.Gamepad.sThumbRX = 0
+				state.Gamepad.sThumbRY = 0
+			elseif state.Gamepad.sThumbRX > 22000 then
+				uevrUtils.pressButton(state, XINPUT_GAMEPAD_B)
+				state.Gamepad.sThumbRX = 0
+				state.Gamepad.sThumbRY = 0
+			elseif state.Gamepad.sThumbRX < -22000 then
+				uevrUtils.pressButton(state, XINPUT_GAMEPAD_X)
+				state.Gamepad.sThumbRX = 0
+				state.Gamepad.sThumbRY = 0
+			end
+		end
+	end
 
 	if configui.getValue("left_arm_block") and status.isBlocking then
 		uevrUtils.pressButton(state, XINPUT_GAMEPAD_Y)
@@ -903,7 +951,7 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	if gripEarRight then regenerateHands(configui.getValue("hands_type")) end
 	if gripMouthLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
 
-end)
+end, 20)
 
 local function isWearingRobeAndGloves()
 	local character = mounts.getMountType() ~= nil and mounts.getMountPawn(pawn) or pawn
@@ -1036,22 +1084,9 @@ local function updatePlayerVisibility()
 	end
 end
 
--- local function updateIsSwimming()
--- 	local isSwimming = pawn:IsSwimming()
--- 	if isSwimming ~= status.isSwimming then
--- 		status.isSwimming = isSwimming
--- 		if isSwimming then
--- 			input.setCurrentProfileByLabel("Swimming")
--- 		else
--- 			input.setCurrentProfileByLabel("Default")
--- 		end
--- 	end
--- end
-
 setInterval(200, function()
     updatePlayerVisibility()
 	updateReticule()
-	--updateIsSwimming()
 end)
 
 uevrUtils.registerUEVRCallback("on_mount_changed", function(mountType, isFlying)
@@ -1247,6 +1282,17 @@ end)
 
 configui.onUpdate("hands_type", function(value)
     regenerateHands(value)
+end)
+
+local function updateWandAttachmentTransform(pos, rot)
+	attachments.updateAttachmentTransform(pos, rot, nil, wandAttachmentId, Handed.Right)
+	attachments.updateAttachmentTransform(pos, rot, nil, wandAttachmentId, Handed.Left)
+end
+configui.onCreateOrUpdate("wand_position", function(value)
+	updateWandAttachmentTransform(value, nil)
+end)
+configui.onCreateOrUpdate("wand_rotation", function(value)
+	updateWandAttachmentTransform(nil, value)
 end)
 
 configui.onUpdate("custom_glove_wand_position_right", function(value) updateWandSocketProxyTransform(Handed.Right) end)
