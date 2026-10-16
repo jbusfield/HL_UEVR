@@ -12,6 +12,7 @@ A mod for UEVR when playing Hogwarts Legacy
 - Smooth Cutscene transitions
 - Physically controlled mounts
 - Controller based mouse movement in menus
+- Optional HUD widget attached to hands
 
 ## Guide:
 ### Spells
