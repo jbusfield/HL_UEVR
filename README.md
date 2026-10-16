@@ -1,4 +1,3 @@
-
 # HL_UEVR
 A mod for UEVR when playing Hogwarts Legacy
 
@@ -53,6 +52,12 @@ Once you are on your mount, you can optionally grab you mount with you left hand
 - Cast Protego - Block with your left hand (hold your left hand up in front of you with palm away from you). Hold longer for Stupefy
 - Heal - Left grip near mouth
 - Open Inventory - Left grip near your ear
+
+### HUD
+The HUD widgets can be placed on your hands instead of the HUD for better immersion in the game. In the game settings, check the box that says "Enable Hand Placement". The HUD items will then be attached to your hands at default locations. If you are happy with their placement then that's all you need to do. You can also adjust the placement of each item by opening the tree for that item. Select "UI" for "Attach To" if you want that widget on the HUD. Select "None" if you don't want to see the widget at all. Otherwise, you can select the hand that the widget will attach to and adjust its location, rotation and scale.
+
+<img width="723" height="453" alt="HL_Widget_2" src="https://github.com/user-attachments/assets/da941137-bccc-4902-a6f0-a560de485d9b" />
+
 
 ## Notes:
 - Transition screen blinking is ok. In the past, the game may have crashed instead. It clears itself eventually
