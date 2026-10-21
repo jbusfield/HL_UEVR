@@ -68,7 +68,7 @@ The HUD widgets can be placed on your hands instead of the HUD for better immers
 
 ## Notes:
 - Transition screen blinking is ok. In the past, the game may have crashed instead. It clears itself eventually
-- The final Fastido challenge flips the left controller stick directions on purpose. This is not a bug.
+- In the final Fastido challenge, the game itself flips the left controller stick directions on purpose. This is not a bug (although it is annoying).
   
 ## Contributors
 Thanks to LukasBlaster for finding a fix for world based widget environmental lighting issues.<BR>
