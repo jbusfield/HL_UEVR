@@ -13,6 +13,7 @@ A mod for UEVR when playing Hogwarts Legacy
 - Physically controlled mounts
 - Controller based mouse movement in menus
 - Optional HUD widgets attached to hands
+- Boats can be ridden in and controlled
 
 ## Guide:
 ### Spells
