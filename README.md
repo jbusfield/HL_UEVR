@@ -52,6 +52,8 @@ Once you are on your mount, you can optionally grab you mount with you left hand
 
 ### Boats
 Have you ever been down at the boathouse or the docks and said "Why can't I ride in one of those boats?" Now you can. Just say "Navigato" when you are close to a body of water to apparate the boat. When you are on or near the boat, press X to control it. Press X again to release control. No need to put the boat away. Just leave it where it is and it will come to you the next time your say "Navigato"
+<BR><BR>
+[![Watch Video](https://img.youtube.com/vi/T0xsgd-tblQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=T0xsgd-tblQ)
 
 ### Custom Gestures
 - Cast Protego - Block with your left hand (hold your left hand up in front of you with palm away from you). Hold longer for Stupefy
