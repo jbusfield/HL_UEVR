@@ -1,4 +1,51 @@
 {
+    "1cf14175-e723-4349-b3cf-f40a00cfbcc1": {
+        "adjustBodyMeshPosition": true,
+        "adjustForAnimation": true,
+        "adjustForEyeOffset": false,
+        "aimCamera": "None",
+        "aimMethod": 1,
+        "autoDetectEyeIndices": true,
+        "eyeOffset": 0.18299999833106995,
+        "fixSpatialAudio": true,
+        "fixStickDrift": true,
+        "headBoneName": "head",
+        "headOffset": {
+            "X": -31.108,
+            "Y": 0.0,
+            "Z": 0.0
+        },
+        "isDisabledOverride": false,
+        "optimizeBodyLocationCalculations": true,
+        "optimizeBodyRotationCalculations": true,
+        "orientRotationToMovement": 1,
+        "overridePlayerControllerYaw": false,
+        "pawnPositionAnimationScale": 0.2,
+        "pawnPositionMode": 1,
+        "pawnPositionSweepMovement": true,
+        "pawnRotationLockedSmoothTime": 0.0,
+        "pawnRotationMode": 1,
+        "pawnRotationModeDisableInEarlyUpdate": false,
+        "pawnRotationModeDisableRotation": false,
+        "pawnRotationModeUseRootPitchRoll": false,
+        "rootBoneName": "Reference",
+        "rootOffset": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": -51.6591
+        },
+        "smoothTurnSpeed": 60,
+        "snapAngle": 30,
+        "useControllerDesiredRotation": 1,
+        "useControllerRotationPitch": 1,
+        "useControllerRotationRoll": 1,
+        "useControllerRotationYaw": 1,
+        "useMeshHeightForHeadOffset": false,
+        "usePawnControlRotation": 1,
+        "useRootOffset": true,
+        "useRootOffsetLocalZ": false,
+        "useSnapTurn": true
+    },
     "1e8c5b66-ad96-40c3-9e8d-18a99737fdc7": {
         "adjustBodyMeshPosition": false,
         "adjustForAnimation": false,
@@ -274,6 +321,7 @@
         "useSnapTurn": false
     },
     "_profileLabels": {
+        "1cf14175-e723-4349-b3cf-f40a00cfbcc1": "Boat",
         "1e8c5b66-ad96-40c3-9e8d-18a99737fdc7": "Broom",
         "3ec780fb-7877-4888-8d13-b093fc9c654e": "HippogriffGround",
         "55b12ec4-3002-4f41-8924-a4bb0562f700": "MountPawn",
@@ -284,7 +332,7 @@
         "e2987287-6ef4-4c0d-8bf1-ec8dc0cc0ad1": "Swimming"
     },
     "_profileState": {
-        "currentEditingProfile": "default"
+        "currentEditingProfile": "1cf14175-e723-4349-b3cf-f40a00cfbcc1"
     },
     "default": {
         "adjustBodyMeshPosition": true,
@@ -292,8 +340,10 @@
         "adjustForEyeOffset": false,
         "aimCamera": "None",
         "aimMethod": 1,
+        "autoDetectEyeIndices": true,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
+        "fixStickDrift": true,
         "headBoneName": "head",
         "headOffset": {
             "X": 18.2229,
@@ -339,6 +389,7 @@
         "aimMethod": 1,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
+        "fixStickDrift": true,
         "headBoneName": "head",
         "headOffset": {
             "X": 18.2229,

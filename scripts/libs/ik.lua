@@ -228,6 +228,9 @@ require("libs/enums/unreal")
 
 local M = {}
 
+-- Set false to compare with the original snap-turn behavior; then Reset Scripts.
+local enableSnapTurnCorrection = true
+
 M.SolverType = {
     TWO_BONE = 1,
     ROTATION_ONLY = 2,
@@ -240,6 +243,8 @@ M.ControllerType = {
 
 -- Keep a module owned registry of rig instances for global cleanup
 local _rigInstances = {}
+local activeSnapTurns = {}
+local releaseSnapTurn
 local function registerInstance(inst)
     table.insert(_rigInstances, inst)
 end
@@ -728,6 +733,8 @@ end
 
 function Rig:updateEnhancedMeshRotation(mesh, rootComponent, lockMeshYawToHmd)
 	if not self.enhancedStabilization or mesh == nil or mesh.K2_SetWorldRotation == nil then return end
+	-- Until tracked poses include the snap, reading the HMD here would undo the carry.
+	if self.snapTurnPending then return end
 	local rotation = nil
 	if self.coupling == 2 then
 		local hmdRot = controllers.getControllerRotation(2)
@@ -750,6 +757,174 @@ function Rig:updateEnhancedMeshRotation(mesh, rootComponent, lockMeshYawToHmd)
 	if rotation ~= nil then
 		mesh:K2_SetWorldRotation(rotation, false, reusable_hit_result, false)
 	end
+end
+
+if enableSnapTurnCorrection then
+	local callbacks
+	local function updateCallbacks()
+		local motion, spring = false, false
+		for _, turn in pairs(activeSnapTurns) do
+			motion, spring = motion or turn.holdParent, spring or turn.springArmLag ~= nil
+		end
+		for name, fn in pairs(callbacks) do
+			local needed = next(activeSnapTurns) and (name == "postCalculateStereoView"
+				or (motion and name ~= "postEngineTick") or spring)
+			-- Run last: self-removal cannot skip another handler in the dispatcher.
+			local method = needed and "registerUEVRCallback" or "unregisterUEVRCallback"
+			uevrUtils[method](name, fn, -math.huge)
+		end
+	end
+	local function followTranslation(turn, position)
+		if not turn.holdParent or turn.rootX == nil then return position end
+		if position == nil then
+			local root = uevrUtils.getValid(getPawn(), {"RootComponent"})
+			if root == nil then return end
+			position = uevrUtils.getComponentLocation(root)
+		end
+		if position.X ~= turn.rootX or position.Y ~= turn.rootY or position.Z ~= turn.rootZ then
+			for mesh, saved in pairs(turn.meshes) do
+				if saved.offset and uevrUtils.getValid(mesh) then
+					mesh:K2_SetWorldLocation(position + saved.offset, false, reusable_hit_result, false)
+				end
+			end
+			turn.rootX, turn.rootY, turn.rootZ = position.X, position.Y, position.Z
+		end
+		return position
+	end
+	releaseSnapTurn = function(rig)
+		activeSnapTurns[rig], rig.snapTurnPending = nil, nil
+		updateCallbacks()
+	end
+	local function finish(rig, turn)
+		followTranslation(turn)
+		releaseSnapTurn(rig)
+		local root = uevrUtils.getValid(getPawn(), {"RootComponent"})
+		local mode = input.getEffectivePawnRotationMode()
+		local lockToHmd = mode == input.PawnRotationMode.RIGHT_CONTROLLER or mode == input.PawnRotationMode.LEFT_CONTROLLER
+		for mesh, saved in pairs(turn.meshes) do
+			if uevrUtils.getValid(mesh) then
+				if turn.holdParent then
+					local position = saved.absoluteLocation and uevrUtils.getComponentLocation(mesh)
+					local rotation = saved.absoluteRotation and uevrUtils.getComponentRotation(mesh)
+					mesh:SetAbsolute(saved.absoluteLocation, saved.absoluteRotation, saved.absoluteScale)
+					if position then mesh:K2_SetWorldLocation(position, false, reusable_hit_result, false)
+					else mesh:K2_SetRelativeLocation(saved.location, false, reusable_hit_result, false) end
+					if rotation then mesh:K2_SetWorldRotation(rotation, false, reusable_hit_result, false)
+					else mesh:K2_SetRelativeRotation(saved.rotation, false, reusable_hit_result, false) end
+				else
+					mesh:K2_SetRelativeLocation(saved.location, false, reusable_hit_result, false)
+				end
+				rig:updateEnhancedMeshRotation(mesh, root, lockToHmd)
+			end
+		end
+		for arm, enabled in pairs(turn.springArmLag or {}) do
+			if uevrUtils.getValid(arm) then arm.bEnableCameraRotationLag = enabled end
+		end
+	end
+	local function capture(rig, rootYaw)
+		local turn = rig.snapTurnPending or {meshes = {}, yawChange = 0,
+			rootYawBefore = rootYaw, holdParent = rig.coupling == 1 or not rig.enhancedStabilization}
+		followTranslation(turn)
+		for _, mesh in pairs(rig.meshList or {}) do
+			if uevrUtils.getValid(mesh) then
+				local saved = turn.meshes[mesh]
+				if saved == nil then
+					local location, rotation = mesh.RelativeLocation, mesh.RelativeRotation
+					saved = {location = uevrUtils.vector(location.X, location.Y, location.Z),
+						rotation = uevrUtils.rotator(rotation.Pitch, rotation.Yaw, rotation.Roll),
+						absoluteLocation = mesh.bAbsoluteLocation == true, absoluteRotation = mesh.bAbsoluteRotation == true,
+						absoluteScale = mesh.bAbsoluteScale == true}
+					turn.meshes[mesh] = saved
+				end
+				saved.position, saved.worldRotation = uevrUtils.getComponentLocation(mesh), uevrUtils.getComponentRotation(mesh)
+			end
+		end
+		return turn
+	end
+	uevrUtils.registerUEVRCallback("on_input_pre_snap_turn", function()
+		if #_rigInstances == 0 then return end
+		local root = uevrUtils.getValid(getPawn(), {"RootComponent"})
+		local rotation = root and uevrUtils.getComponentRotation(root)
+		for _, rig in ipairs(_rigInstances) do
+			if rig.coupling == 1 or rig.coupling == 2 then rig.snapTurnBefore = capture(rig, rotation and rotation.Yaw) end
+		end
+	end)
+	uevrUtils.registerUEVRCallback("on_input_snap_turn", function(delta)
+		if #_rigInstances == 0 then return end
+		local hmd = controllers.getControllerRotation(2)
+		local root = hmd and uevrUtils.getValid(getPawn(), {"RootComponent"})
+		local pivot = root and uevrUtils.getComponentLocation(root)
+		local yaw = uevrUtils.rotator(0, delta, 0)
+		for _, rig in ipairs(_rigInstances) do
+			local turn = rig.snapTurnBefore
+			rig.snapTurnBefore = nil
+			if hmd and (rig.coupling == 1 or rig.coupling == 2) then
+				turn = turn or capture(rig)
+				turn.headYawBefore = turn.headYawBefore or hmd.Yaw
+				turn.yawChange, turn.views = uevrUtils.clampAngle180(turn.yawChange + delta), 0
+				turn.trackingReady, turn.springArmTickStarted = nil, nil
+				for _, arm in pairs(rig.springArmList or {}) do
+					if uevrUtils.getValid(arm) then
+						turn.springArmLag = turn.springArmLag or {}
+						if turn.springArmLag[arm] == nil then turn.springArmLag[arm] = arm.bEnableCameraRotationLag == true end
+						arm.bEnableCameraRotationLag = false
+					end
+				end
+				for mesh, saved in pairs(turn.meshes) do
+					if uevrUtils.getValid(mesh) then
+						if turn.holdParent then mesh:SetAbsolute(true, true, saved.absoluteScale) end
+						mesh:K2_SetWorldRotation(kismet_math_library:ComposeRotators(saved.worldRotation, yaw), false, reusable_hit_result, false)
+						if pivot then
+							saved.offset = mathLib.vectorRotate(saved.position - pivot, yaw)
+							mesh:K2_SetWorldLocation(pivot + saved.offset, false, reusable_hit_result, false)
+						end
+					end
+					saved.position, saved.worldRotation = nil, nil
+				end
+				if pivot then turn.rootX, turn.rootY, turn.rootZ = pivot.X, pivot.Y, pivot.Z end
+				for _, solver in pairs(rig.activeSolvers or {}) do
+					local state = solver.state
+					if state then
+						state.lastControllerRotWS, state.lastValidPoleWS = nil, nil
+						state.lastCtrlPoleWS, state.smOutwardWS = nil, nil
+					end
+				end
+				activeSnapTurns[rig], rig.snapTurnPending = turn, turn
+			end
+		end
+		updateCallbacks()
+	end)
+	local function followAll()
+		local position
+		for _, turn in pairs(activeSnapTurns) do position = followTranslation(turn, position) end
+	end
+	local function hasTurned(yaw, before, delta)
+		return math.abs(uevrUtils.clampAngle180(yaw - before - delta)) < math.abs(uevrUtils.clampAngle180(yaw - before))
+	end
+	callbacks = {
+		preCalculateStereoView = followAll,
+		postCalculateStereoView = function()
+			local hmd = controllers.getControllerRotation(2)
+			for rig, turn in pairs(activeSnapTurns) do
+				turn.views = turn.views + 1
+				local ready = turn.yawChange == 0 or (hmd and hasTurned(hmd.Yaw, turn.headYawBefore, turn.yawChange))
+				if ready and rig.coupling == 1 and turn.rootYawBefore ~= nil and turn.yawChange ~= 0 then
+					local root = uevrUtils.getValid(getPawn(), {"RootComponent"})
+					local rotation = root and uevrUtils.getComponentRotation(root)
+					ready = rotation and hasTurned(rotation.Yaw, turn.rootYawBefore, turn.yawChange)
+				end
+				if ready and turn.springArmLag then turn.trackingReady = true end
+				if (ready and not turn.springArmLag) or turn.views >= 8 then finish(rig, turn) end
+			end
+		end,
+		preEngineTick = function()
+			followAll()
+			for _, turn in pairs(activeSnapTurns) do if turn.trackingReady then turn.springArmTickStarted = true end end
+		end,
+		postEngineTick = function()
+			for rig, turn in pairs(activeSnapTurns) do if turn.springArmTickStarted then finish(rig, turn) end end
+		end,
+	}
 end
 
 function Rig:create()
@@ -778,6 +953,8 @@ function Rig:create()
 
 	-- Register tick callback
 	self.tickFn = function(engine, delta)
+		-- Do not solve against pre-snap controllers and overwrite the carried pose.
+		if self.snapTurnPending then return end
 		-- When body yaw follows a motion controller (RIGHT/LEFT_CONTROLLER), root
 		-- Euler yaw is gimbal-noisy. IK meshes parented to root inherit that and
 		-- spin; lock mesh world yaw to the HMD instead so solvers stay stable.
@@ -1671,6 +1848,7 @@ end
 --checkpoint
 function M.destroy(instance, skipUnregister)
 	if instance ~= nil then
+		if releaseSnapTurn then releaseSnapTurn(instance) end
 		for _, callback in ipairs(instanceDestroyedCallbackList) do
 			callback(instance)
 		end
@@ -1740,6 +1918,8 @@ function M.destroy(instance, skipUnregister)
 		instance.initialTransforms = nil
 		instance.animationMesh = nil
 		instance.state = nil
+		instance.snapTurnPending = nil
+		instance.snapTurnBefore = nil
 		--instance.meshCreatedCallback = nil
 		--instance.instanceDestroyedCallback = nil
 

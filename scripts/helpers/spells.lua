@@ -5,6 +5,7 @@ local controllers = require('libs/controllers')
 local ui = require('libs/ui')
 local widgetModule = require('libs/widget')
 local particles = require('libs/particles')
+local boats = require('helpers/boats')
 
 local M = {}
 
@@ -393,6 +394,11 @@ local wandTrailTriggerHeld = false
 -- 	end
 -- end
 -- CastSpellImmediate with wand aim + bTriggerCastAnim=false: fires without ABL_WandCast_* (FullBody stays idle).
+local pewPewCastWhileMoving = true
+function M.setPewPewCastWhileMoving(val)
+	pewPewCastWhileMoving = val
+end
+
 local function getSpellHelper()
 	if uevrUtils.getValid(status.spellHelper) == nil or status.spellHelper.CastSpellImmediate == nil then
 		status.spellHelper = uevrUtils.find_first_of("Class /Script/Phoenix.SpellHelper", false)
@@ -410,8 +416,8 @@ end
 local function castPewPew(pawn, noAnim)
 	local wand = getWand(pawn)
 	if wand == nil then return end
-	-- the animated cast is what draws a holstered wand. Get rid of and M.isWandDrawn(pawn for manual wand drawing
-	if noAnim and not status.isDeathlyHallows and M.isWandDrawn(pawn) then
+	-- CastSpellImmediate + bTriggerCastAnim=false skips ABL_WandCast_* so movement is not paused.
+	if noAnim and pewPewCastWhileMoving and not status.isDeathlyHallows and M.isWandDrawn(pawn) then
 		local helper = getSpellHelper()
 		local aim = M.getWandAim(pawn)
 		local source = getWandTip()
@@ -543,6 +549,10 @@ end
 
 local function castViaspecto(pawn)
 	status.isViaspectoCasting = true
+end
+
+local function castNavigato(pawn)
+	boats.placeOrSpawnBoat()
 end
 
 local function castTormentum(pawn)
@@ -704,6 +714,9 @@ local function castSpellByName(pawn, spellName, muteVoice)
 			return
 		elseif spellName == "Spell_Viaspecto" then
 			castViaspecto(pawn)
+			return
+		elseif spellName == "Spell_Navigato" then
+			castNavigato(pawn)
 			return
 		elseif spellName == "Spell_Tormentum" then
 			castTormentum(pawn)
@@ -908,7 +921,8 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 		local held = state.Gamepad.bRightTrigger > 128
 		-- Hide the trigger from the game for the first 200ms so vanilla never sees a tap. Longer holds pass through
 		-- for slotted spell casting, and are kept held until the game has seen at least 0.5s (vanilla tap cutoff is ~300-400ms).
-		if not status.isDeathlyHallows then
+		-- When pewPewCastWhileMoving is false, leave the trigger alone so vanilla handles pew pew.
+		if pewPewCastWhileMoving and not status.isDeathlyHallows then
 			local now = os.clock()
 			if held then
 				status.rightTriggerStart = status.rightTriggerStart or now

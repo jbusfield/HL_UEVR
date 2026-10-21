@@ -46,11 +46,12 @@
             "triggerThreshold": 128
         },
         "flick": {
-            "maxThresholdAngleSpeed": 2813.0,
-            "minThresholdAngleSpeed": 801.0,
+            "maxThresholdAngleSpeed": 809.0,
+            "minThresholdAngleSpeed": 400.0,
             "minThresholdAngleSpeedDown": 518.0,
             "minThresholdAngleSpeedUp": 4.0,
-            "upDotThreshold": 0.75
+            "upDotThreshold": 0.75,
+            "upMinThresholdAngleSpeed": 600.0
         },
         "holster": {
             "triggerAngle": -60.0

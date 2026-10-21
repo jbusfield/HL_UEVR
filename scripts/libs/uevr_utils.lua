@@ -133,6 +133,32 @@ Usage
 	uevrUtils.enableDebug(val) - enables/disables debug logging (true = LogLevel.Debug, false = LogLevel.Off)
 		example:
 			uevrUtils.enableDebug(true)  -- Enable debug logging
+
+	uevrUtils.profiler - lightweight call-timing helper for finding hot paths. Off by default so wrap() is a
+		near-zero-cost passthrough until enabled. Wrap functions at definition time, toggle on when diagnosing,
+		then report() to print accumulated call counts and millisecond totals/averages.
+		Methods:
+			uevrUtils.profiler:wrap(name, func) - returns a wrapped func that records elapsed time under name
+				when profiling is enabled. Replace the original with the wrapped result.
+			uevrUtils.profiler:toggle(enable) - enables (true) or disables (false) profiling. Disabling clears
+				accumulated counts/times.
+			uevrUtils.profiler:report(sortBy) - prints a summary for each wrapped name (calls, total ms, avg ms).
+				sortBy is optional: "avg" (default, highest avg first) or "alpha" (A-Z by name).
+				No-op when profiling is disabled.
+		example:
+			-- In a lib, wrap hot functions once after defining them:
+			local function updateAim(...)
+				-- ...
+			end
+			updateAim = uevrUtils.profiler:wrap("updateAim", updateAim)
+
+			-- In main.lua while diagnosing:
+			uevrUtils.profiler:toggle(true)
+			register_key_bind("F1", function()
+				uevrUtils.profiler:report()        -- hottest avg first
+				-- uevrUtils.profiler:report("alpha")
+			end)
+			-- When done: uevrUtils.profiler:toggle(false)
 			
 	uevrUtils.getEngineVersion() - returns the current Unreal Engine version number as a string
 		example:
@@ -1165,6 +1191,8 @@ local function updateTimer(delta)
 	end
 end
 
+-- Call-timing profiler. See Usage docs above for wrap / toggle / report.
+-- Wrap at definition time; enable only while diagnosing (off = passthrough).
 M.profiler = {
     enabled = false,
     counts = {},
@@ -1195,14 +1223,23 @@ M.profiler = {
         end
     end,
 
-    report = function(self)
+    report = function(self, sortBy)
         if not self.enabled then return end
-        print("\n=== Profiling Report ===")
+        sortBy = sortBy or "avg"
+        local rows = {}
         for name, count in pairs(self.counts) do
             local total = self.totalTimes[name]
-            local avg = total / count
+            rows[#rows + 1] = {name = name, count = count, total = total, avg = total / count}
+        end
+        if sortBy == "alpha" then
+            table.sort(rows, function(a, b) return a.name < b.name end)
+        else
+            table.sort(rows, function(a, b) return a.avg > b.avg end)
+        end
+        print("\n=== Profiling Report ===")
+        for _, row in ipairs(rows) do
             print(string.format("%s: %d calls, %.3f ms total, %.3f ms avg",
-                name, count, total, avg))
+                row.name, row.count, row.total, row.avg))
         end
         print("========================\n")
     end

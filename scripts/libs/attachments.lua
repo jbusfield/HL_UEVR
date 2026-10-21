@@ -943,7 +943,7 @@ local function getAttachmentNames(attachment)
 
 	return attachmentParentName, attachmentChildName, attachmentID
 end
-getAttachmentNames = uevrUtils.profiler:wrap("Attachments: getAttachmentNames", getAttachmentNames)
+getAttachmentNames = uevrUtils.profiler:wrap("ATTACHMENTS: getAttachmentNames", getAttachmentNames)
 
 local function hasNamedObject(attachment, parentName, childName)
 	--M.print("Called hasNamedObject with parent: " .. parentName .. " child: " .. childName)
@@ -1029,7 +1029,7 @@ local function getAttachmentOffsetByID(id)
 	end
 	return nil
 end
-getAttachmentOffsetByID = uevrUtils.profiler:wrap("Attachments: getAttachmentOffsetByID", getAttachmentOffsetByID)
+getAttachmentOffsetByID = uevrUtils.profiler:wrap("ATTACHMENTS: getAttachmentOffsetByID", getAttachmentOffsetByID)
 
 function M.getAttachmentOffsetByID(id)
 	return getAttachmentOffsetByID(id)
@@ -1212,7 +1212,7 @@ local function updateScopeForAttachmentID(id)
 		end
 	end
 end
-updateScopeForAttachmentID = uevrUtils.profiler:wrap("Attachments: updateScopeForAttachmentID", updateScopeForAttachmentID)
+updateScopeForAttachmentID = uevrUtils.profiler:wrap("ATTACHMENTS: updateScopeForAttachmentID", updateScopeForAttachmentID)
 
 function M.getSocketsForAttachmentID(id, callback)
 	local attachmentDataArray = getAttachmentDataFromMeshAttachmentList(id)
@@ -1290,7 +1290,7 @@ local function updateLaserForAttachmentID(id)
 		end
 	end
 end
-updateLaserForAttachmentID = uevrUtils.profiler:wrap("Attachments: updateLaserForAttachmentID", updateLaserForAttachmentID)
+updateLaserForAttachmentID = uevrUtils.profiler:wrap("ATTACHMENTS: updateLaserForAttachmentID", updateLaserForAttachmentID)
 
 function M.setLaserColor(colorHex)
 	laserColor = colorHex
@@ -1444,7 +1444,7 @@ function M.getActiveAttachmentTransforms(hand)
 	end
 	return uevrUtils.vector(0,0,0), uevrUtils.rotator(0,0,0)
 end
-M.getActiveAttachmentTransforms = uevrUtils.profiler:wrap("Attachments: getActiveAttachmentTransforms", M.getActiveAttachmentTransforms)
+M.getActiveAttachmentTransforms = uevrUtils.profiler:wrap("ATTACHMENTS: getActiveAttachmentTransforms", M.getActiveAttachmentTransforms)
 
 function M.getActiveAttachmentMeleeRotationOffset(hand)
 	local attachmentID = M.getActiveAttachmentID(hand)
@@ -1745,7 +1745,7 @@ function M.updateAttachmentTransform(pos, rot, scale, id, gripHand)
 	-- 	end
 	-- end
 end
-M.updateAttachmentTransform = uevrUtils.profiler:wrap("Attachments: updateAttachmentTransform", M.updateAttachmentTransform)
+M.updateAttachmentTransform = uevrUtils.profiler:wrap("ATTACHMENTS: updateAttachmentTransform", M.updateAttachmentTransform)
 
 -- uevrUtils.registerUEVRCallback("aim_rotation_offset_change", function(newRotation)
 -- 	gunstockRotationOffset = newRotation
@@ -1777,7 +1777,7 @@ local function updateSelectedColor(id, color)
 	--print("changing color", "attachment_" .. id)
 	configui.setColor(widgetPrefix .. id, color)
 end
-updateSelectedColor = uevrUtils.profiler:wrap("Attachments: updateSelectedColor", updateSelectedColor)
+updateSelectedColor = uevrUtils.profiler:wrap("ATTACHMENTS: updateSelectedColor", updateSelectedColor)
 
 local function updateSelectedColors()
 	for i = 1, #attachmentOffsets do
@@ -1815,7 +1815,7 @@ local function updateSelectedColors()
 	end
 
 end
-updateSelectedColors = uevrUtils.profiler:wrap("Attachments: updateSelectedColors", updateSelectedColors)
+updateSelectedColors = uevrUtils.profiler:wrap("ATTACHMENTS: updateSelectedColors", updateSelectedColors)
 
 
 function M.initAttachment(attachment, gripHand, options)
@@ -1847,7 +1847,7 @@ function M.initAttachment(attachment, gripHand, options)
 		uevrUtils.executeUEVRCallbacks("attachment_initialized", attachment)
 	end
 end
-M.initAttachment = uevrUtils.profiler:wrap("Attachments: initAttachment", M.initAttachment)
+M.initAttachment = uevrUtils.profiler:wrap("ATTACHMENTS: initAttachment", M.initAttachment)
 
 function M.registerAttachmentInitializedCallback(callback)
 	uevrUtils.registerUEVRCallback("attachment_initialized", callback)
@@ -1881,7 +1881,7 @@ function M.setActiveAnimation(attachment, gripHand)
 		--executeAttachmentCallbacks("grip_animation", activeGripAnimations[gripHand], gripHand)
 	end
 end
-M.setActiveAnimation = uevrUtils.profiler:wrap("Attachments: setActiveAnimation", M.setActiveAnimation)
+M.setActiveAnimation = uevrUtils.profiler:wrap("ATTACHMENTS: setActiveAnimation", M.setActiveAnimation)
 
 function M.getCurrentGrippedAttachment(gripHand)
 	local attachmentData = M.getCurrentGrippedAttachmentData(gripHand)
@@ -1912,7 +1912,7 @@ function M.getCurrentGrippedAttachment(gripHand)
 	-- 	end
 	-- end
 end
-M.getCurrentGrippedAttachment = uevrUtils.profiler:wrap("Attachments: getCurrentGrippedAttachment", M.getCurrentGrippedAttachment)
+M.getCurrentGrippedAttachment = uevrUtils.profiler:wrap("ATTACHMENTS: getCurrentGrippedAttachment", M.getCurrentGrippedAttachment)
 
 function M.getCurrentGrippedAttachmentData(gripHand)
 	if gripHand == nil then gripHand = Handed.Right end
@@ -1935,7 +1935,7 @@ function M.getCurrentGrippedAttachmentData(gripHand)
 		end
 	end
 end
-M.getCurrentGrippedAttachmentData = uevrUtils.profiler:wrap("Attachments: getCurrentGrippedAttachmentData", M.getCurrentGrippedAttachmentData)
+M.getCurrentGrippedAttachmentData = uevrUtils.profiler:wrap("ATTACHMENTS: getCurrentGrippedAttachmentData", M.getCurrentGrippedAttachmentData)
 
 -- TODO: optimize to only send changes
 function M.broadcastGrippedAttachmentRotation()

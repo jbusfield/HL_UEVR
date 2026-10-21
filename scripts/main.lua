@@ -28,116 +28,10 @@ local mouse = require('libs/mouse')
 local mounts = require('helpers/mounts')
 local interactions = require('helpers/interactions')
 local locomotion = require('helpers/locomotion')
+local boats = require('helpers/boats')
 
 --local dev = require('libs/uevr_dev')
 --dev.init()
-
-local BROOM_ACCESSORY_KEY = "Broom"
-local function getBroomAccessoryMesh(hand)
-	if uevrUtils.isInCutscene() then return nil end
-	local mountType = mounts.getMountType()
-	if mountType ~= mounts.EMountTypes.Broom_Flying and mountType ~= mounts.EMountTypes.Broom_Ground then return nil end
-	if hand ~= nil then
-		local handsType = configui.getValue("hands_type") or 1
-		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
-		if handsType == 2 and not ik.exists() then return nil end
-	end
-	local currentPawn = uevrUtils.getValid(pawn)
-	local riderMesh = currentPawn and uevrUtils.getValid(currentPawn.Mesh)
-	local parent = riderMesh and uevrUtils.getValid(riderMesh.AttachParent)
-	if parent == nil or not string.find(parent:get_full_name(), "Broom", 1, true) then return nil end
-	return parent
-end
-
-
-local function getBroomAccessoryWidgets()
-	local widgets = accessories.getConfigWidgets(BROOM_ACCESSORY_KEY, "broom_", 300)
-	for _, widget in ipairs(widgets) do
-		if widget.id == "broom_accessory_item_socket_finder_instructions" then
-			widget.label = "Mount a broom and press Refresh to list its sockets."
-		end
-	end
-	return widgets
-end
-
-local HIPPOGRIFF_ACCESSORY_KEY = "Hippogriff"
-local function getHippogriffAccessoryMesh(hand)
-	if uevrUtils.isInCutscene() then return nil end
-	local mountType = mounts.getMountType()
-	if mountType ~= mounts.EMountTypes.Hippogriff_Flying and mountType ~= mounts.EMountTypes.Hippogriff_Ground then return nil end
-	if hand ~= nil then
-		local handsType = configui.getValue("hands_type") or 1
-		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
-		if handsType == 2 and not ik.exists() then return nil end
-	end
-	return uevrUtils.getValid(pawn, {"Mesh"})
-end
-
-local function getHippogriffAccessoryWidgets()
-	local widgets = accessories.getConfigWidgets(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_", 300)
-	for _, widget in ipairs(widgets) do
-		if widget.id == "hippogriff_accessory_item_socket_finder_instructions" then
-			widget.label = "Mount a hippogriff and press Refresh to list its sockets."
-		end
-	end
-	return widgets
-end
-
-local GRAPHORN_ACCESSORY_KEY = "Graphorn"
-local function getGraphornAccessoryMesh(hand)
-	if uevrUtils.isInCutscene() then return nil end
-	local mountType = mounts.getMountType()
-	if mountType ~= mounts.EMountTypes.Graphorn_Ground then return nil end
-	if hand ~= nil then
-		local handsType = configui.getValue("hands_type") or 1
-		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
-		if handsType == 2 and not ik.exists() then return nil end
-	end
-	return uevrUtils.getValid(pawn, {"Mesh"})
-end
-
-local function getGraphornAccessoryWidgets()
-	local widgets = accessories.getConfigWidgets(GRAPHORN_ACCESSORY_KEY, "graphorn_", 300)
-	for _, widget in ipairs(widgets) do
-		if widget.id == "graphorn_accessory_item_socket_finder_instructions" then
-			widget.label = "Mount a graphorn and press Refresh to list its sockets."
-		end
-	end
-	return widgets
-end
-
-accessories.setTargetProvider(function(hand)
-	local broomMesh = getBroomAccessoryMesh(hand)
-	if broomMesh ~= nil then return broomMesh, BROOM_ACCESSORY_KEY end
-	local hippogriffMesh = getHippogriffAccessoryMesh(hand)
-	if hippogriffMesh ~= nil then return hippogriffMesh, HIPPOGRIFF_ACCESSORY_KEY end
-	local graphornMesh = getGraphornAccessoryMesh(hand)
-	if graphornMesh ~= nil then return graphornMesh, GRAPHORN_ACCESSORY_KEY end
-end)
-accessories.setSocketProvider(BROOM_ACCESSORY_KEY, function(callback)
-	local broomMesh = getBroomAccessoryMesh()
-	if broomMesh ~= nil then
-		uevrUtils.getSocketNames(broomMesh, callback)
-	else
-		callback(nil)
-	end
-end)
-accessories.setSocketProvider(HIPPOGRIFF_ACCESSORY_KEY, function(callback)
-	local hippogriffMesh = getHippogriffAccessoryMesh()
-	if hippogriffMesh ~= nil then
-		uevrUtils.getSocketNames(hippogriffMesh, callback)
-	else
-		callback(nil)
-	end
-end)
-accessories.setSocketProvider(GRAPHORN_ACCESSORY_KEY, function(callback)
-	local graphornMesh = getGraphornAccessoryMesh()
-	if graphornMesh ~= nil then
-		uevrUtils.getSocketNames(graphornMesh, callback)
-	else
-		callback(nil)
-	end
-end)
 
 --uevrUtils.setLogLevel(LogLevel.Debug)
 -- reticule.setLogLevel(LogLevel.Debug)
@@ -153,7 +47,10 @@ end)
 
 --uevrUtils.setDeveloperMode(true)
 --hands.enableConfigurationTool()
---uevrUtils.profiler:toggle(true)
+-- uevrUtils.profiler:toggle(true)
+-- register_key_bind("F1", function()
+--     uevrUtils.profiler:report("alpha")
+-- end)
 
 gestureTrainer.init()
 ui.init()
@@ -168,6 +65,7 @@ pawnModule.init()
 remap.init()
 input.init()
 gestures.init()
+gestures.setUseRawControllers(true)
 gunstock.showConfiguration()
 scopes.setDefaultPitchOffset(90.0)
 ik.init()
@@ -189,7 +87,7 @@ end
 
 -- v2.0.6
 
-local versionTxt = "v2.0.6"
+local versionTxt = "v2.0.7"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
@@ -377,7 +275,7 @@ local configDefinition = {
 					},
 					{ widgetType = "text", wrapped = true, id = "broom_head_offset_help", label = "Negative moves your view toward the broom tail; positive moves it toward the front. Standstill and normal speed are unchanged." },
 					{ widgetType = "text", wrapped = true, id = "broom_grip_help", label = "Add left and right accessories below. Choose hand proximity, grip, or grip toggle, then tune each hand position while mounted." },
-					expandArray(getBroomAccessoryWidgets),
+					expandArray(mounts.getBroomAccessoryWidgets),
 				{ widgetType = "tree_pop" },
              	{ widgetType = "tree_node", id = "mount_hippogriff_tree", initialOpen = true, label = "Hippogriff" },
 					{
@@ -407,7 +305,7 @@ local configDefinition = {
 					-- 	{ widgetType = "text", wrapped = true, id = "hippogriff_autofly_help", label = "When enabled, double-tap the left stick forward while flying to lock forward flight. Double-tap forward again or push back to release. " },
 					-- { widgetType = "unindent", width = 20 },
 					{ widgetType = "text", wrapped = true, id = "hippogriff_grip_help", label = "Add left and right accessories below. Choose hand proximity, grip, or grip toggle, then tune each hand position while mounted." },
-						expandArray(getHippogriffAccessoryWidgets),
+						expandArray(mounts.getHippogriffAccessoryWidgets),
 				{ widgetType = "tree_pop" },
 
 				{ widgetType = "tree_node", id = "mount_graphorn_tree", initialOpen = true, label = "Graphorn" },
@@ -438,7 +336,7 @@ local configDefinition = {
 					-- 	{ widgetType = "text", wrapped = true, id = "hippogriff_autofly_help", label = "When enabled, double-tap the left stick forward while flying to lock forward flight. Double-tap forward again or push back to release. " },
 					-- { widgetType = "unindent", width = 20 },
 					{ widgetType = "text", wrapped = true, id = "graphorn_grip_help", label = "Add left and right accessories below. Choose hand proximity, grip, or grip toggle, then tune each hand position while mounted." },
-						expandArray(getGraphornAccessoryWidgets),
+						expandArray(mounts.getGraphornAccessoryWidgets),
 				{ widgetType = "tree_pop" },
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
@@ -569,6 +467,9 @@ local configDefinition = {
 				expandArray(reticule.getConfigurationWidgets,{{id="uevr_reticule_update_distance", initialValue=200},}),
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
+			{ widgetType = "tree_node", id = "advanced_tree", label = "Advanced" },
+				{ widgetType = "checkbox", id = "frame_compatibility", label = "Frame Compatibility", initialValue = false },
+			{ widgetType = "tree_pop" },
 		}
 	}
 }
@@ -729,10 +630,42 @@ uevr.sdk.callbacks.on_lua_event(function(eventName, eventData)
 	end
 end)
 
+local function dispatchVoiceSettings()
+	local params = {
+		use_agc = configui.getValue("use_agc"),
+		agc_target = configui.getValue("agc_target"),
+		agc_max_gain = configui.getValue("agc_max_gain"),
+		microphone_volume = configui.getValue("microphone_volume"),
+		min_confidence = configui.getValue("voice_min_confidence"),
+		override_voices = {
+			Descendo = { override = "Diffindo", confidence = 0.15 },
+			Confringo = { override = "Diffindo", confidence = 0.18 },
+			Depulso = { override = "Oppugno", confidence = 0.3 },
+			Lumos = {
+				{ override = "Levioso", confidence = 0.3 },
+				{ override = "Expelliarmus", confidence = 0.3 }
+			},
+			Glacius = { override = "Crucio", confidence = 0.1 },
+		},
+		defer_voices = {
+			Accio = {
+				defer_for = "AvadaKedavra",
+				confidence = 0.55,
+				min_self = 0.15,
+				min_other = 0.09
+			}
+		},
+		commit_margin = 0.25,
+		silence_voices = { "Lumos", "Depulso" },
+		show_debug = false
+	}
+	uevr.api:dispatch_custom_event("VoiceSettings", json.dump_string(params))
+end
+
 gestures.registerFlickCallback(function(strength, hand)
-	--debounce so the spell goes to the intended wand location instead of where the wand is when the gesture is released
 	-- the camera snap on cutscene exit reads as a flick
-	if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 0.5 then return end
+	if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 1.0 then return end
+	--debounce so the spell goes to the intended wand location instead of where the wand is when the gesture is released
 	delay(200, function()
 		spells.castCurrentFlickSpell(pawn)
 	end)
@@ -917,6 +850,7 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 end)
 
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
+	--stick casting implementation
 	if configui.getValue("enable_stick_casting") then
 		if state.Gamepad.bRightTrigger > 128 then
 			if state.Gamepad.sThumbRY > 22000 then
@@ -962,7 +896,7 @@ end
 
 function getCustomIKComponent(rigID)
 	local upperMeshName = isWearingRobeAndGloves() and "Robe" or "Upper"
-	if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying then
+	if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying or mounts.getMountType() == mounts.EMountTypes.Boat then
 		if status.isDisguised then
 			return {{descriptor = "Pawn.Mesh", animation = "Gloves", optional = true}}
 		else
@@ -988,14 +922,14 @@ function getCustomHandComponent(key)
 			return nil
 		end
 		if key == "Gloves" and not wearingGloves and not wearingRobe then
-			if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying  then
+			if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying or mounts.getMountType() == mounts.EMountTypes.Boat then
 				return uevrUtils.getObjectFromDescriptor("Pawn.Mesh(Arms)", false)
 			elseif mounts.getMountType() ~= nil then
 				return uevrUtils.getObjectFromDescriptor("Pawn.MountComponent.RiderCharacter.Mesh(Arms)", false)
 			end
 		end
 		hands.setOffset(nil)
-		if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying  then
+		if mounts.getMountType() == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying or mounts.getMountType() == mounts.EMountTypes.Boat then
 			return uevrUtils.getObjectFromDescriptor("Pawn.Mesh(".. key ..")", false)
 		elseif mounts.getMountType() ~= nil then
 			return uevrUtils.getObjectFromDescriptor("Pawn.MountComponent.RiderCharacter.Mesh(".. key ..")", false)
@@ -1049,7 +983,7 @@ local function updatePlayerVisibility()
 		end
 
 		return
-	elseif mountType == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying  then
+	elseif mountType == mounts.EMountTypes.Avatar_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Ground or mounts.getMountType() == mounts.EMountTypes.Broom_Flying or mountType == mounts.EMountTypes.Boat then
 		pawnModule.hideBodyMesh(not visible)
 		mounts.hideBodyMesh(pawn, visible)
 	elseif mountType == mounts.EMountTypes.Hippogriff_Ground or mountType == mounts.EMountTypes.Graphorn_Ground then
@@ -1075,7 +1009,7 @@ local function updatePlayerVisibility()
 	if pawn.Mesh ~= nil then
 		--pawn.Mesh:SetHiddenInGame(isInCutscene == false and (mountType == mounts.EMountTypes.Avatar_Ground or mountType == mounts.EMountTypes.Broom_Ground or mountType == mounts.EMountTypes.Broom_Flying), false)
 		--pawn.Mesh:SetCastHiddenShadow(true)
-		local render = not (visible == false and (mountType == mounts.EMountTypes.Avatar_Ground or mountType == mounts.EMountTypes.Broom_Ground or mountType == mounts.EMountTypes.Broom_Flying))
+		local render = not (visible == false and (mountType == mounts.EMountTypes.Avatar_Ground or mountType == mounts.EMountTypes.Broom_Ground or mountType == mounts.EMountTypes.Broom_Flying or mountType == mounts.EMountTypes.Boat))
 		pawn.Mesh.bRenderInDepthPass = render
 		pawn.Mesh:SetRenderInMainPass(render)
 		--pawn.Mesh:SetRenderCustomDepth(render)
@@ -1131,15 +1065,6 @@ uevrUtils.registerCutsceneChangeCallback(function(isInCutscene)
     end
 end, 5)
 
--- Native Mode needs to update body yaw on only one eye,
--- while AFW Mode needs to update body yaw on both eyes.
-local function setInputBodyYawMode()
-	if uevrUtils.getUEVRParam_int("VR_RenderingMethod") == 0 then
-		input.setOptimizeBodyYawCalculations(true)
-	else
-		input.setOptimizeBodyYawCalculations(false)
-	end
-end
 -- Native Mode needs to use TimeSlice 0 to fix flickering
 -- AFW doesnt have the flickering issue so use the more performant Timeslice 1
 local function fixFlicker()
@@ -1149,10 +1074,21 @@ local function fixFlicker()
 		uevrUtils.set_cvar_int("r.SkyLight.RealTimeReflectionCapture.TimeSlice", 1)
 	end
 end
+
+-- -- Native Mode needs to update body yaw on only one eye,
+-- -- while AFW Mode needs to update body yaw on both eyes.
+-- local function setInputBodyYawMode()
+-- 	if uevrUtils.getUEVRParam_int("VR_RenderingMethod") == 0 then
+-- 		input.setOptimizeBodyYawCalculations(true)
+-- 	else
+-- 		input.setOptimizeBodyYawCalculations(false)
+-- 	end
+-- end
+
 --when the UEVR overlay closes, update the body yaw mode and flicker fixer in case UEVR rendering mode changed
 uevrUtils.registerUEVRUIChangeCallback(function(isOpen)
     if isOpen == false then
-		setInputBodyYawMode()
+		--setInputBodyYawMode()
 		fixFlicker()
 	end
 end)
@@ -1216,15 +1152,14 @@ local function hookLevelFunctions()
 
 	hook_function("WidgetBlueprintGeneratedClass /Game/UI/Actor/UI_BP_Astronomy_minigame.UI_BP_Astronomy_minigame_C", "ConstellationImageLoaded", true, nil,
 	function(fn, obj, locals, result)
-		print("Astronomy MiniGame ConstellationImageLoaded\n")
-
-		--auto solve game unless we can find a solution for UEVR FOV locking
-		obj:Solved()
-		delay(3000, function()
-			solveAstronomyMinigame()
-		end)
-	end
-, true)
+			--print("Astronomy MiniGame ConstellationImageLoaded\n")
+			--auto solve game unless we can find a solution for UEVR FOV locking
+			obj:Solved()
+			delay(3000, function()
+				solveAstronomyMinigame()
+			end)
+		end
+	, true)
 
 	-- the camera stack re-shows the letterbox/pillarbox bars whenever it constrains aspect ratio
 	for _, fnName in ipairs({"UI_UpdateLetterbox", "UI_UpdatePillarbox"}) do
@@ -1254,7 +1189,7 @@ on_level_change = function(level, levelName)
     regenerateHands(configui.getValue("hands_type") or 1)
 	hookLevelFunctions()
 	spells.activateAutoTargetSense(configui.getValue("use_auto_targeting"))
-	setInputBodyYawMode()
+	-- setInputBodyYawMode() 
 	fixFlicker()
 
 	uevr.api:dispatch_custom_event(configui.getValue("use_gesture_detection") and "GestureStart" or "GestureStop", "")
@@ -1314,37 +1249,6 @@ configui.onUpdate("respect_spell_cooldowns", function(value)
 	spells.setRespectCooldowns(value)
 end)
 
-local function dispatchVoiceSettings()
-	local params = {
-		use_agc = configui.getValue("use_agc"),
-		agc_target = configui.getValue("agc_target"),
-		agc_max_gain = configui.getValue("agc_max_gain"),
-		microphone_volume = configui.getValue("microphone_volume"),
-		min_confidence = configui.getValue("voice_min_confidence"),
-		override_voices = {
-			Descendo = { override = "Diffindo", confidence = 0.15 },
-			Confringo = { override = "Diffindo", confidence = 0.18 },
-			Depulso = { override = "Oppugno", confidence = 0.3 },
-			Lumos = {
-				{ override = "Levioso", confidence = 0.3 },
-				{ override = "Expelliarmus", confidence = 0.3 }
-			},
-			Glacius = { override = "Crucio", confidence = 0.1 },
-		},
-		defer_voices = {
-			Accio = {
-				defer_for = "AvadaKedavra",
-				confidence = 0.55,
-				min_self = 0.15,
-				min_other = 0.09
-			}
-		},
-		commit_margin = 0.25,
-		silence_voices = { "Lumos", "Depulso" },
-		show_debug = false
-	}
-	uevr.api:dispatch_custom_event("VoiceSettings", json.dump_string(params))
-end
 
 
 configui.onCreateOrUpdate("use_voice_detection", function(value)
@@ -1433,6 +1337,10 @@ configui.onCreateOrUpdate("left_arm_block", function(value)
 	end
 end)
 
+configui.onCreateOrUpdate("frame_compatibility", function(value)
+	spells.setPewPewCastWhileMoving(not value)
+end)
+
 gestures.registerBlockCallback(function(active, hand)
 	status.isBlocking = active
 end, false, true)
@@ -1444,9 +1352,6 @@ configui.onCreateOrUpdate("use_volumetric_fog", function(value)
     updateVolumetricFog()
 end)
 
-accessories.createConfigCallbacks(BROOM_ACCESSORY_KEY, "broom_")
-accessories.createConfigCallbacks(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_")
-accessories.createConfigCallbacks(GRAPHORN_ACCESSORY_KEY, "graphorn_")
 configui.create(configDefinition)
 spells.setMuteSpellVoice(configui.getValue("mute_spell_voice"))
 spells.setRespectCooldowns(configui.getValue("respect_spell_cooldowns"))
@@ -1536,12 +1441,6 @@ uevr.params.sdk.callbacks.on_script_reset(function()
 	cleanup()
 end)
 
--- local isPaused = false
--- register_key_bind("F2", function()
--- 	isPaused = not isPaused
--- 	uevrUtils.pauseGame(isPaused)
--- 	print("Paused: " .. tostring(isPaused))
--- end)
-
+register_key_bind("F3", boats.placeOrSpawnBoat)
 
 

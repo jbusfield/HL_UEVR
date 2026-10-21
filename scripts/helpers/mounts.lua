@@ -4,6 +4,10 @@ local pawnModule = require('libs/pawn')
 local input = require('libs/input')
 local remap = require('libs/remap')
 local ik = require('libs/ik')
+local boats = require('helpers/boats')
+local configui = require("libs/configui")
+local hands = require("libs/hands")
+local accessories = require("libs/accessories")
 
 local M = {}
 
@@ -25,6 +29,7 @@ M.EMountTypes = {
     Avatar_Ground = 6,
     EMountTypes_MAX = 7,
 	Cart_Rider = 8,
+	Boat = 9,
 };
 local status = {}
 
@@ -314,6 +319,9 @@ function M.getMountInfo(pawn)
 	local isSwimming = false
 	local mountType = M.EMountTypes.Avatar_Ground
 	if uevrUtils.validate_object(pawn) ~= nil then
+		if boats.isSeated() then
+			return M.EMountTypes.Boat, false, false
+		end
 		if pawn.IsSwimming ~= nil then
 			isSwimming = pawn:IsSwimming()
 		end
@@ -809,6 +817,13 @@ local function handleMountChange(mountType, isFlying, isSwimming)
 		ik.setCurrentProfileByLabel("Default")
 		input.setStickTurnDisabled(false, "mount")
 		pawnModule.reset()
+	elseif mountType == M.EMountTypes.Boat then
+		pawnModule.setCurrentProfileByLabel("Default")
+		input.setCurrentProfileByLabel("Boat")
+		remap.setCurrentProfileByLabel("Default")
+		ik.setCurrentProfileByLabel("Default")
+		input.setStickTurnDisabled(true, "mount")
+		pawnModule.reset()
 	elseif mountType == M.EMountTypes.Hippogriff_Ground then
 		pawnModule.setCurrentProfileByLabel("MountPawn")
 		input.setCurrentProfileByLabel(isFlying and "HippogriffAir" or "HippogriffGround")
@@ -865,5 +880,114 @@ uevrUtils.registerUEVRCallback("on_flying_changed", function(mountType, isFlying
 	handleFlyingChange(mountType, isFlying, isSwimming)
 end)
 
+local BROOM_ACCESSORY_KEY = "Broom"
+local function getBroomAccessoryMesh(hand)
+	if uevrUtils.isInCutscene() then return nil end
+	local mountType = M.getMountType()
+	if mountType ~= M.EMountTypes.Broom_Flying and mountType ~= M.EMountTypes.Broom_Ground then return nil end
+	if hand ~= nil then
+		local handsType = configui.getValue("hands_type") or 1
+		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
+		if handsType == 2 and not ik.exists() then return nil end
+	end
+	local currentPawn = uevrUtils.getValid(pawn)
+	local riderMesh = currentPawn and uevrUtils.getValid(currentPawn.Mesh)
+	local parent = riderMesh and uevrUtils.getValid(riderMesh.AttachParent)
+	if parent == nil or not string.find(parent:get_full_name(), "Broom", 1, true) then return nil end
+	return parent
+end
+
+function M.getBroomAccessoryWidgets()
+	local widgets = accessories.getConfigWidgets(BROOM_ACCESSORY_KEY, "broom_", 300)
+	for _, widget in ipairs(widgets) do
+		if widget.id == "broom_accessory_item_socket_finder_instructions" then
+			widget.label = "Mount a broom and press Refresh to list its sockets."
+		end
+	end
+	return widgets
+end
+
+local HIPPOGRIFF_ACCESSORY_KEY = "Hippogriff"
+local function getHippogriffAccessoryMesh(hand)
+	if uevrUtils.isInCutscene() then return nil end
+	local mountType = M.getMountType()
+	if mountType ~= M.EMountTypes.Hippogriff_Flying and mountType ~= M.EMountTypes.Hippogriff_Ground then return nil end
+	if hand ~= nil then
+		local handsType = configui.getValue("hands_type") or 1
+		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
+		if handsType == 2 and not ik.exists() then return nil end
+	end
+	return uevrUtils.getValid(pawn, {"Mesh"})
+end
+
+function M.getHippogriffAccessoryWidgets()
+	local widgets = accessories.getConfigWidgets(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_", 300)
+	for _, widget in ipairs(widgets) do
+		if widget.id == "hippogriff_accessory_item_socket_finder_instructions" then
+			widget.label = "Mount a hippogriff and press Refresh to list its sockets."
+		end
+	end
+	return widgets
+end
+
+local GRAPHORN_ACCESSORY_KEY = "Graphorn"
+local function getGraphornAccessoryMesh(hand)
+	if uevrUtils.isInCutscene() then return nil end
+	local mountType = M.getMountType()
+	if mountType ~= M.EMountTypes.Graphorn_Ground then return nil end
+	if hand ~= nil then
+		local handsType = configui.getValue("hands_type") or 1
+		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return nil end
+		if handsType == 2 and not ik.exists() then return nil end
+	end
+	return uevrUtils.getValid(pawn, {"Mesh"})
+end
+
+function M.getGraphornAccessoryWidgets()
+	local widgets = accessories.getConfigWidgets(GRAPHORN_ACCESSORY_KEY, "graphorn_", 300)
+	for _, widget in ipairs(widgets) do
+		if widget.id == "graphorn_accessory_item_socket_finder_instructions" then
+			widget.label = "Mount a graphorn and press Refresh to list its sockets."
+		end
+	end
+	return widgets
+end
+
+accessories.setTargetProvider(function(hand)
+	local broomMesh = getBroomAccessoryMesh(hand)
+	if broomMesh ~= nil then return broomMesh, BROOM_ACCESSORY_KEY end
+	local hippogriffMesh = getHippogriffAccessoryMesh(hand)
+	if hippogriffMesh ~= nil then return hippogriffMesh, HIPPOGRIFF_ACCESSORY_KEY end
+	local graphornMesh = getGraphornAccessoryMesh(hand)
+	if graphornMesh ~= nil then return graphornMesh, GRAPHORN_ACCESSORY_KEY end
+end)
+accessories.setSocketProvider(BROOM_ACCESSORY_KEY, function(callback)
+	local broomMesh = getBroomAccessoryMesh()
+	if broomMesh ~= nil then
+		uevrUtils.getSocketNames(broomMesh, callback)
+	else
+		callback(nil)
+	end
+end)
+accessories.setSocketProvider(HIPPOGRIFF_ACCESSORY_KEY, function(callback)
+	local hippogriffMesh = getHippogriffAccessoryMesh()
+	if hippogriffMesh ~= nil then
+		uevrUtils.getSocketNames(hippogriffMesh, callback)
+	else
+		callback(nil)
+	end
+end)
+accessories.setSocketProvider(GRAPHORN_ACCESSORY_KEY, function(callback)
+	local graphornMesh = getGraphornAccessoryMesh()
+	if graphornMesh ~= nil then
+		uevrUtils.getSocketNames(graphornMesh, callback)
+	else
+		callback(nil)
+	end
+end)
+
+accessories.createConfigCallbacks(BROOM_ACCESSORY_KEY, "broom_")
+accessories.createConfigCallbacks(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_")
+accessories.createConfigCallbacks(GRAPHORN_ACCESSORY_KEY, "graphorn_")
 
 return M
