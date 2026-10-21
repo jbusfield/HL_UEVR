@@ -2,8 +2,6 @@
 A mod for UEVR when playing Hogwarts Legacy
 
 ## Features include:
-
-## Features include:
 - Full first person 6DOF motion controls
 - Optional IK arms or visible hands
 - Full body support
