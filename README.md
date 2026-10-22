@@ -2,8 +2,6 @@
 A mod for UEVR when playing Hogwarts Legacy
 
 ## Features include:
-
-## Features include:
 - Full first person 6DOF motion controls
 - Optional IK arms or visible hands
 - Full body support
@@ -13,6 +11,7 @@ A mod for UEVR when playing Hogwarts Legacy
 - Physically controlled mounts
 - Controller based mouse movement in menus
 - Optional HUD widgets attached to hands
+- Boats can be ridden in and controlled
 
 ## Guide:
 ### Spells
@@ -49,6 +48,11 @@ Once you are on your mount, you can optionally grab you mount with you left hand
 <BR><BR>
 [![Watch Video](https://img.youtube.com/vi/TaxyOO4Irfo/maxresdefault.jpg)](https://www.youtube.com/watch?v=TaxyOO4Irfo)
 
+### Boats
+Have you ever been down at the boathouse or the docks and said "Why can't I ride in one of those boats?" Now you can. Just say "Navigato" when you are close to a body of water to apparate your boat. When you are on or near the boat, press X to control it. Press X again to release control. No need to put the boat away. Just leave it where it is and it will come to you the next time your say "Navigato"
+<BR><BR>
+[![Watch Video](https://img.youtube.com/vi/T0xsgd-tblQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=T0xsgd-tblQ)
+
 ### Custom Gestures
 - Cast Protego - Block with your left hand (hold your left hand up in front of you with palm away from you). Hold longer for Stupefy
 - Heal - Left grip near mouth
@@ -62,7 +66,7 @@ The HUD widgets can be placed on your hands instead of the HUD for better immers
 
 ## Notes:
 - Transition screen blinking is ok. In the past, the game may have crashed instead. It clears itself eventually
-- The final Fastido challenge flips the left controller stick directions on purpose. This is not a bug.
+- In the final Fastido challenge, the game itself flips the left controller stick directions on purpose. This is not a bug (although it is annoying).
   
 ## Contributors
 Thanks to LukasBlaster for finding a fix for world based widget environmental lighting issues.<BR>
