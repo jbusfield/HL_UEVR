@@ -800,7 +800,7 @@ end
 
 local function clearSitPose(p)
 	local anim = getAnim(p)
-	if anim == nil then return end
+	if anim == nil or anim.bUsePoseOverride == nil or anim.OverridePose == nil then return end
 	anim.bUsePoseOverride = false
 	anim.OverridePose = nil
 end

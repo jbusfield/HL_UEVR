@@ -54,6 +54,7 @@
         "aimMethod": 1,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
+        "fixStickDrift": true,
         "headBoneName": "Spine2",
         "headOffset": {
             "X": 0.0,
@@ -283,6 +284,7 @@
         "aimMethod": 1,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
+        "fixStickDrift": true,
         "headBoneName": "Spine2",
         "headOffset": {
             "X": 8.26,
@@ -332,7 +334,7 @@
         "e2987287-6ef4-4c0d-8bf1-ec8dc0cc0ad1": "Swimming"
     },
     "_profileState": {
-        "currentEditingProfile": "1cf14175-e723-4349-b3cf-f40a00cfbcc1"
+        "currentEditingProfile": "default"
     },
     "default": {
         "adjustBodyMeshPosition": true,
@@ -343,7 +345,7 @@
         "autoDetectEyeIndices": true,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
-        "fixStickDrift": true,
+        "fixStickDrift": false,
         "headBoneName": "head",
         "headOffset": {
             "X": 18.2229,
