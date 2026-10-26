@@ -13,6 +13,146 @@
                 0.0,
                 0.0
             ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Edurus_Bottle",
+            "label": "StaticMeshActor_SM_Edurus_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Maxima_Bottle",
+            "label": "StaticMeshActor_SM_Maxima_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Focus_Bottle",
+            "label": "StaticMeshActor_SM_Focus_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Thunderbrew_Bottle",
+            "label": "StaticMeshActor_SM_Thunderbrew_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Invisibility_Bottle",
+            "label": "StaticMeshActor_SM_Invisibility_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_VenomousTentacula_Stage4",
+            "label": "StaticMeshActor_SM_VenomousTentacula_Stage4",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "SkeletalMeshActor_SK_ChompingCabbage_LOD0",
+            "label": "SkeletalMeshActor_SK_ChompingCabbage_LOD0",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "SkeletalMeshActor_SK_MandrakePlant",
+            "label": "SkeletalMeshActor_SK_MandrakePlant",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn",
+            "label": "BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "StaticMeshActor_SM_Felix_Felicis_Bottle",
+            "label": "StaticMeshActor_SM_Felix_Felicis_Bottle",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
         }
     ]
 }

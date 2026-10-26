@@ -1041,11 +1041,7 @@ uevrUtils.registerUEVRCallback("gunstock_transform_change", function(id, newLoca
 	if gunstockOffsetsEnabled then
 		local hand = M.getHandComponent(Handed.Right)
 		if hand ~= nil then
-			if baseRotation ~= nil then
-				hand.RelativeRotation = mathLib.composeRotators(baseRotation, newRotation)
-			else
-				hand.RelativeRotation = newRotation
-			end
+			hand.RelativeRotation = mathLib.composeRotators(baseRotation, uevrUtils.rotator(baseOffset), newRotation)
 		end
 	end
 end)

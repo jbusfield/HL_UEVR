@@ -294,6 +294,10 @@ function M.isWalking()
 	return status.mountType == M.EMountTypes.Avatar_Ground
 end
 
+function M.isRidingCart()
+	return status.mountType == M.EMountTypes.Cart_Rider
+end
+
 function M.isOnBroom()
 	return status.mountType == M.EMountTypes.Broom_Flying
 end
@@ -322,16 +326,25 @@ function M.getMountInfo(pawn)
 		if boats.isSeated() then
 			return M.EMountTypes.Boat, false, false
 		end
-		if pawn.IsSwimming ~= nil then
+		if status.infoPawn ~= pawn then
+			status.infoPawn = pawn
+			-- Each member check is a native reflection lookup; the pawn's class is fixed, so check them once.
+			-- MyPlayer is checked by class because a cart pawn's MyPlayer can still be empty when it is possessed.
+			local bipedPlayerClass = uevrUtils.get_class("Class /Script/Phoenix.Biped_Player")
+			status.pawnHasIsSwimming = pawn.IsSwimming ~= nil
+			status.pawnHasMountComponent = pawn.GetMountComponent ~= nil
+			status.pawnIsBipedPlayer = bipedPlayerClass ~= nil and pawn:is_a(bipedPlayerClass)
+		end
+		if status.pawnHasIsSwimming then
 			isSwimming = pawn:IsSwimming()
 		end
-		if pawn.GetMountComponent ~= nil then
+		if status.pawnHasMountComponent then
 			local mountComponent = pawn:GetMountComponent()
 			if mountComponent ~= nil and mountComponent.IsFlying ~= nil then
 				mountType = mountComponent:GetMountHandler().CreatureMountType
 				isFlying = mountComponent:IsFlying()
 			end
-		elseif pawn.MyPlayer ~= nil then
+		elseif not status.pawnIsBipedPlayer and pawn.MyPlayer ~= nil then
 			-- riding a cart
 			mountType = M.EMountTypes.Cart_Rider
 			isFlying = false
@@ -989,5 +1002,12 @@ end)
 accessories.createConfigCallbacks(BROOM_ACCESSORY_KEY, "broom_")
 accessories.createConfigCallbacks(HIPPOGRIFF_ACCESSORY_KEY, "hippogriff_")
 accessories.createConfigCallbacks(GRAPHORN_ACCESSORY_KEY, "graphorn_")
+
+-- Nested timings are inclusive. Toggle and report with uevrUtils.profiler.
+M.getMountInfo = uevrUtils.profiler:wrap("Mounts: get mount info", M.getMountInfo)
+M.updateMountLocomotionMode = uevrUtils.profiler:wrap("Mounts: update locomotion mode", M.updateMountLocomotionMode)
+isHippogriff = uevrUtils.profiler:wrap("Mounts: is hippogriff", isHippogriff)
+updateBroomPose = uevrUtils.profiler:wrap("Mounts: update broom pose", updateBroomPose)
+updateHippogriffRiderAlignment = uevrUtils.profiler:wrap("Mounts: hippogriff rider alignment", updateHippogriffRiderAlignment)
 
 return M

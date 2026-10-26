@@ -13,7 +13,10 @@ serialization.__index = serialization
 M.serialization = serialization
 
 function serialization.new(options)
-	assert(type(options.owner) == "string" and options.owner ~= "")
+	if type(options) ~= "table" or type(options.owner) ~= "string" or options.owner == "" then
+		print("Serialization: an owner name is required")
+		return nil
+	end
 	local self = setmetatable({options = options, enabled = true}, serialization)
 	self.owner = options.owner
 	self.key = options.key or "State"
@@ -67,11 +70,7 @@ function serialization:save()
 end
 
 function serialization:markHandled(p)
-	if p:ActorHasTag(self.handledName) then return end
-	local tags = plugin.getProperty(p, "Tags")
-	if type(tags) ~= "table" then return end
-	tags[#tags + 1] = self.handledTag
-	plugin.setProperty(p, "Tags", tags)
+	uevrUtils.setActorTag(p, self.handledTag, true)
 end
 
 function serialization:cancel()
@@ -184,7 +183,6 @@ local BOAT_CLASS = "BlueprintGeneratedClass /Game/Gameplay/Blueprints/Universal/
 local WATER_VOLUME_CLASS = "Class /Script/Phoenix.WaterVolumeBase"
 local OBJECT_STATE_MANAGER_CLASS = "Class /Script/Phoenix.ObjectStateManager"
 local MANAGED_BOAT_TAG = "HL_UEVR.ManagedBoat"
-local MANAGED_BOAT_TAG_NAME = uevrUtils.fname_from_string(MANAGED_BOAT_TAG)
 -- Plain sit pose (no book / SceneRig / InCinematic). Station stories are cinematic.
 local SIT_POSE = "AnimSequence /Game/Animation/Human/Stations/Sitting/STUM_STN_SIT_ArmChair_Proper_ANM.STUM_STN_SIT_ArmChair_Proper_ANM"
 
@@ -240,33 +238,10 @@ function M.isSeated()
 	return seated
 end
 
-local function setManagedBoatTag(boat, enabled)
-	if boat:ActorHasTag(MANAGED_BOAT_TAG_NAME) == enabled then return true end
-	local tags = plugin.getProperty(boat, "Tags")
-	if type(tags) ~= "table" then return false end
-	local updated = {}
-	for _, tag in ipairs(tags) do
-		if string.lower(tag) ~= string.lower(MANAGED_BOAT_TAG) then
-			updated[#updated + 1] = tag
-		end
-	end
-	if enabled then updated[#updated + 1] = MANAGED_BOAT_TAG end
-	plugin.setProperty(boat, "Tags", updated)
-	-- The setter is void; verify that the actor actually received the change.
-	return boat:ActorHasTag(MANAGED_BOAT_TAG_NAME) == enabled
-end
-
 local function rememberBoat(boat)
-	local previous = uevrUtils.getValid(spawnedBoat)
-	local alreadyTagged = boat:ActorHasTag(MANAGED_BOAT_TAG_NAME)
-	if not setManagedBoatTag(boat, true) then
-		print("Boat: could not save the managed-boat tag")
-		return false
-	end
 	-- Boarding another boat transfers ownership instead of leaving two tagged.
-	if previous ~= nil and previous ~= boat and not setManagedBoatTag(previous, false) then
-		if not alreadyTagged then setManagedBoatTag(boat, false) end
-		print("Boat: could not transfer the managed-boat tag")
+	if not uevrUtils.transferActorTag(MANAGED_BOAT_TAG, boat, spawnedBoat) then
+		print("Boat: could not save the managed-boat tag")
 		return false
 	end
 	spawnedBoat = boat
@@ -550,7 +525,17 @@ local function boatNearPoint(boat)
 	return boat:K2_GetActorLocation()
 end
 
+-- A missed full-name class lookup scans every object (~360 ms). Look up BP_Boat
+-- only once it is loaded; unloaded, no boats exist. Refreshes the shared class cache.
+local function loadedBoatClass()
+	local data = uevrUtils.getAssetDataFromPath(BOAT_CLASS)
+	local registry = uevrUtils.find_first_of("Class /Script/AssetRegistry.AssetRegistryHelpers", true)
+	if data == nil or registry == nil or not registry:IsAssetLoaded(data) then return nil end
+	return uevrUtils.get_class(BOAT_CLASS, true)
+end
+
 local function findAnyNearestBoat(p)
+	if loadedBoatClass() == nil then return nil end
 	local best, bestD = nil, math.huge
 	local ploc = p:K2_GetActorLocation()
 	for _, b in ipairs(uevrUtils.find_all_of(BOAT_CLASS, false) or {}) do
@@ -564,22 +549,11 @@ local function findAnyNearestBoat(p)
 	return best
 end
 
-local function queryTaggedBoats(p)
-	-- Level reloads can replace this Blueprint UClass while Lua's class cache
-	-- survives. Refresh before querying; spawning and fallback scans share it.
-	local class = uevrUtils.get_class(BOAT_CLASS, true)
-	if class == nil then return {} end
-	local statics = uevrUtils.find_default_instance("Class /Script/Engine.GameplayStatics")
-	if statics == nil or not uevrUtils.checkPluginExists() then return nil end
-	local result = plugin.executeFunctionWithOutputs(statics, "GetAllActorsOfClassWithTag", {"OutActors"},
-		p, class, MANAGED_BOAT_TAG, {})
-	return result ~= nil and type(result.OutActors) == "table" and result.OutActors or nil
-end
-
 local function recoverBoat(p)
 	local boat = uevrUtils.getValid(spawnedBoat)
 	if boat ~= nil then return boat, true end
-	local boats = queryTaggedBoats(p)
+	-- Tag only: a class filter would force the class lookup scan while BP_Boat is unloaded.
+	local boats = uevrUtils.getTaggedActors(nil, MANAGED_BOAT_TAG, p)
 	if boats == nil then
 		print("Boat: could not read managed boats; skipping creation")
 		return nil, false
@@ -717,7 +691,8 @@ local function placeBoatAt(p, pos, spawnYaw, boat, magical)
 	local x, y, z = pos.X, pos.Y, pos.Z
 
 	if boat == nil then
-		uevrUtils.getLoadedAsset(BOAT_CLASS)
+		-- Refresh the class cache once loaded; a stale or missed entry fails the spawn.
+		if uevrUtils.getLoadedAsset(BOAT_CLASS) ~= nil then uevrUtils.get_class(BOAT_CLASS, true) end
 		spawnedBoat = uevrUtils.spawn_actor_of_class(BOAT_CLASS, uevrUtils.get_transform({X = x, Y = y, Z = z}), 1, nil)
 		boat = uevrUtils.getValid(spawnedBoat)
 		if boat == nil then
@@ -929,6 +904,7 @@ local function findNearestBoat(p)
 	if boat ~= nil and mathLib.vectorDistanceSquared(ploc, boatNearPoint(boat)) <= BOAT_NEAR_DIST_SQ then
 		return boat
 	end
+	if loadedBoatClass() == nil then return nil end
 	local best, bestD = nil, BOAT_NEAR_DIST_SQ
 	for _, b in ipairs(uevrUtils.find_all_of(BOAT_CLASS, false) or {}) do
 		if uevrUtils.getValid(b) ~= nil then
@@ -1097,7 +1073,7 @@ boatSerialization = serialization.new({owner = "HL_UEVR.Boats", version = 1, res
 	capture = captureBoatState, validate = validateBoatState,
 	shouldRestore = function(record) return record.seated end,
 	restore = restoreBoatState, beforeLoad = M.reset})
-boatSerialization:start()
+if boatSerialization ~= nil then boatSerialization:start() end
 
 -- Read physical X before spell/stick remaps can synthesize button presses.
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
@@ -1179,7 +1155,7 @@ uevr.sdk.callbacks.on_post_engine_tick(function(engine, delta)
 end)
 
 uevr.params.sdk.callbacks.on_script_reset(function()
-	boatSerialization:stop()
+	if boatSerialization ~= nil then boatSerialization:stop() end
 	M.reset()
 end)
 

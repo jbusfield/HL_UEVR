@@ -8,18 +8,19 @@ local mounts = require('helpers/mounts')
 
 local M = {}
 local status = {}
+local EMPTY_NAME = uevrUtils.fname_from_string("")
 
 local function disableCameraShakes(currentPawn)
+	if status.cameraShakesDisabled then
+		return
+	end
+
 	local playerCameraManager = uevrUtils.getValid(currentPawn, {"Controller", "PlayerCameraManager"})
 	if playerCameraManager ~= nil then
 		local cameraShakeModifier = uevrUtils.getValid(playerCameraManager, {"CachedCameraShakeMod"})
 		if cameraShakeModifier ~= nil and cameraShakeModifier.DisableModifier ~= nil then
 			cameraShakeModifier:DisableModifier(true)
 		end
-	end
-
-	if status.cameraShakesDisabled then
-		return
 	end
 
 	if playerCameraManager ~= nil and playerCameraManager.StopAllCameraShakes ~= nil then
@@ -65,7 +66,7 @@ local function disableCameraShakes(currentPawn)
 end
 
 local function isNativeSprintActive(currentPawn)
-	return (status.L3Pressed and mounts.isWalking()) or (currentPawn.IsUsingSpeedModifier ~= nil and currentPawn:IsUsingSpeedModifier())
+	return (status.L3Pressed and mounts.isWalking()) or (status.pawnHasSpeedModifier and currentPawn:IsUsingSpeedModifier())
 end
 
 -- Keep native Ambulatory locomotion, but use its strafe variants in first person.
@@ -167,29 +168,30 @@ end
 -- Shadow Blink uses SetDodgeDirection, which copies pawn forward into the anim
 -- instance. With bShadowBlinkWithTarget enabled, its root motion reads that
 -- direction. Replace the forward vector with the movement stick direction.
-local function getActiveShadowBlink(currentPawn)
+local function getActiveAbilityName(currentPawn)
 	local abl = uevrUtils.getValid(currentPawn, {"AblAbilityComponent"})
-	if abl == nil or abl.GetActiveAbility_New == nil then return false end
-	local ability = abl:GetActiveAbility_New(uevrUtils.fname_from_string(""))
-	local name = ability and ability:get_full_name()
-	return name ~= nil and string.find(name, "ABL_ShadowBlink", 1, true) ~= nil
+	if abl == nil or abl.GetActiveAbility_New == nil then return nil end
+	local ability = abl:GetActiveAbility_New(EMPTY_NAME)
+	return ability and ability:get_full_name()
 end
 
-local function getActiveDodgeRoll(currentPawn)
-	local abl = uevrUtils.getValid(currentPawn, {"AblAbilityComponent"})
-	if abl == nil or abl.GetActiveAbility_New == nil then return false end
-	local ability = abl:GetActiveAbility_New(uevrUtils.fname_from_string(""))
-	local name = ability and ability:get_full_name()
-	return name ~= nil and string.find(name, "ABL_DodgeRoll", 1, true) ~= nil
+local function isAbilityActive(abilityName, ablName)
+	return abilityName ~= nil and string.find(abilityName, ablName, 1, true) ~= nil
 end
 
-local function configureAmbulatoryFP(currentPawn)
+-- Full name of the pawn's active ability, read by this module's pre-engine tick.
+-- That tick is registered when this module loads, so later pre-engine tick callbacks see this frame's value.
+function M.getActiveAbilityName()
+	return status.activeAbilityName
+end
+
+local function configureAmbulatoryFP(currentPawn, abilityName)
 	if uevrUtils.getValid(currentPawn) == nil then
 		return
 	end
 
 	neutralizeStrafeTurnAssist()
-	neutralizeDodgeCamera()
+	--neutralizeDodgeCamera()
 	configureShadowBlinkModifier()
 	configureDodgeRecovery()
 	configureShadowBlinkRecovery()
@@ -198,11 +200,18 @@ local function configureAmbulatoryFP(currentPawn)
 	if status.locomotionPawn ~= currentPawn then
 		status.locomotionPawn = currentPawn
 		status.strafeFacingTarget = nil
+		-- Each member check is a native reflection lookup; the pawn's class is fixed, so check them once.
+		status.pawnHasSpeedModifier = currentPawn.IsUsingSpeedModifier ~= nil
+		status.pawnHasForwardVector = currentPawn.GetActorForwardVector ~= nil
+		status.pawnHasTurnAssist = currentPawn.bUseTurnAssist ~= nil
+		status.pawnHasLockOnMode = currentPawn.bOnlyLockOnMode ~= nil
+		status.pawnHasFocusDirection = currentPawn.bUseDesiredFocusDirection ~= nil
 	end
 
 	-- Sprint only runs forward, so face the body along the stick relative to the HMD to sprint sideways without turning the view.
 	local sprintYaw = nil
-	if isNativeSprintActive(currentPawn) then
+	local sprinting = isNativeSprintActive(currentPawn)
+	if sprinting then
 		local x, y = status.moveStickLX or 0, status.moveStickLY or 0
 		if y < 5000 then
 			-- Past sideways the body would turn away from the view.
@@ -217,31 +226,35 @@ local function configureAmbulatoryFP(currentPawn)
 	input.setForcedBodyYaw(sprintYaw)
 
 	local faceTargetTracker = uevrUtils.getValid(currentPawn, {"FaceTargetTracker"})
-	if getActiveDodgeRoll(currentPawn) or isNativeSprintActive(currentPawn) then
+	local facingTarget = uevrUtils.getValid(status.strafeFacingTarget)
+	if sprinting or isAbilityActive(abilityName, "ABL_DodgeRoll") then
 		-- DodgeRoll steers its root motion toward the best facing target each tick.
-		if faceTargetTracker ~= nil and uevrUtils.getValid(status.strafeFacingTarget) ~= nil and faceTargetTracker.RemoveTargetByPtr ~= nil then
-			faceTargetTracker:RemoveTargetByPtr(255, status.strafeFacingTarget)
+		if faceTargetTracker ~= nil and facingTarget ~= nil and faceTargetTracker.RemoveTargetByPtr ~= nil then
+			faceTargetTracker:RemoveTargetByPtr(255, facingTarget)
 		end
 		status.strafeFacingTarget = nil
-	elseif faceTargetTracker ~= nil and currentPawn.GetActorForwardVector ~= nil then
-		if uevrUtils.getValid(status.strafeFacingTarget) == nil and faceTargetTracker.AddTarget_StaticWorldDirection ~= nil then
+	elseif faceTargetTracker ~= nil and status.pawnHasForwardVector then
+		if facingTarget == nil and faceTargetTracker.AddTarget_StaticWorldDirection ~= nil then
 			status.strafeFacingTarget = faceTargetTracker:AddTarget_StaticWorldDirection(currentPawn:GetActorForwardVector(), 255)
-			if uevrUtils.getValid(status.strafeFacingTarget) ~= nil and status.strafeFacingTarget.SetComputedPriority ~= nil then
-				status.strafeFacingTarget:SetComputedPriority(-1000)
+			if uevrUtils.getValid(status.strafeFacingTarget) ~= nil then
+				if status.strafeFacingTarget.SetComputedPriority ~= nil then
+					status.strafeFacingTarget:SetComputedPriority(-1000)
+				end
+				status.strafeFacingTargetSettable = status.strafeFacingTarget.SetStaticWorldDirection ~= nil
 			end
-		elseif uevrUtils.getValid(status.strafeFacingTarget) ~= nil and status.strafeFacingTarget.SetStaticWorldDirection ~= nil then
-			status.strafeFacingTarget:SetStaticWorldDirection(currentPawn:GetActorForwardVector())
+		elseif facingTarget ~= nil and status.strafeFacingTargetSettable then
+			facingTarget:SetStaticWorldDirection(currentPawn:GetActorForwardVector())
 		end
 	end
 
-	if currentPawn.bUseTurnAssist ~= nil then
+	if status.pawnHasTurnAssist then
 		currentPawn.bUseTurnAssist = false
 	end
-	if currentPawn.bOnlyLockOnMode ~= nil then
+	if status.pawnHasLockOnMode then
 		currentPawn.bOnlyLockOnMode = false
 	end
 
-	if currentPawn.bUseDesiredFocusDirection ~= nil then
+	if status.pawnHasFocusDirection then
 		currentPawn.bUseDesiredFocusDirection = true
 	end
 
@@ -278,8 +291,8 @@ local function setShadowBlinkDirection(currentPawn, direction)
 end
 
 
-local function updateShadowBlinkDirection(currentPawn)
-	if not getActiveShadowBlink(currentPawn) then
+local function updateShadowBlinkDirection(currentPawn, abilityName)
+	if not isAbilityActive(abilityName, "ABL_ShadowBlink") then
 		status.shadowBlinkDirection = nil
 		return
 	end
@@ -292,14 +305,17 @@ local function updateShadowBlinkDirection(currentPawn)
 end
 
 
-hook_function("Class /Script/Phoenix.Biped_Player", "SetDodgeDirection", true, nil,
-	function(fn, currentPawn, locals, result)
-		if currentPawn == nil then return end
-		-- This runs before Shadow Blink replaces the preceding locomotion ability.
-		local direction = getStickWorldDirection(currentPawn)
-		if direction == nil then return end
-		status.shadowBlinkDirection = direction
-		setShadowBlinkDirection(currentPawn, direction)
+local function onSetDodgeDirection(fn, currentPawn, locals, result)
+	if currentPawn == nil then return end
+	-- This runs before Shadow Blink replaces the preceding locomotion ability.
+	local direction = getStickWorldDirection(currentPawn)
+	if direction == nil then return end
+	status.shadowBlinkDirection = direction
+	setShadowBlinkDirection(currentPawn, direction)
+end
+
+hook_function("Class /Script/Phoenix.Biped_Player", "SetDodgeDirection", true, nil, function(fn, currentPawn, locals, result)
+	onSetDodgeDirection(fn, currentPawn, locals, result)
 end, false)
 
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
@@ -311,14 +327,19 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 end)
 
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
+    status.activeAbilityName = nil
     local pawn = uevrUtils.getValid(pawn)
     if pawn == nil then return end
-    if pawn.MyPlayer ~= nil then return end --if riding the cart don't update the camera
+    if mounts.isRidingCart() then return end --if riding the cart don't update the camera
 
-    configureAmbulatoryFP(uevrUtils.getValid(pawn))
-    if pawn ~= nil then
-        updateShadowBlinkDirection(pawn)
-    end
+    local abilityName = getActiveAbilityName(pawn)
+    status.activeAbilityName = abilityName
+    configureAmbulatoryFP(pawn, abilityName)
+    updateShadowBlinkDirection(pawn, abilityName)
+ end)
+
+ setInterval(1000, function()
+    --configureAmbulatoryFP(uevrUtils.getValid(pawn))
  end)
 
 local function cleanup()
@@ -327,12 +348,27 @@ end
 
 uevrUtils.registerLevelChangeCallback(function(level, levelName)
     cleanup()
-    configureAmbulatoryFP(uevrUtils.getValid(pawn))
+    configureAmbulatoryFP(uevrUtils.getValid(pawn), getActiveAbilityName(pawn))
 end)
 
  uevr.params.sdk.callbacks.on_script_reset(function()
 	cleanup()
-	configureAmbulatoryFP(uevrUtils.getValid(pawn))
+	configureAmbulatoryFP(uevrUtils.getValid(pawn), getActiveAbilityName(pawn))
 end)
+
+-- Nested timings are inclusive. Toggle and report with uevrUtils.profiler.
+disableCameraShakes = uevrUtils.profiler:wrap("Locomotion: disable camera shakes", disableCameraShakes)
+isNativeSprintActive = uevrUtils.profiler:wrap("Locomotion: sprint active", isNativeSprintActive)
+neutralizeStrafeTurnAssist = uevrUtils.profiler:wrap("Locomotion: neutralize strafe turn", neutralizeStrafeTurnAssist)
+neutralizeDodgeCamera = uevrUtils.profiler:wrap("Locomotion: neutralize dodge camera", neutralizeDodgeCamera)
+configureShadowBlinkModifier = uevrUtils.profiler:wrap("Locomotion: configure shadow blink", configureShadowBlinkModifier)
+configureDodgeRecovery = uevrUtils.profiler:wrap("Locomotion: configure dodge recovery", configureDodgeRecovery)
+configureShadowBlinkRecovery = uevrUtils.profiler:wrap("Locomotion: configure blink recovery", configureShadowBlinkRecovery)
+getActiveAbilityName = uevrUtils.profiler:wrap("Locomotion: active ability", getActiveAbilityName)
+configureAmbulatoryFP = uevrUtils.profiler:wrap("Locomotion: configure movement", configureAmbulatoryFP)
+getStickWorldDirection = uevrUtils.profiler:wrap("Locomotion: stick direction", getStickWorldDirection)
+setShadowBlinkDirection = uevrUtils.profiler:wrap("Locomotion: set blink direction", setShadowBlinkDirection)
+updateShadowBlinkDirection = uevrUtils.profiler:wrap("Locomotion: update blink direction", updateShadowBlinkDirection)
+onSetDodgeDirection = uevrUtils.profiler:wrap("Locomotion: set dodge direction", onSetDodgeDirection)
 
 return M

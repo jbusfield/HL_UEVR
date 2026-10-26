@@ -1555,7 +1555,7 @@ local function getAnimationHeadDelta(pawn, pawnYaw, settings, meshList)
 		local rootBoneName = settings.rootBoneName
 		if headBoneName ~= "" and rootBoneName ~= "" and settings.adjustForAnimation == true then
 			local mesh = meshList or getBodyMesh()
-			if mesh ~= nil and mesh[1] ~= nil then
+			if mesh ~= nil and uevrUtils.getValid(mesh[1]) ~= nil then
 				mesh = mesh[1]
 				local cache = status.animationHeadDeltaCache
 				if cache == nil then
@@ -1659,6 +1659,10 @@ local function smoothBodyRotationOffset(targetOffset, delta)
 end
 
 local lateYaw = false
+-- Counts this module's root rotation and position writes, so camera offsets computed earlier in a tick are only reused while the root is unchanged
+local rootWriteCount = 0
+-- Advanced by this module's pre-engine tick; stereo views in the same tick share camera offsets
+local stereoTick = 0
 
 local function setRootWorldYaw(yaw)
 	if rootComponent == nil then return end
@@ -1671,6 +1675,7 @@ local function setRootWorldYaw(yaw)
 		roll = rotation ~= nil and rotation.Roll or 0
 	end
 	rootComponent:K2_SetWorldRotation(uevrUtils.rotator(pitch, yaw, roll), false, reusable_hit_result, false)
+	rootWriteCount = rootWriteCount + 1
 end
 
 --this is called from both on_pre_engine_tick and on_early_calculate_stereo_view_offset but K2_SetWorldRotation can only be called once per tick
@@ -1678,13 +1683,9 @@ end
 local function updateBodyYaw(delta)
 	if forcedBodyYaw ~= nil and decoupledYaw ~= nil and rootComponent ~= nil then
 		bodyRotationOffset = uevrUtils.clampAngle180(forcedBodyYaw - decoupledYaw)
-		local ok, err = pcall(function()
-			if rootComponent.K2_SetWorldRotation ~= nil then
-				setRootWorldYaw(forcedBodyYaw)
-			end
-		end)
-		if not ok then
-			M.print("Error setting world rotation: " .. err)
+		-- getRootComponent only keeps roots with K2_SetWorldRotation; the root may have been destroyed since this tick began
+		if uevrUtils.getValid(rootComponent) ~= nil then
+			setRootWorldYaw(forcedBodyYaw)
 		end
 		return
 	end
@@ -1693,24 +1694,18 @@ local function updateBodyYaw(delta)
 		-- Let the game own RootComponent yaw. Mirror every root yaw change into
 		-- decoupledYaw so the VR view stays facing with the pawn (ladder mounts,
 		-- including gradual/animated 180° top-mount turns).
-		local ok, err = pcall(function()
-			if rootComponent.K2_GetComponentRotation ~= nil then
-				local rootRot = uevrUtils.getComponentRotation(rootComponent)
-				if rootRot ~= nil then
-					local rootYaw = rootRot.Yaw
-					if lastSuppressedBodyYaw ~= nil then
-						local yawDelta = uevrUtils.clampAngle180(rootYaw - lastSuppressedBodyYaw)
-						if math.abs(yawDelta) > 1.0 then
-							decoupledYaw = uevrUtils.clampAngle180(decoupledYaw + yawDelta)
-						end
-					end
-					lastSuppressedBodyYaw = rootYaw
-					bodyRotationOffset = uevrUtils.clampAngle180(rootYaw - decoupledYaw)
+		-- getComponentRotation returns nil when the root has been destroyed
+		local rootRot = uevrUtils.getComponentRotation(rootComponent)
+		if rootRot ~= nil then
+			local rootYaw = rootRot.Yaw
+			if lastSuppressedBodyYaw ~= nil then
+				local yawDelta = uevrUtils.clampAngle180(rootYaw - lastSuppressedBodyYaw)
+				if math.abs(yawDelta) > 1.0 then
+					decoupledYaw = uevrUtils.clampAngle180(decoupledYaw + yawDelta)
 				end
 			end
-		end)
-		if not ok then
-			M.print("Error getting component rotation: " .. err)
+			lastSuppressedBodyYaw = rootYaw
+			bodyRotationOffset = uevrUtils.clampAngle180(rootYaw - decoupledYaw)
 		end
 		return
 	end
@@ -1753,13 +1748,8 @@ local function updateBodyYaw(delta)
 						--if rotation ~= nil then bodyRotationOffset = rotation.Yaw - decoupledYaw end
 					end
 				end
-				local ok, err = pcall(function()
-					if currentOffset ~= bodyRotationOffset and rootComponent.K2_SetWorldRotation ~= nil then
-						setRootWorldYaw(decoupledYaw + bodyRotationOffset)
-					end
-				end)
-				if not ok then
-					M.print("Error setting world rotation: " .. err)
+				if currentOffset ~= bodyRotationOffset and uevrUtils.getValid(rootComponent) ~= nil then
+					setRootWorldYaw(decoupledYaw + bodyRotationOffset)
 				end
 				return
 			end
@@ -1797,13 +1787,9 @@ local function updateBodyYaw(delta)
 					--if rotation ~= nil then bodyRotationOffset = rotation.Yaw - decoupledYaw end
 				end
 			end
-			local ok, err = pcall(function()
-				if currentOffset ~= bodyRotationOffset and rootComponent.K2_SetWorldRotation ~= nil then
-					setRootWorldYaw(decoupledYaw + bodyRotationOffset)
-				end
-			end)
-			if not ok then
-				M.print("Error setting world rotation: " .. err)
+			-- getRootComponent only keeps roots with K2_SetWorldRotation; the root may have been destroyed since this tick began
+			if currentOffset ~= bodyRotationOffset and uevrUtils.getValid(rootComponent) ~= nil then
+				setRootWorldYaw(decoupledYaw + bodyRotationOffset)
 			end
 		end
 	else
@@ -1859,23 +1845,16 @@ local function updatePawnPositionRoomscale(world_to_meters)
 		--if dist > 2.0 then
 			--print("Here",dist)
 			forwardVector.Z = 0 --do not affect up/down
-			local ok, err = pcall(function()
-				if pawnPositionMode == M.PawnPositionMode.ANIMATED  then
-				local pawn = status.pawn
+			if pawnPositionMode == M.PawnPositionMode.ANIMATED  then
+				local pawn = uevrUtils.getValid(status.pawn)
 				if pawn ~= nil and pawn.AddMovementInput ~= nil then
-						pawn:AddMovementInput(forwardVector, getParameter("pawnPositionAnimationScale"), false) --dont need to check for pawn because if rootComponent exists then pawn exists
-					end
-				elseif pawnPositionMode == M.PawnPositionMode.FOLLOWS and rootComponent.K2_AddWorldOffset ~= nil then
-					--pcall(function()
-					if uevrUtils.getValid(rootComponent) ~= nil then
-						rootComponent:K2_AddWorldOffset(forwardVector, getParameter("pawnPositionSweepMovement"), reusable_hit_result, false)
-					end
-					--end)
-					--rootComponent:K2_SetWorldLocation(uevrUtils.vector(pawnPos.X+forwardVector.X,pawnPos.Y+forwardVector.Y,pawnPos.Z),pawnPositionSweepMovement,reusable_hit_result,false)
+					pawn:AddMovementInput(forwardVector, getParameter("pawnPositionAnimationScale"), false)
+					rootWriteCount = rootWriteCount + 1
 				end
-			end)
-			if not ok then
-				M.print("Error setting world offset: " .. err)
+			elseif pawnPositionMode == M.PawnPositionMode.FOLLOWS and uevrUtils.getValid(rootComponent) ~= nil and rootComponent.K2_AddWorldOffset ~= nil then
+				rootComponent:K2_AddWorldOffset(forwardVector, getParameter("pawnPositionSweepMovement"), reusable_hit_result, false)
+				rootWriteCount = rootWriteCount + 1
+				--rootComponent:K2_SetWorldLocation(uevrUtils.vector(pawnPos.X+forwardVector.X,pawnPos.Y+forwardVector.Y,pawnPos.Z),pawnPositionSweepMovement,reusable_hit_result,false)
 			end
 
 			--temp_vec3f has the get_pose location
@@ -1893,16 +1872,16 @@ function M.getHeadOffset()
 	return uevrUtils.vector(getParameter("headOffset"))
 end
 
--- Named protected-call target avoids a per-tick capturing closure.
+-- The caller has checked that rootComponent is still valid.
 local function applyMeshRelativePosition(meshList, settings)
+	local pawn = uevrUtils.getValid(status.pawn)
 	local pawnYaw = 0
-	if status.pawn ~= nil and (settings.adjustForAnimation == true or settings.adjustForEyeOffset == true) then
-		-- The root rotation can fail across level changes, so keep this inside pcall.
+	if pawn ~= nil and (settings.adjustForAnimation == true or settings.adjustForEyeOffset == true) then
 	---@diagnostic disable-next-line: need-check-nil, undefined-field
 	pawnYaw = rootComponent:K2_GetComponentRotation().Yaw
 	end
-	local animationDelta = getAnimationHeadDelta(status.pawn, pawnYaw, settings, meshList)
-	local eyeOffsetDelta = getEyeOffsetDelta(status.pawn, pawnYaw, settings)
+	local animationDelta = getAnimationHeadDelta(pawn, pawnYaw, settings, meshList)
+	local eyeOffsetDelta = getEyeOffsetDelta(pawn, pawnYaw, settings)
 	local headOffset = M.getHeadOffset()
 	local x = -(headOffset and headOffset.X or 0)
 	local y = -(headOffset and headOffset.Y or 0)
@@ -1916,9 +1895,11 @@ local function applyMeshRelativePosition(meshList, settings)
 	for _, mesh in ipairs(meshList) do
 		-- Fetch the reflected FVector once, but keep writing each tick: the game
 		-- may have moved the mesh even when our requested XY is unchanged.
-		local relativeLocation = mesh.RelativeLocation
-		relativeLocation.X = x
-		relativeLocation.Y = y
+		if uevrUtils.getValid(mesh) ~= nil then
+			local relativeLocation = mesh.RelativeLocation
+			relativeLocation.X = x
+			relativeLocation.Y = y
+		end
 	end
 	uevrUtils.executeUEVRCallbacks("on_input_mesh_relative_position_change", x, y)
 end
@@ -1941,13 +1922,11 @@ local function updateMeshRelativePosition(setDisabled)
 
 	if status.meshRelativePositionDisabled == true then return end
 
-	if rootComponent ~= nil and decoupledYaw ~= nil then
+	-- The root can be destroyed across level changes after this tick's getRootComponent
+	if uevrUtils.getValid(rootComponent) ~= nil and decoupledYaw ~= nil then
 		local meshList = getBodyMesh()
 		if meshList ~= nil then
-			local ok, err = pcall(applyMeshRelativePosition, meshList, paramManager:getAllActiveProfileParams())
-			if not ok then
-				M.print("Error setting mesh relative position: " .. err)
-			end
+			applyMeshRelativePosition(meshList, paramManager:getAllActiveProfileParams())
 		end
 	end
 end
@@ -2032,6 +2011,7 @@ local function applyPlayerControllerRotationOverrides()
 end
 
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
+	stereoTick = stereoTick + 1
 	updateEyeIndexDetection()
 	--set the global rootComponent variable on the earliest tick callback so it will be valid everywhere
 
@@ -2094,7 +2074,7 @@ end
 
 -- One provider, replaced on registration; nil unregisters it. Called once per
 -- enabled game tick in CUSTOM mode. Return height ABOVE ROOT CENTER in Unreal
--- world units (normally cm), before HMD/head offsets. Nil/error/nonfinite falls
+-- world units (normally cm), before HMD/head offsets. Nil/nonfinite falls
 -- back to the original root height. No persistence or game-object writes.
 function M.registerCustomHeightCallback(callback)
 	if callback == nil or type(callback) == "function" then
@@ -2150,7 +2130,7 @@ local function updateBoneHeight(state, height, delta, settings)
 end
 updateBoneHeight = uevrUtils.profiler:wrap("INPUT: updateBoneHeight", updateBoneHeight)
 
--- A named pcall target avoids allocating a capturing closure every tick.
+-- The caller has checked that currentPawn and root are valid.
 local function sampleHeightSource(state, currentPawn, root, source, delta, settings)
 	local rootHeight = root.CapsuleHalfHeight or 0
 	if source == M.HeightSource.CUSTOM then
@@ -2208,9 +2188,9 @@ local function updateHeightSource(delta)
 	end
 	state.height = nil -- failed/missing providers must never reuse a stale value
 	delta = isFiniteHeight(delta) and math.max(0, math.min(delta, 0.1)) or 0
-	local ok, height = pcall(sampleHeightSource, state, currentPawn, root, source, delta, settings)
+	local height = sampleHeightSource(state, currentPawn, root, source, delta, settings)
 	state = status.heightSourceState -- sampling may replace state on a mesh change
-	if ok and isFiniteHeight(height) then state.height = height end
+	if isFiniteHeight(height) then state.height = height end
 end
 updateHeightSource = uevrUtils.profiler:wrap("INPUT: updateHeightSource", updateHeightSource)
 
@@ -2239,7 +2219,8 @@ local function getVRCameraOffsets()
 	local rootOffset = getParameter("rootOffset")
 	local useRootOffsetLocalZ = getParameter("useRootOffsetLocalZ") or false
 	if rootOffset ~= nil then
-		if status.rootComponent ~= nil and uevrUtils.getValid(rootComponent) ~= nil and status.rootComponent.K2_GetComponentLocation ~= nil then
+		-- getRootComponent only keeps roots that have K2_GetComponentLocation and K2_GetComponentRotation
+		if status.rootComponent ~= nil and uevrUtils.getValid(rootComponent) ~= nil then
 			if not useRootOffsetLocalZ then
 				local pawnPos = uevrUtils.getComponentLocation(status.rootComponent)
 				local pawnRot = uevrUtils.getComponentRotation(status.rootComponent)
@@ -2279,6 +2260,8 @@ getVRCameraOffsets = uevrUtils.profiler:wrap("INPUT: getVRCameraOffsets", getVRC
 
 -- Native stereo may use views 0/1 or 1/2; firstStereoViewIndex selects the first.
 local prevRotation = {X=0, Y=0, Z=0}
+-- getVRCameraOffsets result for the current tick, reused by later views while the root is unchanged
+local vrCameraOffsetsCache = {}
 uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device, view_index, world_to_meters, position, rotation, is_double)
 	observeStereoViewIndex(view_index)
 	--Fix for UEVR using invalid rotations in Hogwarts
@@ -2307,7 +2290,19 @@ uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device,
 		end
 
 		--Change the UEVR camera position and rotation to align with the pawn
-		local x, y, z, pitch, yaw, roll = getVRCameraOffsets()
+		local x, y, z, pitch, yaw, roll
+		local cache = vrCameraOffsetsCache
+		-- Every view in a tick sees the same pawn unless this module moved or turned its root in between,
+		-- e.g. when the user's optimization settings are off and the second eye updates the body again
+		if cache.tick == stereoTick and cache.root == rootComponent and cache.rootWriteCount == rootWriteCount
+			and cache.bodyRotationOffset == bodyRotationOffset and cache.decoupledYaw == decoupledYaw and cache.meshZOffset == status.meshZOffset then
+			x, y, z, pitch, yaw, roll = cache.x, cache.y, cache.z, cache.pitch, cache.yaw, cache.roll
+		else
+			x, y, z, pitch, yaw, roll = getVRCameraOffsets()
+			cache.tick, cache.root, cache.rootWriteCount = stereoTick, rootComponent, rootWriteCount
+			cache.bodyRotationOffset, cache.decoupledYaw, cache.meshZOffset = bodyRotationOffset, decoupledYaw, status.meshZOffset
+			cache.x, cache.y, cache.z, cache.pitch, cache.yaw, cache.roll = x, y, z, pitch, yaw, roll
+		end
 		z = applyHeightSource(z)
 		if getRootOffsetEnabled() then
 			if x ~= nil then position.x = x end

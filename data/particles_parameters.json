@@ -1,9 +1,36 @@
 {
     "_profileLabels": {
+        "aa17f175-5f8a-4fd8-922e-b01a4dbda138": "New Profile",
         "default": "Wand Trail"
     },
     "_profileState": {
-        "currentEditingProfile": "default"
+        "currentEditingProfile": "aa17f175-5f8a-4fd8-922e-b01a4dbda138"
+    },
+    "aa17f175-5f8a-4fd8-922e-b01a4dbda138": {
+        "asset": "NiagaraSystem /Game/VFX/UI/Mission_EntryPoint_Beacon/VFX_NS_MissionEntryPoint_Location.VFX_NS_MissionEntryPoint_Location",
+        "emitters": {
+            "VFX_NE_Guide_Embers": true,
+            "VFX_NE_Guide_Projectile_3dWisp001": true,
+            "VFX_NE_Guide_Smoke": true
+        },
+        "location": [
+            0,
+            0,
+            0
+        ],
+        "loop": true,
+        "loopEnd": 3.0,
+        "loopStart": 1.0,
+        "rotation": [
+            0,
+            0,
+            0
+        ],
+        "scale": [
+            0.222,
+            0.194,
+            0.284
+        ]
     },
     "default": {
         "asset": "NiagaraSystem /Game/VFX/Niagara/MechanicsFX/BroomFlight/VFX_NS_BroomBoost_Gain.VFX_NS_BroomBoost_Gain",

@@ -1,3 +1,5 @@
+-- Per-frame callback profiling. It must be the first require; comment it out when not profiling.
+--require('helpers/frame_profiler')
 local uevrUtils = require('libs/uevr_utils')
 local controllers = require('libs/controllers')
 local configui = require("libs/configui")
@@ -29,11 +31,13 @@ local mounts = require('helpers/mounts')
 local interactions = require('helpers/interactions')
 local locomotion = require('helpers/locomotion')
 local boats = require('helpers/boats')
+local palette = require('helpers/palette')
 
---local dev = require('libs/uevr_dev')
---dev.init()
 
---uevrUtils.setLogLevel(LogLevel.Debug)
+-- local dev = require('libs/uevr_dev')
+-- dev.init()
+
+uevrUtils.setLogLevel(LogLevel.Debug)
 -- reticule.setLogLevel(LogLevel.Debug)
 -- input.setLogLevel(LogLevel.Debug)
 -- attachments.setLogLevel(LogLevel.Debug)
@@ -45,12 +49,12 @@ local boats = require('helpers/boats')
 -- ik.setLogLevel(LogLevel.Debug)
 --spells.setLogLevel(LogLevel.Debug)
 
---uevrUtils.setDeveloperMode(true)
---hands.enableConfigurationTool()
--- uevrUtils.profiler:toggle(true)
--- register_key_bind("F1", function()
---     uevrUtils.profiler:report("alpha")
--- end)
+uevrUtils.setDeveloperMode(true)
+-- hands.enableConfigurationTool()
+uevrUtils.profiler:toggle(true)
+register_key_bind("F1", function()
+    uevrUtils.profiler:report("alpha")
+end)
 
 gestureTrainer.init()
 ui.init()
@@ -74,6 +78,7 @@ particles.init()
 widgetcomponent.init()
 hands.setAutoCreateHands(false)
 ik.setAutoCreateArms(false)
+palette.init()
 
 uevrUtils.set_roomscale_active(true)
 attachments.setGunstockOffsetsEnabled(false)
@@ -109,6 +114,22 @@ local configDefinition = {
                     initialValue = 1,
 					width = 150
                 },
+				{
+					widgetType = "checkbox",
+					id = "use_volumetric_fog",
+					label = "Use Volumetric Fog",
+					initialValue = true
+				},
+				{
+					widgetType = "checkbox",
+					id = "use_controller_mouse",
+					label = "Controller Based Mouse Movement in Menus",
+					initialValue = true
+				},
+			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
+			{ widgetType = "new_line" },
+
+			{ widgetType = "indent", width = 20 }, { widgetType = "text", label = "Spells" }, { widgetType = "begin_rect", },
 				{
 					widgetType = "drag_float3",
 					id = "custom_glove_wand_position_right",
@@ -153,16 +174,25 @@ local configDefinition = {
 				},
 				{
 					widgetType = "checkbox",
-					id = "use_volumetric_fog",
-					label = "Use Volumetric Fog",
-					initialValue = true
+					id = "use_auto_aiming",
+					label = "Use Auto Aiming",
+					initialValue = false
 				},
 				{
 					widgetType = "checkbox",
-					id = "use_controller_mouse",
-					label = "Controller Based Mouse Movement in Menus",
+					id = "enable_flick_casting",
+					label = "Enable Flick Casting",
 					initialValue = true
 				},
+				{ widgetType = "begin_group", id = "flick_gesture_group", isHidden = true },
+					{ widgetType = "indent", width = 20 }, 
+					expandArray(gestures.getConfigurationWidgets, {
+						select = {
+							{ id = "uevr_gesture_config_flick_minThresholdAngleSpeed", label = "Flick Effort Required", range = {100, 1000} },
+						},
+					}),
+					{ widgetType = "unindent", width = 20 },
+				{ widgetType = "end_group" },
 				{
 					widgetType = "checkbox",
 					id = "respect_spell_cooldowns",
@@ -204,14 +234,31 @@ local configDefinition = {
 					label = "Left Arm Raise for Protego",
 					initialValue = true,
 				},
-				{ widgetType = "indent", width = 20 },
+				{ widgetType = "indent", width = 30 },
 					{
 						widgetType = "text",
 						id = "left_arm_block_info",
 						wrapped = true,
 						label = "Raise your left arm in front of your face with palm out for Protego",
 					},
+				{ widgetType = "unindent", width = 30 },
+				{
+					widgetType = "combo",
+					id = "widget_wheel_type",
+					label = "Potion Wheel",
+					selections = {"2D Native", "3D Left Trigger Activated"},
+					initialValue = 1
+				},
+				{ widgetType = "begin_group", id = "widget_wheel_3D_gesture_group", isHidden = true },
+				{ widgetType = "indent", width = 20 },
+				{
+					widgetType = "checkbox",
+					id = "widget_wheel_3D_gesture_based",
+					label = "Left Grip Creates Selected Gadget in Hand",
+					initialValue = false
+				},
 				{ widgetType = "unindent", width = 20 },
+				{ widgetType = "end_group" },
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
 
@@ -239,7 +286,7 @@ local configDefinition = {
 				{ widgetType = "begin_group", id = "use_mount_hand_controlled_movement_group" },{ widgetType = "indent", width = 20 },
 					{ widgetType = "text", wrapped = true, id = "mount_hand_controlled_movement_help", label = "Pitch your hands up and down to make the mount fly up and dive. Roll your hands left and right to make the mount turn left and right. " },
 				{ widgetType = "unindent", width = 20 },{ widgetType = "end_group", },
-				
+
 				{ widgetType = "tree_node", id = "mount_broom_tree", initialOpen = true, label = "Broom" },
 					{
 						widgetType = "checkbox",
@@ -486,8 +533,6 @@ gestureTrainer.registerGetMeshCallback(function()
 end)
 
 
--- register_key_bind("F1", function()
--- end)
 
 -- Hogwarts Legacy keeps live auto-exposure on its RenderSettingsSingleton
 local function getEV100()
@@ -595,11 +640,12 @@ local function onSpellRecognize(pawn, spellName, muteVoice)
 		status.handSpellIcon:setTexture(spellName .. ".png")
 	end
 
-	if spellNameRemap[spellName] ~= nil then
-		spellName = spellNameRemap[spellName]
-	else
-		spellName = "Spell_" .. spellName
-	end
+	spellName = spellNameRemap[spellName] or ("Spell_" .. spellName)
+	-- if spellNameRemap[spellName] ~= nil then
+	-- 	spellName = spellNameRemap[spellName]
+	-- else
+	-- 	spellName = "Spell_" .. spellName
+	-- end
 	spells.castSpell(pawn, spellName, muteVoice)
 
 end
@@ -664,7 +710,7 @@ end
 
 gestures.registerFlickCallback(function(strength, hand)
 	-- the camera snap on cutscene exit reads as a flick
-	if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 1.0 then return end
+	--if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 1.0 then return end
 	--debounce so the spell goes to the intended wand location instead of where the wand is when the gesture is released
 	delay(200, function()
 		spells.castCurrentFlickSpell(pawn)
@@ -672,7 +718,7 @@ gestures.registerFlickCallback(function(strength, hand)
 end, uevrUtils.getHandedness() == Handed.Right, uevrUtils.getHandedness() == Handed.Left) -- rightHand, leftHand
 
 gestures.registerFlickUpCallback(function(strength, hand)
-	if uevrUtils.isInCutscene() then return end
+	--if uevrUtils.isInCutscene() then return end
 	spells.cancelContinuousActiveSpells(pawn)
 end, uevrUtils.getHandedness() == Handed.Right, uevrUtils.getHandedness() == Handed.Left)
 
@@ -716,7 +762,7 @@ local function getWeaponMesh()
 		return nil
 	end
 	wand:ActivateFx()
-	if wand.SK_Wand ~= nil and wand.SK_Wand.bHiddenInGame then wand:ShowWand(pawn) end
+	if not uevrUtils.isInCutscene() and wand.SK_Wand ~= nil and wand.SK_Wand.bHiddenInGame then wand:ShowWand(pawn) end
 	return wand.Mesh
 end
 
@@ -804,14 +850,44 @@ local defaultAttachOptions = {
 	useCurrentAttachedSocketName = false,
 	--allowMobiltyChange = true,
 }
+local paletteAttachOptions = {
+	detachFromOriginOnGrip = false,
+	detachFromParentOnRelease = true,
+	maintainWorldPositionOnDetachFromParent = true,
+	reattachToOriginOnRelease = false,
+	allowChildVisibilityHandling = false,
+	allowChildHiddenInGameHandling = false,
+	allowRenderInMainPassHandling = false,
+	useCurrentAttachedSocketName = false,
+}
+-- Attach a new palette copy without refreshing the wand and other hand.
+do
+	local resolveTarget = uevrUtils.profiler:wrap("Palette: resolve left hand", function()
+		local _, leftHandComponent = getHandComponents()
+		return getWandAttachTarget(leftHandComponent, "SKT_LeftHand", Handed.Left)
+	end)
+	local attachToMesh = uevrUtils.profiler:wrap("Palette: attach to left mesh", attachments.attachToMesh)
+	local attachToController = uevrUtils.profiler:wrap("Palette: attach to left controller", attachments.attachToRawController)
+	palette.setAttachMeshFunction(function(mesh)
+		local target, socket = resolveTarget()
+		if target == nil then return attachToController(mesh, Handed.Left, paletteAttachOptions) end
+		return attachToMesh(mesh, target, socket, Handed.Left, paletteAttachOptions)
+	end)
+end
+
 attachments.registerOnGripUpdateCallback(function()
-	local can = spells.getCreatureFeedCan()
+	local paletteMesh = palette.getActiveMesh()
+	local can = paletteMesh or spells.getCreatureFeedCan()
 	--print("can", can, can and can:get_full_name())
 
     local weaponMesh = getWeaponMesh()
 	local rightHandComponent, leftHandComponent = getHandComponents()
 	--print("grip anim", attachments.getCurrentGripAnimation(Handed.Right), "ik copy", uevrUtils.executeUEVRCallbacksWithPriorityBooleanResult("is_hands_animating_from_mesh", Handed.Right))
     if configui.getValue("left_handed_mode") then
+        if paletteMesh ~= nil then
+            local leftTarget, leftSocket = getWandAttachTarget(leftHandComponent, "SKT_LeftHand", Handed.Left)
+            return nil, nil, nil, paletteMesh, leftTarget, leftSocket, defaultAttachOptions, paletteAttachOptions
+        end
 		local leftTarget, leftSocket = getWandAttachTarget(leftHandComponent, nil, Handed.Left)
         return nil,nil,nil,leftTarget and weaponMesh, leftTarget, leftSocket  --, controllers.getController(Handed.Left)
     else
@@ -820,7 +896,7 @@ attachments.registerOnGripUpdateCallback(function()
 		rightTarget, weaponAttachSocket = getWandAttachTarget(rightHandComponent, weaponAttachSocket, Handed.Right)
         local leftTarget, leftHandAttachSocket = getWandAttachTarget(leftHandComponent, "SKT_LeftHand", Handed.Left)
 		--print(rightHandComponent, weaponMesh, weaponAttachSocket)
-        return rightTarget and weaponMesh, rightTarget, weaponAttachSocket, leftTarget and can, leftTarget, leftHandAttachSocket, defaultAttachOptions --, controllers.getController(Handed.Right)
+        return rightTarget and weaponMesh, rightTarget, weaponAttachSocket, (paletteMesh or (leftTarget and can)), leftTarget, leftHandAttachSocket, defaultAttachOptions, paletteMesh and paletteAttachOptions or nil --, controllers.getController(Handed.Right)
     end
 
 end)
@@ -1135,20 +1211,35 @@ local function hookLevelFunctions()
 		end
 	, true)
 
-	-- Toad statue fast travel turns the pawn to face out of the destination statue and steps it forward; input.lua would override that yaw
-	hook_function("BlueprintGeneratedClass /Game/RiggedObjects/Characters/Creatures/Toads/GiantPurpleToad/BP_FastTravel_Statue_TOad.BP_FastTravel_Statue_Toad_C", "InteractionInitiated", false, nil,
-		function(fn, obj, locals, result)
+	-- Toad statue fast travel turns the pawn to face out of the destination statue and steps it forward; input.lua would override that yaw.
+	-- Hook the player's always-loaded fast travel ability rather than the statue blueprint: the statue class only loads near a statue (often after
+	-- this runs), a failed full-name lookup for it scans every object (~0.3s), and installing the hook from inside another hook callback froze the game.
+	-- The ability starts in the same frame as the statue's InteractionInitiated and ends ~2s after the teleport, once the pawn has stepped out.
+	local assetRegistryHelper = uevrUtils.find_first_of("Class /Script/AssetRegistry.AssetRegistryHelpers", true)
+	local abilityData = uevrUtils.getAssetDataFromPath("AblAbilityBlueprintGeneratedClass /Game/Pawn/Student/Abilities/FastTravel/ABL_FastTravel_Statue.ABL_FastTravel_Statue_C")
+	local abilityAsset = abilityData ~= nil and assetRegistryHelper ~= nil and assetRegistryHelper:IsAssetLoaded(abilityData) and assetRegistryHelper:GetAsset(abilityData) or nil
+	-- GetAsset returns a plain UObject; find_function and get_class_default_object need the UClass view
+	local abilityClass = abilityAsset ~= nil and abilityAsset.as_class ~= nil and abilityAsset:as_class() or nil
+	local abilityStartFn = abilityClass ~= nil and abilityClass:find_function("OnAbilityStart") or nil
+	if abilityStartFn ~= nil and abilityClass ~= nil then
+		-- Active abilities are the class default objects
+		local abilityAddress = abilityClass:get_class_default_object():get_address()
+		local function waitForFastTravelEnd(polls)
+			local component = uevrUtils.getValid(pawn, {"AblAbilityComponent"})
+			for _, channel in ipairs(component and plugin.getProperty(component, "AblUberAbility.SortedAbilityChannels") or {}) do
+				local instance = channel.ActiveAbilityInstance
+				if instance ~= nil and instance.m_Ability ~= nil and instance.m_Ability:get_address() == abilityAddress then
+					if polls < 120 then delay(250, function() waitForFastTravelEnd(polls + 1) end) return end
+					break
+				end
+			end
+			uevrUtils.setIsInCutsceneOverride(uevrUtils.getValid(pawn) ~= nil and pawn.InCinematic or nil)
+		end
+		abilityStartFn:hook_ptr(nil, function(fn, obj, locals, result)
 			uevrUtils.setIsInCutsceneOverride(true)
-		end
-	, true)
-
-	hook_function("BlueprintGeneratedClass /Game/RiggedObjects/Characters/Creatures/Toads/GiantPurpleToad/BP_FastTravel_Statue_TOad.BP_FastTravel_Statue_Toad_C", "EndTeleport", false, nil,
-		function(fn, obj, locals, result)
-			delay(1000, function()
-				uevrUtils.setIsInCutsceneOverride(uevrUtils.getValid(pawn) ~= nil and pawn.InCinematic or nil)
-			end)
-		end
-	, true)
+			delay(250, function() waitForFastTravelEnd(0) end)
+		end)
+	end
 
 	hook_function("WidgetBlueprintGeneratedClass /Game/UI/Actor/UI_BP_Astronomy_minigame.UI_BP_Astronomy_minigame_C", "ConstellationImageLoaded", true, nil,
 	function(fn, obj, locals, result)
@@ -1172,6 +1263,11 @@ local function hookLevelFunctions()
 
 end
 
+-- The ToolWheel tutorial expects the stock gadget wheel, so the palette yields while it is up.
+local function updatePaletteEnabled()
+	palette.setEnabled(tonumber(configui.getValue("widget_wheel_type")) == 2 and not status.toolWheelTutorial)
+end
+
 local function cleanup()
 	if status.transformationTargetInitialized then
 		local controller = uevrUtils.getValid(uevr.api:get_player_controller(0))
@@ -1180,6 +1276,7 @@ local function cleanup()
 		end
 	end
     status = {}
+	updatePaletteEnabled()
 	uevrUtils.setIsInCutsceneOverride(nil)
 end
 
@@ -1187,7 +1284,7 @@ on_level_change = function(level, levelName)
 	--print("on_level_change ", level, levelName)
     cleanup()
     regenerateHands(configui.getValue("hands_type") or 1)
-	hookLevelFunctions()
+	delay(2000, hookLevelFunctions)
 	spells.activateAutoTargetSense(configui.getValue("use_auto_targeting"))
 	-- setInputBodyYawMode() 
 	fixFlicker()
@@ -1207,14 +1304,33 @@ end)
 
 ui.registerWidgetChangeCallback("UI_BP_Tutorial_NonModal_C", function(active, widget)
 	print("UI_BP_Tutorial_NonModal_C: ", active, widget and widget.TutorialName:to_string())
-	ui.setCustomState("handsEnabled", (active and widget.TutorialName:to_string() == "Stupefy") or nil, 1)
+	status.toolWheelTutorial = active and widget.TutorialName:to_string() == "ToolWheel"
+	updatePaletteEnabled()
+	--The combat trials leaves the tutorial nonmodal widget up for a long time after battle begins so we have to make an exception here for combat mode
+	ui.setCustomState("handsEnabled", (active and (status.toolWheelTutorial or widget.TutorialName:to_string() == "Stupefy" or (pawn and pawn.bInCombatMode))) or nil, 1)
+	ui.setCustomState("viewLocked", (active and not (pawn and pawn.bInCombatMode)) or (not active and nil), 1)
+
 	--input.setRotationModeRotationDisabled(active)
 	--input.setBodyYawWritesSuppressed(active)
 	--mounts.hideViewableMesh(pawn, not active)
 end)
 
+ui.onUpdate("handsEnabled", function(value)
+	
+end)
+
 configui.onUpdate("hands_type", function(value)
     regenerateHands(value)
+end)
+
+configui.onCreateOrUpdate("widget_wheel_type", function(value)
+	local use3D = tonumber(value) == 2
+	palette.setEnabled(use3D and not status.toolWheelTutorial)
+	configui.setHidden("widget_wheel_3D_gesture_group", not use3D)
+end)
+
+configui.onCreateOrUpdate("widget_wheel_3D_gesture_based", function(value)
+	palette.setGestureBased(value)
 end)
 
 local function updateWandAttachmentTransform(pos, rot)
@@ -1247,6 +1363,17 @@ end)
 
 configui.onUpdate("respect_spell_cooldowns", function(value)
 	spells.setRespectCooldowns(value)
+end)
+
+configui.onCreateOrUpdate("enable_flick_casting", function(value)
+	configui.setHidden("flick_gesture_group", not value)
+	local enabled = value == true
+	local rightHand = enabled and uevrUtils.getHandedness() == Handed.Right
+	local leftHand = enabled and uevrUtils.getHandedness() == Handed.Left
+	gestures.autoDetectGesture(gestures.Gesture.FLICK, rightHand, Handed.Right)
+	gestures.autoDetectGesture(gestures.Gesture.FLICK, leftHand, Handed.Left)
+	gestures.autoDetectGesture(gestures.Gesture.FLICK_UP, rightHand, Handed.Right)
+	gestures.autoDetectGesture(gestures.Gesture.FLICK_UP, leftHand, Handed.Left)
 end)
 
 
@@ -1325,6 +1452,10 @@ configui.onCreateOrUpdate("use_auto_targeting", function(value)
 	spells.activateAutoTargetSense(value)
 end)
 
+configui.onCreateOrUpdate("use_auto_aiming", function(value)
+	spells.setAutoAiming(value)
+end)
+
 configui.onCreateOrUpdate("use_controller_mouse", function(value)
 	mouse.setOverrideEnable(value)
 end)
@@ -1365,19 +1496,18 @@ spells.setRespectCooldowns(configui.getValue("respect_spell_cooldowns"))
 -- 1) Skip orbit sync while FullBody ability is *_Move_Start (brief Start window).
 -- 2) Zero TurnAssist rotation speeds on ABL_Strafe* CDOs so Loop/Stop don't keep fighting orbit sync.
 local function updateOrbitCamera(currentPawn, yawDelta, immediate)
-	local abl = uevrUtils.getValid(currentPawn, {"AblAbilityComponent"})
-	if abl ~= nil and abl.GetActiveAbility_New ~= nil then
-		local ability = abl:GetActiveAbility_New(uevrUtils.fname_from_string(""))
-		if ability ~= nil then
-			local name = ability:get_full_name()
-			if name ~= nil and string.find(name, "Move_Start", 1, true) ~= nil then
-				return
-			end
-		end
+	local name = locomotion.getActiveAbilityName()
+	if name ~= nil and string.find(name, "Move_Start", 1, true) ~= nil then
+		return
 	end
 
     local cameraStackActor = uevrUtils.getValid(currentPawn, {"Controller", "PlayerCameraManager", "ViewTarget", "Target"})
-    if cameraStackActor ~= nil and cameraStackActor.GetArmRotation ~= nil and cameraStackActor.ForceSetArmRotation ~= nil then
+    if cameraStackActor ~= nil and status.orbitCameraActor ~= cameraStackActor then
+        status.orbitCameraActor = cameraStackActor
+        -- Each member check is a native reflection lookup; the view target's class is fixed, so check once per view target.
+        status.orbitCameraHasArm = cameraStackActor.GetArmRotation ~= nil and cameraStackActor.ForceSetArmRotation ~= nil
+    end
+    if cameraStackActor ~= nil and status.orbitCameraHasArm then
         local armRotation = cameraStackActor:GetArmRotation()
         if armRotation ~= nil then
             armRotation.Pitch = 0.0
@@ -1388,13 +1518,18 @@ local function updateOrbitCamera(currentPawn, yawDelta, immediate)
     end
 end
 
+updateOrbitCamera = uevrUtils.profiler:wrap("Main: orbit camera", updateOrbitCamera)
+
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
    	local pawn = uevrUtils.getValid(pawn)
-	if pawn ~= nil and pawn.MyPlayer ~= nil then return end --if riding the cart don't update the camera
+	if mounts.isRidingCart() then return end --if riding the cart don't update the camera
     if pawn ~= nil then
 		-- Custom cutscene detection logic specific to Hogwarts Legacy
-		local biped = pawn.InCinematic ~= nil and pawn or (pawn.MountComponent and pawn.MountComponent.RiderCharacter)
-		local inCinematic = biped and biped.InCinematic
+		local inCinematic = pawn.InCinematic
+		if inCinematic == nil then
+			local rider = pawn.MountComponent and pawn.MountComponent.RiderCharacter
+			inCinematic = rider and rider.InCinematic
+		end
 		inCinematic = inCinematic or nil -- use nil instead of false
 		if inCinematic ~= status.isInCinematic then
 			status.isInCinematic = inCinematic
@@ -1411,31 +1546,131 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
     end
 end)
 
-local function checkDisillusioned()
-	local p = uevrUtils.getValid(pawn)
-	local osi = p and p.GetObjectStateInfo and p:GetObjectStateInfo()
-	if osi == nil then return end
-	local isDisillusioned = osi:IsDisillusioned()
-	if status.isDisillusioned ~= isDisillusioned then
-		status.isDisillusioned = isDisillusioned
-		status.waitDisillusionHands = true
+---------------- Handler for arms mesh visibility during Disillusionment and Invisibility Potion --------------------
+local function getHandsMeshes()
+	local meshes = {}
+	local handsType = configui.getValue("hands_type")
+	if handsType == HandsType.IKArms then
+		local index = 1
+		local mesh = ik.exists() and ik.getCurrentMesh(index) or nil
+		while mesh ~= nil do
+			meshes[#meshes + 1] = mesh
+			index = index + 1
+			mesh = ik.getCurrentMesh(index)
+		end
+	elseif handsType == HandsType.Forearms then
+		for _, hand in ipairs({Handed.Left, Handed.Right}) do
+			for _, mesh in ipairs(hands.getHandComponentsForHand(hand)) do
+				meshes[#meshes + 1] = mesh
+			end
+		end
 	end
-	if not status.waitDisillusionHands then return end
-	if status.skinFxClass == nil then
-		status.skinFxClass = uevrUtils.find_required_object("Class /Script/SkinFX.SkinFXComponent")
-		status.disillusionFxClass = uevrUtils.find_required_object("BlueprintGeneratedClass /Game/VFX/SkinFX/BP_SkinFX_Disillusionment.BP_SkinFX_Disillusionment_C")
+	return meshes
+end
+
+-- Pairs each hands mesh with the pawn mesh it was built from.
+-- The IK descriptors also cover every mesh getCustomHandComponent() can return (which has side effects).
+local function getHandsMaterialSources()
+	local handsSources = {}
+	local meshes = getHandsMeshes()
+	if #meshes == 0 then return handsSources end
+	local sources = {}
+	for _, template in ipairs(getCustomIKComponent() or {}) do
+		local source = uevrUtils.getValid(uevrUtils.getObjectFromDescriptor(template.descriptor, false))
+		if source ~= nil and source.SkeletalMesh ~= nil then
+			sources[source.SkeletalMesh:get_address()] = source
+		end
 	end
-	---@diagnostic disable-next-line: need-check-nil
-	local skinFx = p:GetComponentByClass(status.skinFxClass)
-	if (skinFx ~= nil and skinFx:SkinFXIsRunning(status.disillusionFxClass)) == isDisillusioned then
-		status.waitDisillusionHands = nil
-		regenerateHands(configui.getValue("hands_type") or 1)
+	for _, mesh in ipairs(meshes) do
+		local source = uevrUtils.getValid(mesh) ~= nil and mesh.SkeletalMesh ~= nil and sources[mesh.SkeletalMesh:get_address()]
+		if source then
+			handsSources[#handsSources + 1] = {mesh = mesh, source = source}
+		end
+	end
+	return handsSources
+end
+
+-- Copy the current materials (e.g. a SkinFX effect) from the pawn meshes the hands were built from
+local function setHandsMaterials(handsSources)
+	for _, hand in ipairs(handsSources or getHandsMaterialSources()) do
+		uevrUtils.copyMaterials(hand.source, hand.mesh)
+	end
+end
+setHandsMaterials = uevrUtils.profiler:wrap("Hands: sync materials", setHandsMaterials)
+
+-- SkinFX effects (disillusionment, invisibility potion) swap the pawn materials when they start and again
+-- only after their fade-out ends. If the swap hasn't happened at the state change, watch one source
+-- material and copy everything once it changes.
+local function startHandsMaterialsSync()
+	status.handsMaterialsWatch = nil
+	local handsSources = getHandsMaterialSources()
+	local hand = handsSources[1]
+	if hand == nil then return end
+	local material = hand.source:GetMaterial(0)
+	local current = hand.mesh:GetMaterial(0)
+	local address = material and material:get_address()
+	if address ~= (current and current:get_address()) then
+		setHandsMaterials(handsSources)
+	else
+		status.handsMaterialsWatch = {source = hand.source, material = address}
 	end
 end
 
+local function checkHandsMaterialsWatch()
+	local watch = status.handsMaterialsWatch
+	local source = uevrUtils.getValid(watch.source)
+	if source == nil then
+		-- Rebuilt hands copy the current materials when they are created
+		status.handsMaterialsWatch = nil
+		return
+	end
+	local material = source:GetMaterial(0)
+	if (material and material:get_address()) ~= watch.material then
+		status.handsMaterialsWatch = nil
+		setHandsMaterials()
+	end
+end
+checkHandsMaterialsWatch = uevrUtils.profiler:wrap("Hands: watch materials", checkHandsMaterialsWatch)
+
+-- The first state seen needs no sync because newly created hands copy the current materials
+local function checkDisillusioned()
+	local p = uevrUtils.getValid(pawn)
+	status.osi = uevrUtils.getValid(status.osi) or (p and p.GetObjectStateInfo and p:GetObjectStateInfo())
+	if status.osi == nil then return end
+	local isDisillusioned = status.osi:IsDisillusioned()
+	if status.isDisillusioned ~= isDisillusioned then
+		local wasKnown = status.isDisillusioned ~= nil
+		status.isDisillusioned = isDisillusioned
+		if wasKnown then startHandsMaterialsSync() end
+	end
+end
+checkDisillusioned = uevrUtils.profiler:wrap("Hands: check disillusioned", checkDisillusioned)
+
+local function checkInvisibility()
+	local p = uevrUtils.getValid(pawn)
+	if p == nil then return end
+	local isInvisible = p.bIsInvisible == true
+	if status.isInvisible ~= isInvisible then
+		local wasKnown = status.isInvisible ~= nil
+		status.isInvisible = isInvisible
+		if wasKnown then startHandsMaterialsSync() end
+	end
+end
+checkInvisibility = uevrUtils.profiler:wrap("Hands: check invisibility", checkInvisibility)
+
+local isInvincible = false
 uevrUtils.registerPostEngineTickCallback(function(engine, deltaTime)
-	checkDisillusioned()
+	--checkDisillusioned()
+	checkInvisibility()
+	if status.handsMaterialsWatch ~= nil then checkHandsMaterialsWatch() end
+
+	if isInvincible then
+		pawn:RestoreHealth() --invincibility
+	end
 end)
+setInterval(500, checkDisillusioned)
+------------------------- End of arms visibility Handler --------------------
+
 
 uevr.params.sdk.callbacks.on_script_reset(function()
 	cleanup()
@@ -1443,4 +1678,31 @@ end)
 
 register_key_bind("F3", boats.placeOrSpawnBoat)
 
+register_key_bind("F2", function()
+	isInvincible = not isInvincible
+end)
 
+-- Testing: set every palette gadget's count to TEST_GADGET_COUNT (adds or removes stock).
+local TEST_GADGET_COUNT = 10
+local testGadgets = {"Edurus", "Maxima", "AMFillPotion", "AutoDamagePotion", "InvisibilityPotion",
+	"Mandrake_Byproduct", "ChompingCabbage_Byproduct", "VenomousTentacula_Byproduct"}
+register_key_bind("F4", function()
+	local inventory = uevrUtils.getValid(uevrUtils.find_default_instance("Class /Script/Phoenix.InventoryManagerInterface"))
+	local p = uevrUtils.getValid(pawn)
+	if inventory == nil or p == nil then return end
+	local character = p:GetCharacterID()
+	local holder, none = uevrUtils.fname_from_string("ActorBackpack"), uevrUtils.fname_from_string("None")
+	for _, id in ipairs(testGadgets) do
+		local item = uevrUtils.fname_from_string(id)
+		local count = inventory:GetCount(character, item, 0, 0, holder, none)
+		if type(count) == "number" and count ~= TEST_GADGET_COUNT then
+			-- Reason 4 = INVENTORY_CHANGE_REASON_CONSOLE_DEBUG; suppress the HUD popup.
+			inventory:AdjustCount(character, item, TEST_GADGET_COUNT - count, 4, holder, none, true, false, none, false, false, false)
+		end
+	end
+	print("Gadget counts set to " .. TEST_GADGET_COUNT)
+end)
+
+register_key_bind("F5", function()
+	print("get_aim_pose:", uevr.params.vr.get_aim_pose)		
+end)

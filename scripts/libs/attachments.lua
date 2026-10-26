@@ -2829,7 +2829,7 @@ local function runGripUpdate()
 		else
 			failedAttachments[rightName] = 0
 		end
-	elseif rightAttachment ~= nil and failedAttachments[rightAttachment:get_full_name()] == true then
+	elseif rightAttachment ~= nil and uevrUtils.getValid(rightAttachment) ~= nil and failedAttachments[rightAttachment:get_full_name()] == true then
 		print("########### Permanent Fail")
 	end
 

@@ -453,7 +453,7 @@ local function updateMaterial()
 	if uevrUtils.getValid(currentComponent) ~= nil then
 		setCurrentComponentScale(1.0)
 		local leftConnected = controllers.attachComponentToController(Handed.Left, currentComponent, nil, nil, nil, true)
-		local material = uevrUtils.find_instance_of("Class /Script/Engine.Material", materialNames[currentMaterialSelectionIndex])
+		local material = uevrUtils.getSafeInstanceOf("Class /Script/Engine.Material", materialNames[currentMaterialSelectionIndex])
 		if uevrUtils.getValid(material) ~= nil then
 ---@diagnostic disable-next-line: need-check-nil
 			currentComponent:SetMaterial(0, material)
@@ -472,7 +472,7 @@ local function updateWidget()
 	if widgetNames ~= nil and currentWidgetSelectionIndex <= #widgetNames and currentWidgetSelectionIndex > 0 then
 		local className = "Class /Script/UMG.Widget"
 		if configui.getValue("uevr_dev_widget_user_only") == true then className = "Class /Script/UMG.UserWidget" end
-		local widget = uevrUtils.find_instance_of(className, widgetNames[currentWidgetSelectionIndex])
+		local widget = uevrUtils.getSafeInstanceOf(className, widgetNames[currentWidgetSelectionIndex])
 		if widget == nil then
 			configui.hideWidget("uevr_dev_widget_error" ,false)
 		else
@@ -496,8 +496,7 @@ local function updateReticule()
 	end
 
 	if reticuleNames ~= nil and currentReticuleSelectionIndex <= #reticuleNames and currentReticuleSelectionIndex > 0 then
-		--local widget = uevrUtils.getLoadedAsset(reticuleNames[currentReticuleSelectionIndex])	
-		local widget = uevrUtils.find_instance_of("Class /Script/UMG.Widget", reticuleNames[currentReticuleSelectionIndex])
+		local widget = uevrUtils.getSafeInstanceOf("Class /Script/UMG.Widget", reticuleNames[currentReticuleSelectionIndex])
 		if widget == nil then
 			configui.hideWidget("uevr_dev_reticule_error" ,false)
 		else
@@ -653,7 +652,7 @@ end
 
 function M.useCurrentReticule()
 	if #reticuleNames > 0 and currentReticuleSelectionIndex > 0 and currentReticuleSelectionIndex <= #reticuleNames then
-		local widget = uevrUtils.find_instance_of("Class /Script/UMG.Widget", reticuleNames[currentReticuleSelectionIndex])
+		local widget = uevrUtils.getSafeInstanceOf("Class /Script/UMG.Widget", reticuleNames[currentReticuleSelectionIndex])
 		if uevrUtils.getValid(widget) ~= nil then
 ---@diagnostic disable-next-line: need-check-nil
 			local widgetClassName = widget:get_class():get_full_name()

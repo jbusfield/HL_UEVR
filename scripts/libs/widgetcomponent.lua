@@ -706,7 +706,7 @@ end
 function M.detachAll()
 	for _, inst in pairs(createdByKey) do
 		local c = uevrUtils.getValid(inst.component)
-		if c ~= nil then
+		if c ~= nil and c.DetachFromParent ~= nil then
 			c:DetachFromParent(true, false)
 			inst:setVisibility(false)
 		end

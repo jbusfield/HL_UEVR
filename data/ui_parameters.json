@@ -960,6 +960,9 @@
             "screen2DWhenActive": 1,
             "screen2DWhenActivePriority": "0"
         },
+        "WidgetBlueprintGeneratedClass /Game/UI/Menus/UI_BP_WandSelection.UI_BP_WandSelection_C": {
+            "label": "UI_BP_WandSelection_C"
+        },
         "WidgetBlueprintGeneratedClass /Game/UI/Nurturing/Brewing/UI_BP_BrewingMenu.UI_BP_BrewingMenu_C": {
             "alignment": [
                 0.0,
@@ -1113,10 +1116,14 @@
             "label": "UI_BP_HerbologyMenu_C",
             "lockedUIWhenActive": 2,
             "lockedUIWhenActivePriority": "0",
+            "motionSicknessCompensationWhenActive": 1,
+            "motionSicknessCompensationWhenActivePriority": "0",
             "pawnArmBonesWhenActive": 1,
             "pawnArmBonesWhenActivePriority": "0",
             "remapWhenActive": 3,
             "remapWhenActivePriority": "0",
+            "roomscaleWhenActive": 1,
+            "roomscaleWhenActivePriority": "0",
             "scale": [
                 1.0,
                 1.0
@@ -1260,7 +1267,39 @@
             "screen2DWhenActivePriority": "0"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/SpellUnlockMiniGame/UI_BP_SpellMiniGame.UI_BP_SpellMiniGame_C": {
-            "label": "UI_BP_SpellMiniGame_C"
+            "alignment": [
+                0.0,
+                0.0
+            ],
+            "autoAdjustUIWhenActive": 1,
+            "autoAdjustUIWhenActivePriority": "0",
+            "controllerMouseWhenActive": 1,
+            "controllerMouseWhenActivePriority": "0",
+            "decouplePitchWhenActive": 1,
+            "decouplePitchWhenActivePriority": "0",
+            "fadeCameraWhenActive": 1,
+            "fadeCameraWhenActivePriority": "0",
+            "handsWhenActive": 1,
+            "handsWhenActivePriority": "0",
+            "inputWhenActive": 1,
+            "inputWhenActivePriority": "0",
+            "label": "UI_BP_SpellMiniGame_C",
+            "lockedUIWhenActive": 2,
+            "lockedUIWhenActivePriority": "0",
+            "motionSicknessCompensationWhenActive": 1,
+            "motionSicknessCompensationWhenActivePriority": "0",
+            "pawnArmBonesWhenActive": 1,
+            "pawnArmBonesWhenActivePriority": "0",
+            "remapWhenActive": 1,
+            "remapWhenActivePriority": "0",
+            "roomscaleWhenActive": 1,
+            "roomscaleWhenActivePriority": "0",
+            "scale": [
+                1.0,
+                1.0
+            ],
+            "screen2DWhenActive": 1,
+            "screen2DWhenActivePriority": "0"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/Tutorial/UI_BP_Tutorial_Modal.UI_BP_Tutorial_Modal_C": {
             "alignment": [
@@ -1315,6 +1354,8 @@
             "label": "UI_BP_Tutorial_NonModal_C",
             "lockedUIWhenActive": 2,
             "lockedUIWhenActivePriority": "0",
+            "motionSicknessCompensationWhenActive": 1,
+            "motionSicknessCompensationWhenActivePriority": "0",
             "pawnArmBonesWhenActive": 1,
             "pawnArmBonesWhenActivePriority": "0",
             "remapWhenActive": 1,

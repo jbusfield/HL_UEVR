@@ -1,6 +1,7 @@
 local uevrUtils = require("libs/uevr_utils")
 local controllers = require("libs/controllers")
 local paramModule = require("libs/core/params")
+local plugin = require("libs/core/plugin")
 
 --[[
 Usage
@@ -443,7 +444,7 @@ local function resetRawFlickMotion(detector, requireRest)
 	detector.stroke = nil
 	detector.prevRawQuat, detector.prevRawPos, detector.rawWindow = nil, nil, nil
 	detector.awaitRest = requireRest == true
-	detector.restElapsed = 0
+	detector.pendingUp = nil
 	detector.restAnchor = nil
 	detector.debugHistory, detector.debugPrevTime = nil, nil
 end
@@ -1010,10 +1011,16 @@ end
 -- Raw wrist strokes: full quaternion rotation and tracking-space hand movement.
 -- Tracking Y is up. There is no headset, pawn, or world-component dependency.
 local RAW_FLICK_WINDOW = 0.05
-local RAW_FLICK_QUIET_SPEED = 100 -- deg/s, independent of the sensitivity setting
-local RAW_FLICK_REST_TIME = 0.08
+local RAW_FLICK_REARM_SPEED = 250 -- deg/s, independent of the sensitivity setting
 local RAW_FLICK_MAX_TIME = 0.4
 local RAW_FLICK_GAP = 0.04
+-- Up flicks are not time sensitive; they wait this long for a down flick that would
+-- show them to be the wind-up before it.
+local RAW_FLICK_UP_CONFIRM = 0.5
+-- A down stroke this much weaker than a pending up flick is that flick's recovery.
+local RAW_FLICK_RECOVERY_RATIO = 0.75
+-- Seconds between aim offset requests while the plugin cannot supply one.
+local RAW_FLICK_AIM_RETRY = 2.0
 
 local function rawRotationStep(previous, current)
 	-- current * inverse(previous), expressed in the fixed tracking frame.
@@ -1029,6 +1036,37 @@ local function rawRotationStep(previous, current)
 	local angle = math.deg(2 * math.atan(length, dw))
 	local scale = angle / length
 	return dx*scale, dy*scale, dz*scale, angle
+end
+
+local function getRawAimAxis(grip, offset)
+	-- The controller points along the aim pose's -Z; aim = grip * offset.
+	local x, y, z, w = grip.X, grip.Y, grip.Z, grip.W
+	local ox, oy, oz, ow = offset.X, offset.Y, offset.Z, offset.W
+	local ax = w*ox + x*ow + y*oz - z*oy
+	local ay = w*oy - x*oz + y*ow + z*ox
+	local az = w*oz + x*oy - y*ox + z*ow
+	local aw = w*ow - x*ox - y*oy - z*oz
+	return -2 * (ax*az + aw*ay), -2 * (ay*az - aw*ax), 2 * (ax*ax + ay*ay) - 1
+end
+
+local function removeRawRoll(kx, ky, kz, ax, ay, az)
+	-- Rotation about the pointing axis is a roll, not a flick.
+	local d = ax*kx + ay*ky + az*kz
+	ax, ay, az = ax - d*kx, ay - d*ky, az - d*kz
+	return ax, ay, az, math.sqrt(ax*ax + ay*ay + az*az)
+end
+
+local function rawSwingAngle(start, current, kx, ky, kz)
+	-- current * inverse(start) with its twist about the start pointing axis removed;
+	-- the remaining swing's scalar part is |(w, p)|.
+	local x, y, z, w = current.X, current.Y, current.Z, current.W
+	local px, py, pz, pw = start.X, start.Y, start.Z, start.W
+	local dx = -w*px + x*pw - y*pz + z*py
+	local dy = -w*py + x*pz + y*pw - z*px
+	local dz = -w*pz - x*py + y*px + z*pw
+	local dw = w*pw + x*px + y*py + z*pz
+	local p = dx*kx + dy*ky + dz*kz
+	return math.deg(2 * math.acos(math.min(1, math.sqrt(dw*dw + p*p))))
 end
 
 local function rawImpulseWindow(self, frame)
@@ -1074,6 +1112,14 @@ local function reportRawFlick(self, stroke, speed, minSpeed, windowTime, alignme
 	}, hand)
 end
 
+local function confirmRawFlickUp(self, hand)
+	local pending = self.pendingUp
+	self.pendingUp, self.stroke, self.awaitRest = nil, nil, true
+	self.cooldown = self.cooldownTime
+	reportRawFlick(self, pending.stroke, pending.stroke.peakSpeed, pending.minSpeed, pending.windowTime, pending.alignment, hand)
+	return false, true, pending.strength
+end
+
 local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 	if type(deltaTime) ~= "number" or not (deltaTime > 0 and deltaTime <= 0.1) then
 		resetRawFlickMotion(self, true)
@@ -1099,6 +1145,11 @@ local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 		resetRawFlickMotion(self, true)
 		return false, false, 0
 	end
+	local offset = self.aimOffset
+	if offset then
+		local kx, ky, kz = getRawAimAxis(current, offset)
+		ax, ay, az, angle = removeRawRoll(kx, ky, kz, ax, ay, az)
+	end
 	if self.rawMin ~= self.minThresholdAngleSpeed or self.rawUpMin ~= self.upMinThresholdAngleSpeed
 		or self.rawAngle ~= self.minAngleDelta or self.rawUpDot ~= self.upDotThreshold then
 		self.stroke, self.rawWindow = nil, nil
@@ -1122,17 +1173,21 @@ local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 	else
 		self.debugHistory, self.debugPrevTime = nil, nil
 	end
-	-- Suppress the whole recovery after recognition. Sensitivity must not define rest.
-	if angle / deltaTime < RAW_FLICK_QUIET_SPEED then
-		self.restElapsed = (self.restElapsed or 0) + deltaTime
-	else
-		self.restElapsed = 0
-	end
+	-- Suppress the whole recovery after recognition. Sensitivity must not define rearming.
+	-- Rapid flicks rarely come to a full rest, so rearm once the hand slows or rises;
+	-- a rising wind-up can only start a pending up flick, which a down flick overrides.
 	if self.awaitRest then
-		if self.restElapsed >= RAW_FLICK_REST_TIME and self.cooldown <= 0 then
+		if self.cooldown <= 0 and (speed < RAW_FLICK_REARM_SPEED or verticalSpeed > 0) then
 			self.awaitRest, self.stroke, self.rawWindow = false, nil, nil
 		end
 		return false, false, 0
+	end
+	local pending = self.pendingUp
+	if pending then
+		pending.age = pending.age + deltaTime
+		if pending.age > RAW_FLICK_UP_CONFIRM then
+			return confirmRawFlickUp(self, hand)
+		end
 	end
 	local direction = verticalSpeed > 0 and 1 or -1
 	local minSpeed = direction > 0 and self.upMinThresholdAngleSpeed or self.minThresholdAngleSpeed
@@ -1147,6 +1202,9 @@ local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 	if stroke == nil or stroke.direction ~= direction then
 		stroke = {direction = direction, elapsed = 0, gap = 0, frames = 0, startQuat = previous,
 			ax = 0, ay = 0, az = 0, dx = 0, dy = 0, dz = 0, pathAngle = 0, peakSpeed = 0}
+		if offset then
+			stroke.rollX, stroke.rollY, stroke.rollZ = getRawAimAxis(previous, offset)
+		end
 		self.stroke = stroke
 	end
 	stroke.gap, stroke.elapsed = 0, stroke.elapsed + deltaTime
@@ -1158,8 +1216,12 @@ local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 	stroke.dx, stroke.dy, stroke.dz = stroke.dx+dx, stroke.dy+dy, stroke.dz+dz
 	stroke.pathAngle = stroke.pathAngle + angle
 	if angle > 0.25 then stroke.frames = stroke.frames + 1 end
-	local _, _, _, netAngle = rawRotationStep(stroke.startQuat, current)
-	stroke.netAngle = netAngle
+	if stroke.rollX then
+		stroke.netAngle = rawSwingAngle(stroke.startQuat, current, stroke.rollX, stroke.rollY, stroke.rollZ)
+	else
+		local _, _, _, netAngle = rawRotationStep(stroke.startQuat, current)
+		stroke.netAngle = netAngle
+	end
 	local directedAngle = math.sqrt(stroke.ax*stroke.ax + stroke.ay*stroke.ay + stroke.az*stroke.az)
 	local alignment = stroke.pathAngle > 0 and directedAngle / stroke.pathAngle or 0
 	local distance = math.sqrt(stroke.dx*stroke.dx + stroke.dy*stroke.dy + stroke.dz*stroke.dz)
@@ -1178,10 +1240,23 @@ local function updateRawFlickDetector(self, position, quat, deltaTime, hand)
 		and motionAllowed and upAllowed and self.cooldown <= 0 then
 		local maxSpeed = direction > 0 and self.upMaxThresholdAngleSpeed or self.maxThresholdAngleSpeed
 		local strength = maxSpeed <= minSpeed and 1 or getSpeedPercent(stroke.peakSpeed, minSpeed, maxSpeed)
+		if direction > 0 then
+			if pending == nil or stroke.peakSpeed > pending.stroke.peakSpeed then
+				self.pendingUp = {stroke = stroke, strength = strength, minSpeed = minSpeed,
+					windowTime = windowTime, alignment = alignment, age = pending and pending.age or 0}
+			end
+			self.stroke = nil
+			return false, false, 0
+		end
+		if pending and stroke.peakSpeed < pending.stroke.peakSpeed * RAW_FLICK_RECOVERY_RATIO then
+			return confirmRawFlickUp(self, hand)
+		end
+		-- Down flicks are time sensitive and report immediately, discarding a pending wind-up.
+		self.pendingUp = nil
 		reportRawFlick(self, stroke, stroke.peakSpeed, minSpeed, windowTime, alignment, hand)
-		self.stroke, self.awaitRest, self.restElapsed = nil, true, 0
+		self.stroke, self.awaitRest = nil, true
 		self.cooldown = self.cooldownTime
-		return direction < 0, direction > 0, strength
+		return true, false, strength
 	end
 	return false, false, 0
 end
@@ -1866,12 +1941,34 @@ local function getWorldFlickGestures(deltaTime, hand)
 	return updateFlickDetector(detector, rotationToForwardVector(rot), deltaTime, hand, rawForward)
 end
 
+local function isValidAimOffset(offset)
+	if type(offset) ~= "table" then return false end
+	local x, y, z, w = offset.X, offset.Y, offset.Z, offset.W
+	if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" or type(w) ~= "number" then
+		return false
+	end
+	local norm = x*x + y*y + z*z + w*w
+	return norm > 0.98 and norm < 1.02
+end
+
 local function getRawFlickGestures(deltaTime, hand)
 	local detector = rawFlickDetectors[hand]
 	local identityPose, quat = isVrControllerIdentityPose(hand)
 	if identityPose or quat == nil then
 		resetRawFlickMotion(detector, true)
+		-- A controller can change while untracked; fetch its offset again once it returns.
+		detector.aimOffset, detector.aimRetry = nil, 0
 		return false, false, 0
+	end
+	if detector.aimOffset == nil and type(deltaTime) == "number" then
+		detector.aimRetry = (detector.aimRetry or 0) - deltaTime
+		if detector.aimRetry <= 0 then
+			detector.aimRetry = RAW_FLICK_AIM_RETRY
+			local offset = plugin.getControllerAimOffset(hand == Handed.Left and "left" or "right")
+			if isValidAimOffset(offset) then
+				detector.aimOffset = offset
+			end
+		end
 	end
 	return updateRawFlickDetector(detector, flickPosePos, quat, deltaTime, hand)
 end

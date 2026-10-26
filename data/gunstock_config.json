@@ -1,4 +1,16 @@
 {
+    "uevr_gunstock_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_use_default": true,
+    "uevr_gunstock_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_use_default_offhand_location_offset": true,
     "uevr_gunstock_BP_WandTool_C_Mesh_offhand_location_offset": [
         0.0,
         0.0,
@@ -11,6 +23,114 @@
     ],
     "uevr_gunstock_BP_WandTool_C_Mesh_use_default": true,
     "uevr_gunstock_BP_WandTool_C_Mesh_use_default_offhand_location_offset": true,
+    "uevr_gunstock_SkeletalMeshActor_SK_ChompingCabbage_LOD0_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_SkeletalMeshActor_SK_ChompingCabbage_LOD0_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_SkeletalMeshActor_SK_ChompingCabbage_LOD0_use_default": true,
+    "uevr_gunstock_SkeletalMeshActor_SK_ChompingCabbage_LOD0_use_default_offhand_location_offset": true,
+    "uevr_gunstock_SkeletalMeshActor_SK_MandrakePlant_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_SkeletalMeshActor_SK_MandrakePlant_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_SkeletalMeshActor_SK_MandrakePlant_use_default": true,
+    "uevr_gunstock_SkeletalMeshActor_SK_MandrakePlant_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Edurus_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Edurus_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Edurus_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Edurus_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Felix_Felicis_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Felix_Felicis_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Felix_Felicis_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Felix_Felicis_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Focus_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Focus_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Focus_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Focus_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Invisibility_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Invisibility_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Invisibility_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Invisibility_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Maxima_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Maxima_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Maxima_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Maxima_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_Thunderbrew_Bottle_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Thunderbrew_Bottle_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_Thunderbrew_Bottle_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_Thunderbrew_Bottle_use_default_offhand_location_offset": true,
+    "uevr_gunstock_StaticMeshActor_SM_VenomousTentacula_Stage4_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_VenomousTentacula_Stage4_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_StaticMeshActor_SM_VenomousTentacula_Stage4_use_default": true,
+    "uevr_gunstock_StaticMeshActor_SM_VenomousTentacula_Stage4_use_default_offhand_location_offset": true,
     "uevr_gunstock_default_offhand_location_offset": [
         0.0,
         0.0,

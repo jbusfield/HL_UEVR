@@ -23,14 +23,25 @@ function M.print(text, logLevel)
     end
 end
 
+function M.setAutoAiming(value)
+	status.autoAiming = value == true
+end
+
+-- Advanced by this module's pre-engine tick so getWand asks the pawn for its wand once per frame.
+local wandFrame = 0
 local function getWand(pawn)
-	if pawn ~= nil and UEVR_UObjectHook.exists(pawn) then
-		local success, wand = pcall(function()
-			return pawn:GetWand()
-		end)
-		return uevrUtils.getValid(wand)
+	if pawn == nil or not UEVR_UObjectHook.exists(pawn) then return nil end
+	if status.wandPawn == pawn and status.wandFrame == wandFrame then
+		return uevrUtils.getValid(status.wand)
 	end
-	return nil
+	if status.wandPawn ~= pawn then
+		status.wandPawn = pawn
+		-- Mount and cart pawns have no GetWand. The pawn's class is fixed, so check once instead of a protected call every time.
+		status.pawnHasGetWand = pawn.GetWand ~= nil
+	end
+	status.wandFrame = wandFrame
+	status.wand = status.pawnHasGetWand and uevrUtils.getValid(pawn:GetWand()) or nil
+	return status.wand
 end
 function M.getWand(pawn)
 	return getWand(pawn)
@@ -394,6 +405,7 @@ local wandTrailTriggerHeld = false
 -- 	end
 -- end
 -- CastSpellImmediate with wand aim + bTriggerCastAnim=false: fires without ABL_WandCast_* (FullBody stays idle).
+-- Pass the game's auto-target: puzzle switches (BP_MagicSwitch_C) ignore untargeted munitions.
 local pewPewCastWhileMoving = true
 function M.setPewPewCastWhileMoving(val)
 	pewPewCastWhileMoving = val
@@ -412,7 +424,9 @@ local function getWandTip()
 	return mesh and mesh:GetSocketLocation(uevrUtils.fname_from_string("MuzzleSocket"))
 end
 
-
+-- I think if we want the auto-targeting flag to work properly
+-- we just need to add the taget actor to castSpellImmediate
+-- and it will target the highlighted characters
 local function castPewPew(pawn, noAnim)
 	local wand = getWand(pawn)
 	if wand == nil then return end
@@ -421,8 +435,10 @@ local function castPewPew(pawn, noAnim)
 		local helper = getSpellHelper()
 		local aim = M.getWandAim(pawn)
 		local source = getWandTip()
-		if helper == nil or aim == nil or source == nil then return end
-		helper:CastSpellImmediate(nil, source, wand.SpellPewPew, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
+		if helper ~= nil then
+			local actor = (status.autoAiming or not pawn.bInCombatMode) and pawn:GetBestAutoTargetActor() or nil
+			helper:CastSpellImmediate(actor, source, wand.SpellPewPew, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
+		end
 	else
 		wand:CastPewPewSpell()
 	end
@@ -464,40 +480,48 @@ end
 
 local function castSpellNoAnim(pawn, spellTool)
 	if spellTool == nil or not UEVR_UObjectHook.exists(spellTool) then return false end
+
 	local record = spellTool.GetSpellToolRecord and spellTool:GetSpellToolRecord()
-	local lookup = record and record.LookupName and record.LookupName:to_string()
-
-	-- if lookup == "Spell_Transformation" then
-	-- 	M.activateAutoTargetSense(true)
-	-- end
-	-- CastSpellImmediate applies this via a SpellHelper-owned copy; the wand tool then cannot toggle it off.
-	if lookup == "Spell_Disillusionment" then
-		local osi = pawn ~= nil and pawn.GetObjectStateInfo and pawn:GetObjectStateInfo()
-		if osi ~= nil and osi.IsDisillusioned and osi:IsDisillusioned() then
-			if pawn.ForceEndDisillusionment ~= nil then
-				pawn:ForceEndDisillusionment()
+	if record ~= nil then
+		local lookup = record.LookupName and record.LookupName:to_string()
+		if lookup ~= nil then
+			-- CastSpellImmediate applies this via a SpellHelper-owned copy; the wand tool then cannot toggle it off.
+			if lookup == "Spell_Disillusionment" then
+				local osi = pawn ~= nil and pawn.GetObjectStateInfo and pawn:GetObjectStateInfo()
+				if osi ~= nil and osi.IsDisillusioned and osi:IsDisillusioned() then
+					if pawn.ForceEndDisillusionment ~= nil then
+						pawn:ForceEndDisillusionment()
+					end
+					return true
+				end
 			end
-			return true
+
+			if lookup == "Spell_Accio" then
+				local page = findNearbyAccioPage(pawn)
+				if page ~= nil then
+					pullAccioPage(pawn, page)
+					return false
+				end
+			end
+
+			if isChannelingSpellName(pawn,lookup) then return false end
+
+			local helper = getSpellHelper()
+			if helper ~= nil then
+				local aim = M.getWandAim(pawn)
+				if aim ~= nil then
+					local source = getWandTip()
+					if source ~= nil then
+						local actor = status.autoAiming and pawn:GetBestAutoTargetActor() or nil
+						helper:CastSpellImmediate(actor, source, record, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
+						startCooldown(pawn, record)
+						return true
+					end
+				end
+			end
 		end
 	end
-
-	if lookup == "Spell_Accio" then
-		local page = findNearbyAccioPage(pawn)
-		if page ~= nil then
-			pullAccioPage(pawn, page)
-			return false
-		end
-	end
-
-	if lookup ~= nil and isChannelingSpellName(pawn,lookup) then return false end
-	local helper = getSpellHelper()
-	local aim = M.getWandAim(pawn)
-	if helper == nil or record == nil or aim == nil then return false end
-	local source = getWandTip()
-	if source == nil then return false end
-	helper:CastSpellImmediate(nil, source, record, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
-	startCooldown(pawn, record)
-	return true
+	return false
 end
 
 local function castCurrentFlickSpell(pawn)
@@ -563,11 +587,26 @@ local function castOppugno(pawn)
 	status.isOppugnoCasting = true
 end
 
+-- The stock gadget wheel's CanMountCreature, called on its class default object, is false while
+-- no mount can be summoned (e.g. swimming) and true on solid ground. The wheel greys out all
+-- three mounts together on it. Without the class, leave the decision to the summon itself.
+local function canMountNow()
+	if status.gadgetWheelWidget == nil then
+		status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
+	end
+	if status.gadgetWheelWidget == nil then return true end
+	-- Native scalar out parameters write to the supplied table's result field.
+	local result = {}
+	status.gadgetWheelWidget:CanMountCreature(result)
+	return result.result == true
+end
+M.canMountNow = canMountNow
+
 local function castUpBroom(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseBroom(true) then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseBroom(true) and canMountNow() then
 		if status.gadgetWheelWidget == nil then
 			status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
 		end
@@ -588,7 +627,7 @@ local function castUpGraphorn(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseGraphorn() then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseGraphorn() and canMountNow() then
 		local graphorn = uevrUtils.fname_from_string("GraphornMount")
 		local holder = uevrUtils.fname_from_string("ActorBackpack")
 		pawn:LoadInventoryItemByName(graphorn, holder)
@@ -600,7 +639,7 @@ local function castUpHippogriff(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseHippogriff() then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseHippogriff() and canMountNow() then
 		if status.gadgetWheelWidget == nil then
 			status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
 		end
@@ -616,6 +655,9 @@ local function castUpHippogriff(pawn)
 		end
 	end
 end
+
+-- The 3D palette's diamond summons mounts through the same paths as the spell gestures.
+M.castUpBroom, M.castUpGraphorn, M.castUpHippogriff = castUpBroom, castUpGraphorn, castUpHippogriff
 
 --tool records that report IsLoaded() == false until their tool class is loaded
 local creatureToolClasses = {
@@ -997,13 +1039,34 @@ local function updateWingardiumWandHoldFullControl()
 	prim:SetPhysicsLinearVelocity(uevrUtils.vector(0, 0, 0), false, noneBone)
 end
 
--- While Wingardium is holding, pin XY to the wand; leave Z to native stick height.
-local function updateWingardiumWandHold()
-	status.isWingardiumHolding = false
+-- Wingardium pinning only runs on the tick while the spell is channeling. A 200ms interval watches for the
+-- start of a hold and registers the tick callback; the interval removes it again once the hold ends.
+local wingardiumTickRegistered = false
+local wingardiumTickActive = false
+
+-- Returns the wand and its active spell tool when that tool is a channeling Wingardium, otherwise nil.
+local function getChannelingWingardiumTool()
 	local wand = getWand(pawn)
 	local tool = wand and wand:GetActiveSpellTool()
-	if tool == nil or tool.AdjustWingardiumHeight == nil or not tool:IsChanneling() then
+	if tool ~= nil and status.wingardiumCheckedTool ~= tool then
+		status.wingardiumCheckedTool = tool
+		-- The tool's class is fixed, so look up its Wingardium member once instead of every check.
+		status.isWingardiumTool = tool.AdjustWingardiumHeight ~= nil
+	end
+	if tool == nil or not status.isWingardiumTool or not tool:IsChanneling() then
+		return nil
+	end
+	return wand, tool
+end
+
+-- While Wingardium is holding, pin XY to the wand; leave Z to native stick height.
+local function updateWingardiumWandHold()
+	if not wingardiumTickActive then return end
+	status.isWingardiumHolding = false
+	local wand, tool = getChannelingWingardiumTool()
+	if tool == nil then
 		status.wingardiumHoldDist = nil
+		wingardiumTickActive = false -- the interval unregisters this callback
 		return
 	end
 	local target = tool:GetActiveTarget()
@@ -1034,7 +1097,27 @@ function M.isWingardiumHolding()
 	return status.isWingardiumHolding == true
 end
 
-uevrUtils.registerPostEngineTickCallback(updateWingardiumWandHold)
+-- Wrapped before registering because the callback list keeps this function value.
+updateWingardiumWandHold = uevrUtils.profiler:wrap("Spells: wingardium wand hold", updateWingardiumWandHold)
+
+-- Timers run from the pre-engine tick, so adding or removing the post-engine-tick callback here is safe.
+local function checkWingardiumHold()
+	if wingardiumTickRegistered then
+		if not wingardiumTickActive then
+			uevrUtils.unregisterUEVRCallback("postEngineTick", updateWingardiumWandHold)
+			wingardiumTickRegistered = false
+			status.isWingardiumHolding = false
+		end
+		return
+	end
+	if getChannelingWingardiumTool() ~= nil then
+		wingardiumTickActive = true
+		wingardiumTickRegistered = true
+		uevrUtils.registerPostEngineTickCallback(updateWingardiumWandHold)
+	end
+end
+checkWingardiumHold = uevrUtils.profiler:wrap("Spells: wingardium idle check", checkWingardiumHold)
+uevrUtils.setInterval(200, checkWingardiumHold)
 
 ------------------- Room of Requirement spell slotting -------------------
 -- Room of Requirement only highlights/targets for Conjuration/Transformation/Vanishment when it is on the active spell page.
@@ -1292,6 +1375,7 @@ end)
 
 
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
+	wandFrame = wandFrame + 1
 	updatePelletFlight(deltaTime)
 	syncEssentialHoverFromSelection()
 end)
@@ -1307,5 +1391,11 @@ uevrUtils.registerLevelChangeCallback(function(level, levelName)
 	status.isDeathlyHallows = levelName ~= nil and string.find(levelName, "DeathlyHallows", 1, true) ~= nil
 	hookLevelFunctions()
 end, 1)
+
+-- Nested timings are inclusive. Toggle and report with uevrUtils.profiler.
+getWand = uevrUtils.profiler:wrap("Spells: get wand", getWand)
+updatePelletFlight = uevrUtils.profiler:wrap("Spells: pellet flight", updatePelletFlight)
+syncEssentialHoverFromSelection = uevrUtils.profiler:wrap("Spells: sync essential hover", syncEssentialHoverFromSelection)
+M.setTargetingCameraRotation = uevrUtils.profiler:wrap("Spells: targeting camera rotation", M.setTargetingCameraRotation)
 
 return M

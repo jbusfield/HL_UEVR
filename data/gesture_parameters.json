@@ -39,15 +39,15 @@
                 "triggerDistance": 25.0
             },
             "mouth": {
-                "forwardDotMaxThreshold": 0.65,
-                "forwardDotMinThreshold": 0.35,
+                "forwardDotMaxThreshold": 0.8100000023841858,
+                "forwardDotMinThreshold": 0.3400000035762787,
                 "triggerDistance": 25.0
             },
             "triggerThreshold": 128
         },
         "flick": {
-            "maxThresholdAngleSpeed": 809.0,
-            "minThresholdAngleSpeed": 400.0,
+            "maxThresholdAngleSpeed": 1000.0,
+            "minThresholdAngleSpeed": 500.0,
             "minThresholdAngleSpeedDown": 518.0,
             "minThresholdAngleSpeedUp": 4.0,
             "upDotThreshold": 0.75,
@@ -60,7 +60,7 @@
             "cooldownTime": 0.8,
             "forwardDotThreshold": 0.75,
             "maxThresholdSpeed": 320,
-            "minThresholdSpeed": 180
+            "minThresholdSpeed": 100.0
         },
         "reload": {
             "triggerDistance": 20.0

@@ -51,6 +51,7 @@
         90.0,
         -12.753999710083008
     ],
+    "enable_flick_casting": true,
     "enable_stick_casting": false,
     "follow_broom_roll": false,
     "frame_compatibility": false,
@@ -59,24 +60,24 @@
     "graphorn_accessory_end_time": 0.0,
     "graphorn_accessory_existing_guid": 1,
     "graphorn_accessory_item_activation_distance": 50.0,
-    "graphorn_accessory_item_activation_hand": 15,
+    "graphorn_accessory_item_activation_hand": 14,
     "graphorn_accessory_item_attach_type": 1,
     "graphorn_accessory_item_grip_animation": 1,
     "graphorn_accessory_item_grip_priority": "1",
-    "graphorn_accessory_item_id": "2f423c56-0973-4ffc-9b14-43107952ad0d",
-    "graphorn_accessory_item_label": "RightGrip",
+    "graphorn_accessory_item_id": "250c733f-50d8-4447-a553-ce551b673693",
+    "graphorn_accessory_item_label": "LeftGrip",
     "graphorn_accessory_item_location": [
-        -7.099999904632568,
-        0.0,
+        9.399999618530273,
+        -0.10000000149011612,
         -1.7999999523162842
     ],
     "graphorn_accessory_item_rotation": [
         0.0,
-        -177.6999969482422,
-        0.0
+        -0.10000000149011612,
+        166.39999389648438
     ],
     "graphorn_accessory_item_socket_list": 122,
-    "graphorn_accessory_item_socket_name": "Rider_Hand_IK_target_right",
+    "graphorn_accessory_item_socket_name": "Rider_Hand_IK_target_left",
     "graphorn_accessory_item_test_left_hand": false,
     "graphorn_accessory_item_test_right_hand": false,
     "graphorn_accessory_marker_picker": 1,
@@ -129,6 +130,7 @@
     "min_confidence": 0.5,
     "mute_spell_voice": false,
     "respect_spell_cooldowns": false,
+    "uevr_gesture_config_flick_minThresholdAngleSpeed": 500.0,
     "uevr_input_config_fixStickDrift": false,
     "uevr_input_config_pawnRotationMode": 4,
     "uevr_input_config_smoothTurnSpeed": 60,
@@ -269,6 +271,7 @@
         0.04190000146627426
     ],
     "use_agc": false,
+    "use_auto_aiming": false,
     "use_auto_targeting": true,
     "use_controller_mouse": true,
     "use_gesture_detection": true,
@@ -278,7 +281,7 @@
     "use_mount_hand_controlled_movement": true,
     "use_voice_detection": true,
     "use_volumetric_fog": false,
-    "use_widget_hand_placement": false,
+    "use_widget_hand_placement": true,
     "voice_min_confidence": 0.4,
     "voice_test": "Wingardium",
     "wand_position": [
@@ -290,5 +293,7 @@
         165.8000030517578,
         -10.899999618530273,
         8.100000381469727
-    ]
+    ],
+    "widget_wheel_3D_gesture_based": true,
+    "widget_wheel_type": 2
 }

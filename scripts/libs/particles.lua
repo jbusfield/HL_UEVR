@@ -533,8 +533,8 @@ function ParticleSystem:create()
 			end
 			if self.autoActivate then
 				self.particleComponent.bIsActive = true
-				plugin.executeFunction(self.particleComponent, "Activate", true)
-				plugin.executeFunction(self.particleComponent, "ResetSystem")
+				self.particleComponent:Activate(true)
+				self.particleComponent:ResetSystem()
 			end
 		end
 	else
@@ -589,7 +589,7 @@ function ParticleSystem:spawnBuffer()
 		local pc = uevrUtils.getValid(inst.particleComponent)
 		for name, enabled in pairs(self.emitterOverrides) do
 			if pc ~= nil then
-				plugin.executeFunction(pc, "SetEmitterEnable", name, enabled == true)
+				pc:SetEmitterEnable(uevrUtils.fname_from_string(name), enabled == true)
 			end
 		end
 	end
@@ -709,9 +709,9 @@ function ParticleSystem:setEmitterEnabled(emitterName, enabled)
 					inst.emitterOverrides[emitterName] = enabled == true
 					local pc = uevrUtils.getValid(inst.particleComponent)
 					if pc ~= nil then
-						plugin.executeFunction(pc, "ReinitializeSystem")
+						pc:ReinitializeSystem()
 						pc.bIsActive = true
-						plugin.executeFunction(pc, "Activate", true)
+						pc:Activate(true)
 					end
 				end
 			end
@@ -727,12 +727,12 @@ function ParticleSystem:setEmitterEnabled(emitterName, enabled)
 	if self.isNiagara then
 		syncNiagaraEmitterEnables(self.resolvedAsset, names, self.emitterDefaults, self.emitterOverrides)
 		if pc ~= nil then
-			plugin.executeFunction(pc, "ReinitializeSystem")
+			pc:ReinitializeSystem()
 			pc.bIsActive = true
-			plugin.executeFunction(pc, "Activate", true)
+			pc:Activate(true)
 		end
 	elseif pc ~= nil then
-		plugin.executeFunction(pc, "SetEmitterEnable", emitterName, enabled == true)
+		pc:SetEmitterEnable(uevrUtils.fname_from_string(emitterName), enabled == true)
 	end
 end
 
@@ -762,7 +762,7 @@ function ParticleSystem:destroy()
 		if pc.SetAutoActivate ~= nil then pc:SetAutoActivate(false) end
 		if self.isNiagara then
 			pc.bIsActive = false
-			plugin.executeFunction(pc, "Deactivate")
+			pc:Deactivate()
 		elseif pc.Deactivate ~= nil then
 			pc:Deactivate()
 		end

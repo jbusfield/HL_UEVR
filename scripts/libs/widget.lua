@@ -13,11 +13,80 @@ Usage
 		the replaced content. The host's original widget tree is discarded and replaced with an empty CanvasPanel
 		before the image is added. The chosen class is cached and re-chosen after each level change.
 		To show it in world space use widgetComponent.createImageComponent (libs/widgetcomponent).
+		Images and text can also be added to an existing UserWidget whose root is a CanvasPanel.
+
+	Canvas layout
+		Image:addToWidget, Image:setLayout, Text:addToWidget and Text:setLayout share one opts table:
+			align     - one of widgetModule.Image.ALIGN (Text.ALIGN is the same table). Both anchors are set to that point.
+			alignment - slate alignment vector2D. Defaults to the align point, which pins that point of the widget to the anchor.
+			offset    - vector2D from the anchor. position is used when offset is omitted. Default (0, 0).
+			zOrder    - default 999.
+		A vector2D passed in place of opts (a value with an X field) is treated as position.
+		addToWidget with no opts uses position (50, 50).
+		setLayout and setPosition update a widget that addToWidget has already parented.
 
 	Available functions:
 
+    widgetModule.enableTextureCache - when true, Image:setTexture keeps imported textures by file name and reuses them.
+		Default false. An entry that is no longer a Texture2D is imported again. destroyAll clears the cache.
+
+    widgetModule.Image.ALIGN - anchor points as {x, y} from 0 to 1:
+		TOP_LEFT, TOP_CENTER, TOP_RIGHT, CENTER_LEFT, CENTER, CENTER_RIGHT,
+		BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT.
+		widgetModule.Text.ALIGN is the same table.
+
+    widgetModule.Image.new(maxDim) - creates an image. Call addToWidget to parent it.
+		maxDim is the longest side in slate units (default 128). Aspect ratio is preserved when a texture is set.
+		widgetModule.Image.new(imageName, maxDim) also loads that file immediately via setTexture.
+		Assign image.texture to an already loaded Texture2D before addToWidget to use it in place of a file import.
+        example:
+            local image = widgetModule.Image.new(300)
+            image:setTexture("Stupefy.png")
+            image:addToWidget(widget, {
+                align = widgetModule.Image.ALIGN.BOTTOM_RIGHT,
+                offset = uevrUtils.vector2D(-170, -100),
+            })
+
+    image:setTexture(imageName, (optional)path, (optional)hideIfMissing) - imports
+		"$data/" .. path .. imageName as a Texture2D and sizes the brush so its longest side is maxDim.
+		path defaults to "images/". hideIfMissing defaults to true: a failed import collapses an image that is
+		already on a widget and returns false. Returns true when the texture is applied.
+		Call it before or after addToWidget.
+
+    image:addToWidget(widget, (optional)opts) - parents a UImage on widget's CanvasPanel root.
+		Returns false when widget has no CanvasPanel root or the image could not be created. See Canvas layout.
+
+    image:setLayout(opts) - applies Canvas layout to an image addToWidget has parented, and sets the slot size to the brush.
+    image:setPosition(position2D) - setLayout with that position.
+    image:remove() - RemoveFromParent, then drops the image, slot and texture.
+
+    widgetModule.Text.new((optional)text) - creates a text block. Call addToWidget to parent it.
+		text defaults to "". setText, setColor, setFontSize and setFont store their values and apply them when the
+		TextBlock is created, so they can be called before addToWidget.
+        example:
+            local label = widgetModule.Text.new("12")
+            label:setColor("#F9C046FF")
+            label:setFontSize(20)
+            label:setFont("/Engine/EngineFonts/Roboto.Roboto", "Regular")
+            label:addToWidget(widget, { align = widgetModule.Text.ALIGN.CENTER })
+
+    text:setText(text) - sets the string. 
+    text:setColor(hex) - "#RRGGBB" or "#RRGGBBAA".
+    text:setFontSize(size) - slate font size.
+    text:setFont((optional)fontPath, (optional)typeface) - font asset path, and a typeface name such as
+		"Regular", "Bold", "Italic" or a game face such as "Body". A fontPath applies that font asset.
+		A typeface applies that face. Either argument can be left nil.
+    text:addToWidget(widget, (optional)opts) - parents a UTextBlock on widget's CanvasPanel root.
+		The slot is auto-sized to the text. Returns false when widget has no CanvasPanel root. See Canvas layout.
+    text:setLayout(opts) - applies Canvas layout to text addToWidget has parented. The slot stays auto-sized.
+    text:setPosition(position2D) - setLayout with that position.
+    text:remove() - RemoveFromParent, then drops the text block and slot.
+
     widgetModule.createHostWidget() - creates an empty host UserWidget whose root is a CanvasPanel.
 		Returns hostWidget or nil if no host widget class could be found or created.
+        example:
+            local host = widgetModule.createHostWidget()
+            image:addToWidget(host, { align = widgetModule.Image.ALIGN.CENTER })
 
     widgetModule.createImageWidget(imageSize) - creates a host UserWidget containing a single centered Image.
 		Returns hostWidget, image or nil if no host widget class could be found or created.
@@ -26,10 +95,51 @@ Usage
         example:
             local hostWidget, image = widgetModule.createImageWidget(40)
 
-    widgetModule.destroyAll() - destroys all created images and clears the cached host widget class.
-		Called automatically before level changes.
+    widgetModule.destroyAll() - destroys every Image and Text this module created, and clears the texture cache
+		and the cached host widget class. Called automatically before level changes and on script reset.
         example:
             widgetModule.destroyAll()
+
+    widgetModule.findWidget(widgetTree, widgetName) - first descendant of widgetTree.RootWidget whose short
+		name equals widgetName, or nil. widgetName may be a string or an FName. Replaces UWidgetTree::FindWidget.
+		Walks UPanelWidget children and UContentWidget content.
+        example:
+            local button = widgetModule.findWidget(widget.WidgetTree, "InvisibleButton")
+
+    widgetModule.getWidgetFromName(userWidget, widgetName) - the same search, starting at userWidget.WidgetTree.
+		Replaces UUserWidget::GetWidgetFromName.
+        example:
+            local logo = widgetModule.getWidgetFromName(menu, "LogoImage")
+
+    widgetModule.logWidgetDescendants(userWidget, (optional)logLevel) - logs each descendant as
+		"name [Type]", indented by depth. logLevel defaults to LogLevel.Info.
+        example:
+            widgetModule.logWidgetDescendants(menu)
+
+    widgetModule.getEditableFields(widget) - field descriptors for a widget editor. Each entry is
+		{ id, label, kind, get, set, options, min, max, step }. Actions use invoke in place of set.
+		kind is "readonly", "enum", "bool", "number", "color", "vector2", "asset" or "action".
+		Every widget includes name and type, plus visibility, enabled, render opacity, remove and layout
+		prepass when the widget exposes them. Image brush color, size and source are included when the
+		widget exposes brush functions.
+        example:
+            local fields = widgetModule.getEditableFields(logo)
+
+    widgetModule.dumpWidgetEditableFields(userWidget) - walks the widget tree, writes widget_parameters.json
+		and returns the same table: { root = shortName, tree = { name, type, fields, children } }.
+		Each field record stores label, kind, whether get/set/invoke exist, the current value, and enum options.
+		Returns nil when userWidget or its WidgetTree is invalid.
+        example:
+            widgetModule.dumpWidgetEditableFields(menu)
+
+    widgetModule.setLogLevel(val) - sets the logging level for widget messages
+        example:
+            widgetModule.setLogLevel(LogLevel.Debug)
+
+    widgetModule.print(text, (optional)logLevel) - prints a message at the given (or Debug) log level
+        example:
+            widgetModule.print("Host widget ready")
+
 
 ]]--
 
@@ -103,8 +213,7 @@ function Image:setTexture(imageName, path, hideIfMissing)
 		return false
 	end
 	local function importTexture()
-		local result = plugin.executeFunction(kismet_rendering_library, "ImportFileAsTexture2D",
-			uevrUtils.get_world(), "$data/" .. path .. imageName)
+		local result = plugin.executeFunction(kismet_rendering_library, "ImportFileAsTexture2D", uevrUtils.get_world(), "$data/" .. path .. imageName)
 		local texture = result and result.ReturnValue
 		if uevrUtils.getValid(texture) == nil then return nil end
 		if M.enableTextureCache then
@@ -112,6 +221,7 @@ function Image:setTexture(imageName, path, hideIfMissing)
 		end
 		return texture
 	end
+
 	local texture = nil
 	if M.enableTextureCache then
 		texture = Image.textureCache[imageName]
@@ -134,6 +244,7 @@ function Image:setTexture(imageName, path, hideIfMissing)
 			return hideMissing()
 		end
 	end
+
 	self.texture = texture
 	local w, h = texture:Blueprint_GetSizeX(), texture:Blueprint_GetSizeY()
 	if w > 0 and h > 0 then
@@ -152,6 +263,7 @@ function Image:setTexture(imageName, path, hideIfMissing)
 	end
 	return true
 end
+
 local function setSlotLayout(slot, opts)
 	opts = opts or {}
 
@@ -953,6 +1065,39 @@ function M.dumpWidgetEditableFields(userWidget)
     M.print("Dumped widget editable fields tree to " .. parametersFileName .. ".json", LogLevel.Info)
     return parameters
 end
+
+-- Nested timings are inclusive. Toggle and report with uevrUtils.profiler.
+setSlotLayout = uevrUtils.profiler:wrap("Widget: set slot layout", setSlotLayout)
+applyFont = uevrUtils.profiler:wrap("Widget: apply font", applyFont)
+getGenericUserWidgetClassName = uevrUtils.profiler:wrap("Widget: find host class", getGenericUserWidgetClassName)
+traverseWidgetDescendants = uevrUtils.profiler:wrap("Widget: traverse descendants", traverseWidgetDescendants)
+saveParameters = uevrUtils.profiler:wrap("Widget: save parameters", saveParameters)
+
+Image.new = uevrUtils.profiler:wrap("Widget: new image", Image.new)
+Image.destroyAll = uevrUtils.profiler:wrap("Widget: destroy images", Image.destroyAll)
+Image.setTexture = uevrUtils.profiler:wrap("Widget: set texture", Image.setTexture)
+Image.setLayout = uevrUtils.profiler:wrap("Widget: set image layout", Image.setLayout)
+Image.addToWidget = uevrUtils.profiler:wrap("Widget: add image", Image.addToWidget)
+Image.remove = uevrUtils.profiler:wrap("Widget: remove image", Image.remove)
+
+Text.new = uevrUtils.profiler:wrap("Widget: new text", Text.new)
+Text.destroyAll = uevrUtils.profiler:wrap("Widget: destroy texts", Text.destroyAll)
+Text.setText = uevrUtils.profiler:wrap("Widget: set text", Text.setText)
+Text.setColor = uevrUtils.profiler:wrap("Widget: set text color", Text.setColor)
+Text.setFontSize = uevrUtils.profiler:wrap("Widget: set font size", Text.setFontSize)
+Text.setFont = uevrUtils.profiler:wrap("Widget: set font", Text.setFont)
+Text.setLayout = uevrUtils.profiler:wrap("Widget: set text layout", Text.setLayout)
+Text.addToWidget = uevrUtils.profiler:wrap("Widget: add text", Text.addToWidget)
+Text.remove = uevrUtils.profiler:wrap("Widget: remove text", Text.remove)
+
+M.createHostWidget = uevrUtils.profiler:wrap("Widget: create host", M.createHostWidget)
+M.createImageWidget = uevrUtils.profiler:wrap("Widget: create image widget", M.createImageWidget)
+M.destroyAll = uevrUtils.profiler:wrap("Widget: destroy all", M.destroyAll)
+M.findWidget = uevrUtils.profiler:wrap("Widget: find widget", M.findWidget)
+M.getWidgetFromName = uevrUtils.profiler:wrap("Widget: get widget from name", M.getWidgetFromName)
+M.logWidgetDescendants = uevrUtils.profiler:wrap("Widget: log descendants", M.logWidgetDescendants)
+M.getEditableFields = uevrUtils.profiler:wrap("Widget: get editable fields", M.getEditableFields)
+M.dumpWidgetEditableFields = uevrUtils.profiler:wrap("Widget: dump editable fields", M.dumpWidgetEditableFields)
 
 return M
 
