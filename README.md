@@ -14,6 +14,16 @@ A mod for UEVR when playing Hogwarts Legacy
 - Boats can be ridden in and controlled
 
 ## Guide:
+### Settings
+Setting for the mod can be accessed by pressing L3+R3 (or INS on your keyboard) and selecting the Hogwarts Legacy Config tab in the lower left column of the UEVR screen
+<BR><BR>
+<img width="344" height="348" alt="HL_Config" src="https://github.com/user-attachments/assets/c63b6d80-2079-475e-9e89-d2ac89a4eaab" />
+
+### Gadget Wheel
+The Gadget Wheel is where your potions and mounts can be accessed. Open the wheel by holding out your left hand and tapping the left trigger. You will then see all of your potions and combat plants in a circle around your hand. Grab one of the items with your left hand. To use a potion, bring it to your mouth. To use an plant, toss your hand forward while releasing the grip. You can also just release a grabbed item and it wont be consumed but will become your active item. See the video below for a tutorial on how to use the Gadget Wheel. If you prefer the standard Gadget Wheel that the game provides, set "Potion Wheel" to "2D Native" in the Hogwarts Legacy Config settings.
+<BR><BR>
+[![Watch Video](https://img.youtube.com/vi/ZKa1V_I1c-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=ZKa1V_I1c-w)
+
 ### Spells
 Spells can optionally be cast by drawing glyphs or speaking the spell. Spells can be cast this way at any time (as long as you have already learned the spell) They do not need to be assigned to one of the 4 active spell slots
 #### Glyph Gesture Casting
@@ -57,6 +67,8 @@ Have you ever been down at the boathouse or the docks and said "Why can't I ride
 - Cast Protego - Block with your left hand (hold your left hand up in front of you with palm away from you). Hold longer for Stupefy
 - Heal - Left grip near mouth
 - Open Inventory - Left grip near your ear
+- Jump - Right Stick forward
+- Dodge - Right stick back + Left Stick direction
 
 ### HUD
 The HUD widgets can be placed on your hands instead of the HUD for better immersion in the game. In the game settings, check the box that says "Enable Hand Placement". The HUD items will then be attached to your hands at default locations. If you are happy with their placement then that's all you need to do. You can also adjust the placement of each item by opening the tree for that item. Select "UI" for "Attach To" if you want that widget on the HUD. Select "None" if you don't want to see the widget at all. Otherwise, you can select the hand that the widget will attach to and adjust its location, rotation and scale.
