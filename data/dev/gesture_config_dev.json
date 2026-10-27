@@ -19,7 +19,7 @@
     "uevr_gesture_face_ear_triggerDistance": 25.0,
     "uevr_gesture_face_eyes_forwardDotThreshold": 0.85,
     "uevr_gesture_face_eyes_test": false,
-    "uevr_gesture_face_eyes_triggerDistance": 15.0,
+    "uevr_gesture_face_eyes_triggerDistance": 22.0,
     "uevr_gesture_face_head_forwardDotMaxThreshold": 0.65,
     "uevr_gesture_face_head_forwardDotMinThreshold": 0.0,
     "uevr_gesture_face_head_test": false,

@@ -473,7 +473,7 @@ function M.new(options)
 			buffers = {},
 			running = false,
 			generation = 0,
-			dumpedParams = false,
+			dumpedParams = options.quiet == true,
 			emitterOverrides = options.emitterOverrides or {},
 			emitterNames = nil,
 			emitterDefaults = nil,
@@ -486,7 +486,11 @@ function M.new(options)
 			self.rootAnchor.RelativeRotation = uevrUtils.rotator(self.rotation)
 			self.rootAnchor.RelativeScale3D = uevrUtils.vector(self.scale)
 		end
-		return registerInstance(self)
+		registerInstance(self)
+		if options.autoActivate ~= false then
+			self:start()
+		end
+		return self
 	end
 
 	return registerInstance(createLeaf(options))
@@ -501,7 +505,7 @@ function ParticleSystem:create()
 		return nil
 	end
 
-	print("Creating particle system: ", self.particleSystemAsset)
+	--print("Creating particle system: ", self.particleSystemAsset)
 	local ps = resolveParticleAsset(self.particleSystemAsset)
 	if ps == nil then
 		M.print("Failed to resolve particle asset: " .. tostring(self.particleSystemAsset), LogLevel.Error)
@@ -625,7 +629,7 @@ function ParticleSystem:spawnBuffer()
 end
 
 function ParticleSystem:start()
-	if not self.looping then return end
+	if not self.looping or self.running then return end
 	self:stop()
 	if self.rootAnchor == nil then return end
 	self.running = true
@@ -651,7 +655,10 @@ function ParticleSystem:setLoopRange(loopStart, loopEnd)
 		return false
 	end
 	self.loopStart, self.loopEnd, self.period = loopStart, loopEnd, loopEnd - loopStart
-	if self.running then self:start() end
+	if self.running then
+		self:stop()
+		self:start()
+	end
 	return true
 end
 
@@ -677,6 +684,10 @@ function ParticleSystem:detach(maintainWorld)
 end
 
 function ParticleSystem:getParticleComponent()
+	if self.looping then
+		local newest = self.buffers[#self.buffers]
+		return newest ~= nil and newest.particleComponent or nil
+	end
 	return self.particleComponent
 end
 

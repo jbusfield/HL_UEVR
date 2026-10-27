@@ -3,6 +3,7 @@ local mathLib = require("libs/core/math_lib")
 local ui = require("libs/ui")
 local plugin = require("libs/core/plugin")
 local controllers = require("libs/controllers")
+local audio = require("helpers/audio")
 
 local M = {}
 
@@ -200,6 +201,8 @@ local HIPS_SOCKET = uevrUtils.fname_from_string("Hips")
 local SEAT_BACK_CM = 25
 local BOAT_SEAT_FADE_SECONDS = 0.3
 local STICK_DEADZONE = 4000
+-- After standing up, hold off walking until the left stick is released below this.
+local EXIT_STICK_RELEASE_Y = 5000
 local BOAT_MAX_SPEED = 400 -- cm/s at full throttle
 local BOAT_ACCEL = 110 -- cm/s^2 while holding forward/back
 local BOAT_COAST_DECEL = 55 -- cm/s^2 when stick released
@@ -208,6 +211,8 @@ local BOAT_YAW_RATE = 20 -- deg/s at full stick + speed
 local BOAT_YAW_ACCEL = 60 -- deg/s^2; ease the motor's turning effort in/out
 local BOAT_YAW_REF_SPEED = 350 -- cm/s for full turn authority
 local BOAT_YAW_MIN_SCALE = 0.12
+-- After standing up, keep the motor's coast and drag offset this long.
+local BOAT_EXIT_COAST_SECONDS = 3.0
 local NONE_BONE = uevrUtils.fname_from_string("None")
 -- Standalone apparition: no mount handler, rider animation, or auto-boarding.
 local BOAT_APPEAR_EFFECT = "NiagaraSystem /Game/VFX/Particles/Magic/Apparition/VFX_NS_Apparate_Universal_Master_Lg_In_V1.VFX_NS_Apparate_Universal_Master_Lg_In_V1"
@@ -228,11 +233,20 @@ local stickLX = 0
 local stickLY = 0
 local driveSpeed = 0
 local driveYaw = 0
+local coastBoat = nil
+local coastTime = 0
 local boatButtonWasPressed = false
 local boatButtonConsumed = false
+local holdStickAfterExit = false
 local boatSerialization = nil
 local boatAppearance = nil
 local boatPlacement = nil
+
+local function stopBoatCoast()
+	coastBoat = nil
+	driveSpeed = 0
+	driveYaw = 0
+end
 
 function M.isSeated()
 	return seated
@@ -591,8 +605,7 @@ local function clearBoatAppearance()
 end
 
 local function spawnBoatAppearanceEffect(boat, pos)
-	local asset = uevrUtils.getValid(uevrUtils.find_required_object(BOAT_APPEAR_EFFECT))
-	if asset == nil then asset = uevrUtils.getLoadedAsset(BOAT_APPEAR_EFFECT) end
+	local asset = uevrUtils.getSafeInstanceOf("Class /Script/Niagara.NiagaraSystem", BOAT_APPEAR_EFFECT)
 	local library = uevrUtils.find_default_instance("Class /Script/Niagara.NiagaraFunctionLibrary")
 	if asset == nil or library == nil or not uevrUtils.checkPluginExists() then return nil end
 	-- Use the native bridge; direct Niagara spawn calls through sol are unreliable.
@@ -648,6 +661,7 @@ local function beginBoatAppearance(boat, mesh, pos, floating)
 	local ok, effect = pcall(spawnBoatAppearanceEffect, boat, pos)
 	if ok then boatAppearance.effect = effect end
 	if not ok or effect == nil then print("Boat: apparition effect unavailable") end
+	audio.playSwirlSound(boat, uevrUtils.vector(pos.X, pos.Y, pos.Z + BOAT_APPEAR_EFFECT_HEIGHT))
 end
 
 local function tickBoatAppearance(delta)
@@ -688,6 +702,7 @@ local function tickBoatAppearance(delta)
 end
 
 local function placeBoatAt(p, pos, spawnYaw, boat, magical)
+	stopBoatCoast() -- placement resets the hull's motion
 	local x, y, z = pos.X, pos.Y, pos.Z
 
 	if boat == nil then
@@ -760,10 +775,7 @@ end
 local function applySitPose(p, anim)
 	anim = anim or getAnim(p)
 	if anim == nil then return false end
-	local pose = uevrUtils.getLoadedAsset(SIT_POSE)
-	if pose == nil then
-		pose = uevrUtils.find_required_object(SIT_POSE)
-	end
+	local pose = uevrUtils.getSafeInstanceOf("Class /Script/Engine.AnimSequence", SIT_POSE)
 	if pose == nil then
 		print("Boat seat: missing sit pose", SIT_POSE)
 		return false
@@ -823,7 +835,9 @@ end
 
 -- Apply motor effort before physics. Native contact, buoyancy, and currents
 -- resolve the resulting movement; never set the hull transform or velocity.
-local function driveBoat(mesh, delta)
+-- Effort (default 1) scales the applied force and torque.
+local function driveBoat(mesh, delta, effort)
+	effort = effort or 1
 	local throttle = stickAxis(stickLY)
 	local turn = stickAxis(stickLX)
 	if throttle == 0 and turn == 0 and driveSpeed == 0 and driveYaw == 0 then return end
@@ -836,7 +850,7 @@ local function driveBoat(mesh, delta)
 		if length > 0.001 then
 			-- Offset drag for the motor's commanded speed only. This preserves
 			-- acceleration/coasting without cancelling the river's contribution.
-			local accel = (driveSpeed - previousSpeed) / delta + mesh:GetLinearDamping() * driveSpeed
+			local accel = ((driveSpeed - previousSpeed) / delta + mesh:GetLinearDamping() * driveSpeed) * effort
 			mesh:AddForce(uevrUtils.vector(fwd.X / length * accel, fwd.Y / length * accel, 0), NONE_BONE, true)
 		end
 	end
@@ -851,7 +865,7 @@ local function driveBoat(mesh, delta)
 	local previousYaw = driveYaw
 	driveYaw = approach(driveYaw, targetYaw, BOAT_YAW_ACCEL * delta)
 	if driveYaw ~= 0 or previousYaw ~= 0 then
-		local accel = (driveYaw - previousYaw) / delta + mesh:GetAngularDamping() * driveYaw
+		local accel = ((driveYaw - previousYaw) / delta + mesh:GetAngularDamping() * driveYaw) * effort
 		mesh:AddTorqueInRadians(uevrUtils.vector(0, 0, math.rad(accel)), NONE_BONE, true)
 	end
 end
@@ -883,10 +897,15 @@ local function exitBoatSeat(p)
 	if mesh ~= nil then mesh:WakeRigidBody(NONE_BONE) end
 	seatBoat = nil
 	stickLX, stickLY = 0, 0
-	driveSpeed = 0
-	driveYaw = 0
+	-- Keep offsetting the hull's drag briefly so it coasts instead of stopping dead.
+	if mesh ~= nil and (driveSpeed ~= 0 or driveYaw ~= 0) then
+		coastBoat, coastTime = boat, 0
+	else
+		stopBoatCoast()
+	end
 	clearSitPose(p)
 	if p ~= nil then
+		holdStickAfterExit = true
 		if p.InCinematic ~= nil then
 			p.InCinematic = false
 		end
@@ -921,6 +940,9 @@ local function findNearestBoat(p)
 end
 
 local function sitInBoat(p, boat)
+	-- Resume the motor only when reboarding the boat that is still coasting.
+	if coastBoat ~= boat then stopBoatCoast() end
+	coastBoat = nil
 	seatBoat = boat
 	pawnCollisionWasEnabled = p.GetActorEnableCollision == nil or p:GetActorEnableCollision()
 	p:SetActorEnableCollision(false)
@@ -982,17 +1004,17 @@ function M.reset()
 		seatBoat = nil
 		seated = false
 		stickLX, stickLY = 0, 0
-		driveSpeed = 0
-		driveYaw = 0
 		clearSitPose(p)
 		if p ~= nil and p.InCinematic ~= nil then
 			p.InCinematic = false
 		end
 	end
+	stopBoatCoast()
 	-- Actor tags outlive this Lua state; recover the reference on the next F3/F4.
 	spawnedBoat = nil
 	boatButtonWasPressed = false
 	boatButtonConsumed = false
+	holdStickAfterExit = false
 end
 
 local function finitePoint(point)
@@ -1065,6 +1087,7 @@ driveBoat = uevrUtils.profiler:wrap("Boats: propulsion", driveBoat)
 syncPawnToBoat = uevrUtils.profiler:wrap("Boats: seat alignment", syncPawnToBoat)
 captureBoatState = uevrUtils.profiler:wrap("Boats: save capture", captureBoatState)
 restoreBoatState = uevrUtils.profiler:wrap("Boats: load restoration", restoreBoatState)
+placeBoatAt = uevrUtils.profiler:wrap("Boats: spawn and place", placeBoatAt)
 serialization.read = uevrUtils.profiler:wrap("Serialization: read", serialization.read)
 serialization.write = uevrUtils.profiler:wrap("Serialization: write", serialization.write)
 serialization.poll = uevrUtils.profiler:wrap("Serialization: load polling", serialization.poll)
@@ -1095,7 +1118,16 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 end, 30)
 
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
-	if not seated then return end
+	if not seated then
+		if not holdStickAfterExit then return end
+		if math.abs(state.Gamepad.sThumbLY) < EXIT_STICK_RELEASE_Y then
+			holdStickAfterExit = false
+		else
+			state.Gamepad.sThumbLX = 0
+			state.Gamepad.sThumbLY = 0
+		end
+		return
+	end
 	stickLX = state.Gamepad.sThumbLX
 	stickLY = state.Gamepad.sThumbLY
 	-- Tank steer on the boat; don't let game locomotion strafe/turn the pawn.
@@ -1126,9 +1158,25 @@ local function tickSeatedBoat(engine, delta)
 end
 tickSeatedBoat = uevrUtils.profiler:wrap("Boats: seated pre tick", tickSeatedBoat)
 
+local function tickCoastingBoat(delta)
+	if uevrUtils.isGamePaused() or uevrUtils.isInCutscene() then return end
+	local mesh = uevrUtils.getValid(coastBoat, {"Boat"})
+	coastTime = coastTime + tickDelta(delta)
+	if mesh == nil or coastTime >= BOAT_EXIT_COAST_SECONDS or (driveSpeed == 0 and driveYaw == 0) then
+		stopBoatCoast()
+		return
+	end
+	-- Fade the motor out so native damping takes over gradually, not in one step.
+	local t = coastTime / BOAT_EXIT_COAST_SECONDS
+	driveBoat(mesh, delta, 1 - t * t * (3 - 2 * t))
+end
+
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
-	if not seated then return end
-	tickSeatedBoat(engine, delta)
+	if seated then
+		tickSeatedBoat(engine, delta)
+	elseif coastBoat ~= nil then
+		tickCoastingBoat(delta)
+	end
 end)
 
 -- Follow the hull after physics has resolved propulsion, buoyancy, and contact.

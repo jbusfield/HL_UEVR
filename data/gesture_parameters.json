@@ -31,7 +31,7 @@
             },
             "eyes": {
                 "forwardDotThreshold": 0.85,
-                "triggerDistance": 15.0
+                "triggerDistance": 22.0
             },
             "head": {
                 "forwardDotMaxThreshold": 0.65,

@@ -33,9 +33,13 @@ local locomotion = require('helpers/locomotion')
 local boats = require('helpers/boats')
 local palette = require('helpers/palette')
 
+local tutorial = require('libs/tutorial')
+local t = tutorial.new()   -- defaults to data/tutorial/ and data/tutorial/buttons/
+t:forceInteractionAtStartup(true)
+t:showOnce()               -- or t:show()
 
--- local dev = require('libs/uevr_dev')
--- dev.init()
+local dev = require('libs/uevr_dev')
+dev.init()
 
 uevrUtils.setLogLevel(LogLevel.Debug)
 -- reticule.setLogLevel(LogLevel.Debug)
@@ -165,12 +169,6 @@ local configDefinition = {
 					range = {-180, 180},
 					initialValue = {0, 0, 0},
 					isHidden = not isDeveloperMode,
-				},
-				{
-					widgetType = "checkbox",
-					id = "use_auto_targeting",
-					label = "Use Auto Targeting",
-					initialValue = false
 				},
 				{
 					widgetType = "checkbox",
@@ -516,6 +514,12 @@ local configDefinition = {
 			{ widgetType = "new_line" },
 			{ widgetType = "tree_node", id = "advanced_tree", label = "Advanced" },
 				{ widgetType = "checkbox", id = "frame_compatibility", label = "Frame Compatibility", initialValue = false },
+				{
+					widgetType = "checkbox",
+					id = "use_auto_targeting",
+					label = "Use Auto Targeting (this should normally be checked)",
+					initialValue = true
+				},
 			{ widgetType = "tree_pop" },
 		}
 	}
@@ -1519,6 +1523,7 @@ local function updateOrbitCamera(currentPawn, yawDelta, immediate)
 end
 
 updateOrbitCamera = uevrUtils.profiler:wrap("Main: orbit camera", updateOrbitCamera)
+local WINGARDIUM_ORBIT_SYNC_INTERVAL = 0.1 -- seconds
 
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
    	local pawn = uevrUtils.getValid(pawn)
@@ -1537,8 +1542,13 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
 		end
 
 		--if not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness") then
-		if not status.isInAlohomora and (not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness")) then
+		-- ForceSetArmRotation costs ~0.8 ms per call while the Wingardium camera is active, so a hold syncs it on a slow timer.
+		-- It cannot stop entirely: the arm yaw sets the stick's movement direction.
+		status.orbitSyncElapsed = (status.orbitSyncElapsed or 0) + deltaTime
+		local orbitDue = not spells.isWingardiumHolding() or status.orbitSyncElapsed >= WINGARDIUM_ORBIT_SYNC_INTERVAL
+		if not status.isInAlohomora and orbitDue and (not inCinematic or configui.getValue("uevr_ui_reduceMotionSickness")) then
 			updateOrbitCamera(pawn)
+			status.orbitSyncElapsed = 0
 		end
 
 		--needs to be here maybe so its after orbit camera update?
@@ -1682,10 +1692,12 @@ register_key_bind("F2", function()
 	isInvincible = not isInvincible
 end)
 
--- Testing: set every palette gadget's count to TEST_GADGET_COUNT (adds or removes stock).
+-- Testing: set every palette gadget's count to TEST_GADGET_COUNT (adds or removes stock),
+-- or to its own count in testGadgetCounts.
 local TEST_GADGET_COUNT = 10
 local testGadgets = {"Edurus", "Maxima", "AMFillPotion", "AutoDamagePotion", "InvisibilityPotion",
-	"Mandrake_Byproduct", "ChompingCabbage_Byproduct", "VenomousTentacula_Byproduct"}
+	"Mandrake_Byproduct", "ChompingCabbage_Byproduct", "VenomousTentacula_Byproduct", "WoundCleaning"}
+local testGadgetCounts = {WoundCleaning = 20} -- Wiggenweld.
 register_key_bind("F4", function()
 	local inventory = uevrUtils.getValid(uevrUtils.find_default_instance("Class /Script/Phoenix.InventoryManagerInterface"))
 	local p = uevrUtils.getValid(pawn)
@@ -1694,13 +1706,14 @@ register_key_bind("F4", function()
 	local holder, none = uevrUtils.fname_from_string("ActorBackpack"), uevrUtils.fname_from_string("None")
 	for _, id in ipairs(testGadgets) do
 		local item = uevrUtils.fname_from_string(id)
+		local target = testGadgetCounts[id] or TEST_GADGET_COUNT
 		local count = inventory:GetCount(character, item, 0, 0, holder, none)
-		if type(count) == "number" and count ~= TEST_GADGET_COUNT then
+		if type(count) == "number" and count ~= target then
 			-- Reason 4 = INVENTORY_CHANGE_REASON_CONSOLE_DEBUG; suppress the HUD popup.
-			inventory:AdjustCount(character, item, TEST_GADGET_COUNT - count, 4, holder, none, true, false, none, false, false, false)
+			inventory:AdjustCount(character, item, target - count, 4, holder, none, true, false, none, false, false, false)
 		end
 	end
-	print("Gadget counts set to " .. TEST_GADGET_COUNT)
+	print("Gadget counts set to " .. TEST_GADGET_COUNT .. " (Wiggenweld " .. testGadgetCounts.WoundCleaning .. ")")
 end)
 
 register_key_bind("F5", function()

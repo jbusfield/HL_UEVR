@@ -317,6 +317,64 @@
             "two_handed": false,
             "use_laser": false,
             "weight": 0
+        },
+        {
+            "animation": "bottle",
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Potion_Wiggenweld",
+            "id": "StaticMeshActor_SM_Potion_Wiggenweld",
+            "location": [
+                -1.399999976158142,
+                -0.699999988079071,
+                11.986000061035156
+            ],
+            "melee": false,
+            "parent": "StaticMeshActor",
+            "rotation": [
+                -77.5,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                0.7720000147819519,
+                0.7720000147819519,
+                0.7720000147819519
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "animation": "bottle",
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Health_Bottle",
+            "id": "StaticMeshActor_SM_Health_Bottle",
+            "location": [
+                1.5,
+                -1.0,
+                -2.390000104904175
+            ],
+            "melee": false,
+            "parent": "StaticMeshActor",
+            "rotation": [
+                -75.5999984741211,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                0.746999979019165,
+                0.746999979019165,
+                0.746999979019165
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
         }
     ],
     "baseOffsets": {

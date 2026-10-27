@@ -251,7 +251,7 @@ local parameters = {
 			forwardDotMinThreshold = 0.0,
 		},
 		eyes = {
-			triggerDistance = 15.0,
+			triggerDistance = 23.0,
 			forwardDotThreshold = 0.85,
 		},
 		ear = {

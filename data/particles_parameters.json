@@ -7,11 +7,14 @@
         "currentEditingProfile": "aa17f175-5f8a-4fd8-922e-b01a4dbda138"
     },
     "aa17f175-5f8a-4fd8-922e-b01a4dbda138": {
-        "asset": "NiagaraSystem /Game/VFX/UI/Mission_EntryPoint_Beacon/VFX_NS_MissionEntryPoint_Location.VFX_NS_MissionEntryPoint_Location",
+        "asset": "NiagaraSystem /Game/VFX/Particles/Magic/Accio/VFX_NS_AccioTarget.VFX_NS_AccioTarget",
         "emitters": {
+            "SpiralRibbon": true,
             "VFX_NE_Guide_Embers": true,
             "VFX_NE_Guide_Projectile_3dWisp001": true,
-            "VFX_NE_Guide_Smoke": true
+            "VFX_NE_Guide_Smoke": true,
+            "VFX_NE_PointLight": false,
+            "VFX_NE_SimpleSpriteBurst": false
         },
         "location": [
             0,
@@ -19,7 +22,7 @@
             0
         ],
         "loop": true,
-        "loopEnd": 3.0,
+        "loopEnd": 14.899999618530273,
         "loopStart": 1.0,
         "rotation": [
             0,

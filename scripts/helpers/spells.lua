@@ -1043,6 +1043,8 @@ end
 -- start of a hold and registers the tick callback; the interval removes it again once the hold ends.
 local wingardiumTickRegistered = false
 local wingardiumTickActive = false
+local WINGARDIUM_FOLLOW_TIME = 0.15 -- seconds for the held object to close ~63% of the gap to the wand ray
+local WINGARDIUM_WAND_CONTROLS_HEIGHT = true -- true: the wand ray also sets height; false: the game's stick height control is kept
 
 -- Returns the wand and its active spell tool when that tool is a channeling Wingardium, otherwise nil.
 local function getChannelingWingardiumTool()
@@ -1059,39 +1061,68 @@ local function getChannelingWingardiumTool()
 	return wand, tool
 end
 
--- While Wingardium is holding, pin XY to the wand; leave Z to native stick height.
-local function updateWingardiumWandHold()
+-- Resolved once when a hold starts so the tick does not walk pawn -> wand -> tool -> target every frame.
+local holdTool, holdMesh, holdPrim = nil, nil, nil
+
+local function endWingardiumHold()
+	status.wingardiumHoldDist = nil
+	holdTool, holdMesh, holdPrim = nil, nil, nil
+	wingardiumTickActive = false -- the interval unregisters this callback
+end
+
+-- While Wingardium is holding, drive the object onto the wand ray (XY only unless WINGARDIUM_WAND_CONTROLS_HEIGHT).
+local function updateWingardiumWandHold(engine, delta)
 	if not wingardiumTickActive then return end
 	status.isWingardiumHolding = false
-	local wand, tool = getChannelingWingardiumTool()
-	if tool == nil then
-		status.wingardiumHoldDist = nil
-		wingardiumTickActive = false -- the interval unregisters this callback
+	if holdTool == nil or holdMesh == nil or not UEVR_UObjectHook.exists(holdTool) or not UEVR_UObjectHook.exists(holdMesh) or not holdTool:IsChanneling() then
+		endWingardiumHold()
 		return
 	end
-	local target = tool:GetActiveTarget()
-	local mesh = uevrUtils.getValid(wand, {"Mesh"})
-	local prim = target and target.RootComponent
-	if prim == nil or mesh == nil then
+	-- The target can be set a little after channeling begins, so resolve it lazily.
+	if holdPrim == nil or not UEVR_UObjectHook.exists(holdPrim) then
+		local target = holdTool:GetActiveTarget()
+		holdPrim = target and target.RootComponent
 		status.wingardiumHoldDist = nil
-		return
+		if holdPrim == nil then return end
 	end
-	local origin = mesh:K2_GetComponentLocation()
-	local dir = mesh:GetUpVector()
-	local loc = prim:K2_GetComponentLocation()
-	local fx, fy = dir.X, dir.Y
-	local flen2 = fx * fx + fy * fy
-	if flen2 < 0.0001 then return end
-	if status.wingardiumHoldDist == nil then
-		local dx, dy = loc.X - origin.X, loc.Y - origin.Y
-		status.wingardiumHoldDist = math.sqrt(dx * dx + dy * dy)
+	local origin = holdMesh:K2_GetComponentLocation()
+	local dir = holdMesh:GetUpVector()
+	local loc = holdPrim:K2_GetComponentLocation()
+	local tx, ty, tz
+	if WINGARDIUM_WAND_CONTROLS_HEIGHT then
+		-- Follow the full 3D wand ray at the distance the object had when the hold began.
+		if status.wingardiumHoldDist == nil then
+			local dx, dy, dz = loc.X - origin.X, loc.Y - origin.Y, loc.Z - origin.Z
+			status.wingardiumHoldDist = math.sqrt(dx * dx + dy * dy + dz * dz)
+		end
+		local d = status.wingardiumHoldDist
+		tx, ty, tz = origin.X + dir.X * d, origin.Y + dir.Y * d, origin.Z + dir.Z * d
+	else
+		local fx, fy = dir.X, dir.Y
+		local flen2 = fx * fx + fy * fy
+		if flen2 < 0.0001 then return end
+		if status.wingardiumHoldDist == nil then
+			local dx, dy = loc.X - origin.X, loc.Y - origin.Y
+			status.wingardiumHoldDist = math.sqrt(dx * dx + dy * dy)
+		end
+		local scale = status.wingardiumHoldDist / math.sqrt(flen2)
+		tx, ty = origin.X + fx * scale, origin.Y + fy * scale
 	end
-	local scale = status.wingardiumHoldDist / math.sqrt(flen2)
-	prim:K2_SetWorldLocation(uevrUtils.vector(origin.X + fx * scale, origin.Y + fy * scale, loc.Z), false, reusable_hit_result, true)
+	-- Teleporting fought the game's own Wingardium push every frame and jittered. Setting the velocity instead lets the
+	-- next physics step carry the object onto the wand ray; without wand height the game's Z velocity is kept so stick height still works.
+	if noneBone == nil then noneBone = uevrUtils.fname_from_string("None") end
+	local dt = (delta ~= nil and delta > 0.0001) and delta or (1 / 90)
+	-- Close only part of the gap each step so the object eases after the wand; frame-rate independent.
+	local follow = (1 - math.exp(-dt / WINGARDIUM_FOLLOW_TIME)) / dt
+	local vz
+	if tz ~= nil then
+		vz = (tz - loc.Z) * follow
+	else
+		local vel = holdPrim:GetPhysicsLinearVelocity(noneBone)
+		vz = vel ~= nil and vel.Z or 0
+	end
+	holdPrim:SetPhysicsLinearVelocity(uevrUtils.vector((tx - loc.X) * follow, (ty - loc.Y) * follow, vz), false, noneBone)
 	status.isWingardiumHolding = true
-	-- if noneBone == nil then noneBone = uevrUtils.fname_from_string("None") end
-	-- local vel = prim:GetPhysicsLinearVelocity(noneBone)
-	-- prim:SetPhysicsLinearVelocity(uevrUtils.vector(0, 0, vel and vel.Z or 0), false, noneBone)
 end
 function M.isWingardiumHolding()
 	return status.isWingardiumHolding == true
@@ -1110,7 +1141,10 @@ local function checkWingardiumHold()
 		end
 		return
 	end
-	if getChannelingWingardiumTool() ~= nil then
+	local wand, tool = getChannelingWingardiumTool()
+	if tool ~= nil then
+		holdTool, holdMesh, holdPrim = tool, uevrUtils.getValid(wand, {"Mesh"}), nil
+		status.wingardiumHoldDist = nil
 		wingardiumTickActive = true
 		wingardiumTickRegistered = true
 		uevrUtils.registerPostEngineTickCallback(updateWingardiumWandHold)

@@ -23,10 +23,14 @@ local widgetComponent = require("libs/widgetcomponent")
 local gestures = require("libs/gestures")
 local accessories = require("libs/accessories")
 local spells = require("helpers/spells")
+local audio = require("helpers/audio")
 
 local M = {}
 local loadAsset = uevrUtils.profiler:wrap("Palette: load asset", uevrUtils.getLoadedAsset)
 
+-- Attachment adjustment mode: true holds the copy until a second left grip;
+-- false requires holding grip. Retained for manual attachment tuning.
+local TOGGLE_GRIP_FOR_ADJUSTMENTS = false
 -- World-space centimetres. Keep the current per-item scale/pivot tuning.
 local RADIUS = 18
 local FORWARD_OFFSET = 10.16 -- Four inches away from the viewer, sampled at spawn.
@@ -56,9 +60,6 @@ local DOUBLE_TAP_WINDOW = 0.3
 local DIAMOND_RADIUS = 18 -- Centimetres from the diamond's centre to each model.
 -- Feather wind is a world-space material offset; these parameters are scaled with the model.
 local WIND_PARAMETERS = {"Movement Amount", "Wind Texture Scale"}
--- Attachment adjustment mode: true holds the copy until a second left grip;
--- false requires holding grip. Retained for manual attachment tuning.
-local TOGGLE_GRIP_FOR_ADJUSTMENTS = false
 -- Seconds after a left grip in which a right grip still counts as LB+RB (Ancient Magic).
 -- That chord goes to the game instead of creating a held copy. Closed wheel only.
 local CHORD_WINDOW = 0.2
@@ -77,7 +78,16 @@ local DRINK_SHRINK_SECONDS = 0.2 -- After the gulp, the held potion shrinks away
 -- The game's drink animation raises its own potion tool bottle. Keep that tool hidden for
 -- this many seconds after a drink; it is spawned asynchronously and may re-show on equip.
 local DRINK_TOOL_HIDE_SECONDS = 3
+-- The game's use call reports success even when it refuses a drink (e.g. Wiggenweld at full
+-- health), so a drink is confirmed by the item's count dropping. From the gulp onwards the count
+-- is checked every DRINK_CHECK_INTERVAL seconds; no drop by DRINK_CONFIRM_SECONDS means refused.
+local DRINK_CHECK_INTERVAL = 0.25
+local DRINK_CONFIRM_SECONDS = 3
+-- Seconds after a Wiggenweld drink starts before another can be drunk, so a fresh bottle
+-- cannot stack a second heal while the first is still filling the health bar.
+local WIGGENWELD_COOLDOWN = 3
 local EFFECT = "NiagaraSystem /Game/VFX/UI/Mission_EntryPoint_Beacon/VFX_NS_MissionEntryPoint_Location.VFX_NS_MissionEntryPoint_Location"
+local EFFECT2 = "NiagaraSystem /Game/VFX/Particles/Magic/Accio/VFX_NS_AccioTarget.VFX_NS_AccioTarget" --"NiagaraSystem /Game/VFX/Niagara/MechanicsFX/Transfiguration/VFX_NS_Swirl_Expand_Flat.VFX_NS_Swirl_Expand_Flat" --"NiagaraSystem /Game/VFX/Particles/Magic/CuresedState/VFX_NS_Cursed_Pro.VFX_NS_Cursed_Pro"
 local APPARITION_EFFECT = "NiagaraSystem /Game/VFX/Particles/Magic/Apparition/VFX_NS_Apparate_Universal_Master_Lg_In_V1.VFX_NS_Apparate_Universal_Master_Lg_In_V1"
 local APPEAR_DELAY, APPEAR_SECONDS, APPEAR_MIN_SCALE = 0.18, 0.5, 0.02
 local APPARITION_SCALE, APPARITION_SECONDS = 0.25, 4.0
@@ -170,16 +180,33 @@ local function makeLockItems(list)
 	end
 	return locks
 end
+-- Wiggenweld sits in the ring's centre. It is not a stock-wheel item: selecting it sets the
+-- game's selection to None (its HUD then shows an empty icon), and while None is selected a
+-- left grip copies Wiggenweld. Like the game's own potion tool it uses the health bottle with
+-- the animated Niagara liquid; having no liquid mesh, it is marked as a potion explicitly.
+local wiggenweld = {name = "Wiggenweld", id = "WoundCleaning", direct = true, potion = true, clearsSelection = true,
+	mesh = POTIONS .. "SM_Health_Bottle", cooldown = WIGGENWELD_COOLDOWN,
+	liquidEffect = "NiagaraSystem /Game/VFX/Niagara/Potions/VFX_NS_LiquidBottle_Health.VFX_NS_LiquidBottle_Health",
+	scale = 0.4467005133628845, pivot = {X = 0, Y = 0, Z = -7.6328125}}
+local ringItems = {}
+for index, item in ipairs(items) do ringItems[index] = item end
+ringItems[#ringItems + 1] = wiggenweld
+-- ringCount items go round the ring; any after them sit at its centre.
 local layouts = {
-	ring = {items = items, locks = makeLockItems(items), radius = RADIUS},
-	diamond = {items = diamondItems, locks = makeLockItems(diamondItems), radius = DIAMOND_RADIUS},
+	ring = {items = ringItems, locks = makeLockItems(ringItems), radius = RADIUS, ringCount = #items},
+	diamond = {items = diamondItems, locks = makeLockItems(diamondItems), radius = DIAMOND_RADIUS, ringCount = #diamondItems},
 }
+
+-- Held potions are drunk at the mouth; anything else (plants) is thrown.
+local function isPotion(item)
+	return item.liquid ~= nil or item.potion == true
+end
 
 local actors = {}
 local centers = {}
 local lockedSlots = {}
 local layout = nil -- The open display's entry in layouts.
-local parentActor, parentRoot, effect = nil, nil, nil
+local parentActor, parentRoot, effect, effect2 = nil, nil, nil, nil
 local followActor, followRoot, followHmd = nil, nil, nil
 local apparitionRoot, apparition, transition = nil, nil, nil
 local apparitionElapsed, closing = 0, false
@@ -194,6 +221,12 @@ local activeActor, activeMesh, activePawn = nil, nil, nil
 local activeItem, thrustAge, useQueued = nil, nil, false
 -- Seconds left to keep the game's drink tool hidden, and the tool hidden last.
 local drinkToolTime, hiddenDrinkTool = nil, nil
+-- The drink being confirmed: held actor, item, count before drinking, seconds since, next check.
+local drinkCheck = nil
+-- After a refused drink the held potion must leave the mouth zone before it can be tried again.
+local awaitMouthExit = false
+-- os.clock() time until which each item id with a cooldown cannot be drunk again.
+local cooldownUntil = {}
 local attachMesh = nil
 ---@type any
 local selectionService = nil
@@ -247,10 +280,11 @@ local function parkCounts(display)
 	destroyCounts(display)
 end
 
-local function destroyDisplay(list, parent, particle, follower, flourish, counts)
+local function destroyDisplay(list, parent, particle, particle2, follower, flourish, counts)
 	destroyCounts(counts)
 	destroyActors(list)
 	if particle ~= nil then particle:destroy() end
+	if particle2 ~= nil then particle2:destroy() end
 	if flourish ~= nil then flourish:destroy() end
 	if uevrUtils.getValid(parent) ~= nil then parent:K2_DestroyActor() end
 	if uevrUtils.getValid(follower) ~= nil then follower:K2_DestroyActor() end
@@ -264,6 +298,7 @@ function M.clearActiveMesh()
 	local actor, mesh = activeActor, activeMesh
 	activeActor, activeMesh, activePawn = nil, nil, nil
 	activeItem, thrustAge, useQueued = nil, nil, false
+	drinkCheck, awaitMouthExit = nil, false
 	if actor == nil and mesh == nil then return end
 	-- Only detach our own attachment; a feed can or wand may occupy the same hand.
 	if mesh ~= nil then
@@ -302,14 +337,14 @@ function M.close(keepCounts)
 		destroyCounts(cachedCounts)
 		cachedCounts = nil
 	end
-	destroyDisplay(actors, parentActor, effect, followActor, apparition, countDisplay)
+	destroyDisplay(actors, parentActor, effect, effect2, followActor, apparition, countDisplay)
 	countDisplay = nil
 	countElapsed, countReadFailed = 0, false
 	actors = {}
 	centers = {}
 	lockedSlots = {}
 	layout = nil
-	parentActor, parentRoot, effect = nil, nil, nil
+	parentActor, parentRoot, effect, effect2 = nil, nil, nil, nil
 	followActor, followRoot, followHmd = nil, nil, nil
 	apparitionRoot, apparition, transition = nil, nil, nil
 	apparitionElapsed, closing = 0, false
@@ -430,6 +465,21 @@ local function worldTransform(component, transform)
 	return true
 end
 
+-- Attach a potion's animated Niagara liquid at the bottle's origin, as the game's potion tool
+-- does. The effect inherits the bottle's scale and belongs to the bottle's actor, so it is
+-- destroyed with it (a live MCP preview confirmed both).
+local function attachLiquidEffect(component, item)
+	local system = uevrUtils.getValid(loadAsset(item.liquidEffect))
+	if system == nil then return false, "Could not load the liquid effect for " .. item.name end
+	local library = uevrUtils.getValid(uevrUtils.find_default_instance("Class /Script/Niagara.NiagaraFunctionLibrary"))
+	if library == nil then return false, "Niagara function library is unavailable" end
+	-- KeepRelativeOffset (0), keep the effect, auto-activate, no pooling, no pre-cull check.
+	local effect = library:SpawnSystemAttached(system, component, uevrUtils.fname_from_string("None"),
+		uevrUtils.vector(0, 0, 0), uevrUtils.rotator(0, 0, 0), 0, false, true, 0, false)
+	if uevrUtils.getValid(effect) == nil then return false, "Could not attach the liquid effect for " .. item.name end
+	return true
+end
+
 -- Scale the feather wind (a world-space material offset) to the model's size.
 local function scaleWind(component, item)
 	for _, slot in ipairs(item.windSlots) do
@@ -460,8 +510,10 @@ local function createParticle(root, options)
 		return nil, "Could not attach the palette particle effect"
 	end
 	local component = particle:getParticleComponent()
-	component:SetCollisionEnabled(0, false)
-	component:SetGenerateOverlapEvents(false)
+	if component ~= nil then
+		component:SetCollisionEnabled(0, false)
+		component:SetGenerateOverlapEvents(false)
+	end
 	return particle
 end
 
@@ -473,6 +525,20 @@ local function createEffect(root)
 		location = {5, 0, 0},
 		autoActivate = true, collisionEnabled = 0, quiet = true,
 		restoreEmittersOnDestroy = false,
+	})
+end
+
+local function createEffect2(root)
+	return createParticle(root, {
+		particleSystemAsset = EFFECT2,
+		scale = {.22, .22, .22},
+		rotation = {90, 0, 0},
+		location = {10, 0, 0},
+		autoActivate = true, collisionEnabled = 0, quiet = true,
+		restoreEmittersOnDestroy = false,
+		-- loopStart = 0,
+		-- loopEnd = 0.8,
+		emitterOverrides = {VFX_NE_PointLight = false, VFX_NE_SimpleSpriteBurst = false},
 	})
 end
 
@@ -494,6 +560,7 @@ local function beginTransition(isClosing)
 	if not ok or particle == nil then
 		print("Palette: apparition unavailable: " .. tostring(ok and reason or particle))
 	end
+	audio.playSwirlSound(root, root:K2_GetComponentLocation())
 	local pose = root:K2_GetComponentToWorld()
 	local scale = pose.Scale3D
 	transition = {elapsed = 0, from = {X = scale.X, Y = scale.Y, Z = scale.Z},
@@ -597,6 +664,10 @@ local function createItem(item, center, yaw, created, root)
 		placed, err = attach(liquid, component)
 		if not placed then return false, err end
 	end
+	if item.liquidEffect ~= nil then
+		placed, err = attachLiquidEffect(component, item)
+		if not placed then return false, err end
+	end
 	return true
 end
 
@@ -626,6 +697,13 @@ local function readCount(inventory, character, item)
 	return math.floor(count)
 end
 
+-- The player's current count of one item, or nil when it cannot be read.
+local function currentCount(item)
+	local inventory = getInventory()
+	if inventory == nil then return nil end
+	return readCount(inventory, pawn:GetCharacterID(), item)
+end
+
 -- Copies the game's selected gadget, or a given diamond item (Felix Felicis), into the left hand.
 function M.createSelectedMesh(chosen)
 	if not enabled or not gestureBased or (not TOGGLE_GRIP_FOR_ADJUSTMENTS and not gripWasPressed[Handed.Left])
@@ -647,6 +725,8 @@ function M.createSelectedMesh(chosen)
 		for _, candidate in ipairs(items) do
 			if candidate.id == id then item = candidate; break end
 		end
+		-- Nothing selected means the palette's Wiggenweld was chosen.
+		if item == nil and id == "None" then item = wiggenweld end
 		if item == nil then return false, "No palette mesh for the selected gadget" end
 	end
 	-- An out-of-stock gadget stays selected but is not put in the hand.
@@ -677,7 +757,7 @@ function M.createSelectedMesh(chosen)
 		return false, attached and "Could not attach the gadget copy to the left hand" or tostring(result)
 	end
 	activeItem = item
-	if item.liquid == nil then
+	if not isPotion(item) then
 		-- The first call ends any leftover cooldown or unfinished punch; the second ends
 		-- the cooldown that finishing a punch starts. Both reset the last hand position.
 		gestures.detectGesture(gestures.Gesture.PUNCH, PUNCH_PRIME_DELTA, Handed.Left)
@@ -713,7 +793,7 @@ local function readLocks(list)
 		if item.summon ~= nil then
 			library = library or functionLibrary()
 			locked[index] = not mountUnlocked(item, library)
-		elseif manager ~= nil then
+		elseif manager ~= nil and item.recipeLock ~= nil then
 			locked[index] = manager:IsLocked(cachedFName(item.recipeLock)) == true
 				and manager:IsLocked(cachedFName(item.pickupLock)) == true
 		end
@@ -922,7 +1002,7 @@ function M.show(shown)
 	local list = shown.items
 	local created, positions = {}, {}
 	local locked = readLocks(list)
-	local createdParent, createdRoot, createdEffect
+	local createdParent, createdRoot, createdEffect, createdEffect2
 	local createdFollowActor, createdFollowRoot
 	local createdApparitionRoot
 	local createdCounts = {texts = {}, images = {}, values = {}, slots = {}, icons = {}, iconSlots = {}, layout = shown}
@@ -975,9 +1055,10 @@ function M.show(shown)
 		for index, item in ipairs(list) do
 			-- A vertical plane facing the view at spawn: the first item at the top,
 			-- then clockwise along the viewer's right and world up axes.
-			local angle = (index - 1) * 2 * math.pi / #list
-			local right = shown.radius * math.sin(angle)
-			local up = shown.radius * math.cos(angle)
+			local angle = (index - 1) * 2 * math.pi / shown.ringCount
+			local radius = index <= shown.ringCount and shown.radius or 0
+			local right = radius * math.sin(angle)
+			local up = radius * math.cos(angle)
 			local center = {
 				X = origin.X - right * math.sin(yaw),
 				Y = origin.Y + right * math.cos(yaw),
@@ -994,10 +1075,12 @@ function M.show(shown)
 		local effectError
 		createdEffect, effectError = createEffect(createdRoot)
 		if createdEffect == nil then return false, effectError end
+		createdEffect2, effectError = createEffect2(createdRoot)
+		if createdEffect2 == nil then return false, effectError end
 		return true
 	end)
 	if not ok or not built then
-		destroyDisplay(created, createdParent, createdEffect, createdFollowActor, nil, createdCounts)
+		destroyDisplay(created, createdParent, createdEffect, createdEffect2, createdFollowActor, nil, createdCounts)
 		print("Palette: " .. tostring(ok and err or built))
 		return false
 	end
@@ -1007,7 +1090,7 @@ function M.show(shown)
 	centers = positions
 	lockedSlots = locked
 	layout = shown
-	parentActor, parentRoot, effect = createdParent, createdRoot, createdEffect
+	parentActor, parentRoot, effect, effect2 = createdParent, createdRoot, createdEffect, createdEffect2
 	followActor, followRoot, followHmd = createdFollowActor, createdFollowRoot, hmd
 	apparitionRoot = createdApparitionRoot
 	countDisplay = createdCounts
@@ -1037,8 +1120,30 @@ local function confirmSelection(widget)
 	return true
 end
 
+local QUICK_ITEM_HUD = "WidgetBlueprintGeneratedClass /Game/UI/HUD/QuickAction/UI_BP_QuickItemHUD.UI_BP_QuickItemHUD_C"
+
+-- Select nothing. The manager's setter does not notify the HUD, so the live quick-item
+-- widget is told directly; it then shows its empty icon. A live MCP probe showed LB does
+-- nothing and the stock wheel still selects normally while None is selected.
+local function clearSelection()
+	local defaultManager = uevrUtils.find_default_instance("Class /Script/Phoenix.QuickActionManager")
+	local manager = defaultManager and uevrUtils.getValid(defaultManager:Get())
+	if manager == nil then return false, "QuickActionManager is unavailable" end
+	local none = cachedFName("None")
+	manager:SetQuickWheelItem(none)
+	if nameString(manager:GetQuickWheelItem()) ~= "None" then return false, "The game did not clear the selection" end
+	for _, hud in ipairs(uevrUtils.find_all_instances(QUICK_ITEM_HUD, false) or {}) do
+		-- The HUD Blueprint's template shares the class; only the live widget is transient.
+		if uevrUtils.getValid(hud) ~= nil and hud:get_full_name():find("/Engine/Transient", 1, true) ~= nil then
+			hud:SetItem(none)
+		end
+	end
+	return true
+end
+
 local function selectItem(item)
 	if not hasGadgetAccess() then return false, "The game gadget wheel is unavailable" end
+	if item.clearsSelection then return clearSelection() end
 	local service = selectionService
 	-- Never take over a stock wheel that the game already owns.
 	if uevrUtils.getValid(service.ItemWheelWidget) ~= nil then
@@ -1080,7 +1185,7 @@ end
 
 local function nearestItem(hand)
 	local root = uevrUtils.getValid(parentRoot)
-	if root == nil then return nil end
+	if root == nil or layout == nil then return nil end
 	if uevrUtils.getValid(controllers.getController(hand, true)) == nil then return nil end
 	local location = controllers.getControllerLocation(hand)
 	if location ~= nil then
@@ -1168,7 +1273,7 @@ local function captureInput(retval, userIndex, state)
 			if not TOGGLE_GRIP_FOR_ADJUSTMENTS and gestureBased and grip.hand == Handed.Left and gripWasPressed[grip.hand] then
 				-- Decide a plant throw now: the tick removes the copy on release before
 				-- queued actions run, clearing the held item and its thrust.
-				local thrown = activeItem ~= nil and activeItem.liquid == nil
+				local thrown = activeItem ~= nil and not isPotion(activeItem)
 					and thrustAge ~= nil and thrustAge <= THROW_RELEASE_WINDOW
 				queue({release = true, use = thrown and activeItem or nil})
 			end
@@ -1188,12 +1293,15 @@ local function captureInput(retval, userIndex, state)
 		end
 		gripWasPressed[grip.hand] = pressed
 	end
-	-- Drinking: a held potion reaching the mouth is used once. Read the gesture before
-	-- the grip is suppressed below; only potions have liquid meshes.
-	if activeItem ~= nil and activeItem.liquid ~= nil and not useQueued and leftPressed and not leftChord
-		and gestures.getHeadGestures(state, Handed.Left, true) then
-		useQueued = true
-		queue({drink = activeItem, held = activeActor})
+	-- Drinking: a held potion reaching the mouth is used once, or again after a refusal once it
+	-- has left the mouth. Read the gesture before the grip is suppressed below.
+	if activeItem ~= nil and isPotion(activeItem) and not useQueued and leftPressed and not leftChord then
+		if not gestures.getHeadGestures(state, Handed.Left, true) then
+			awaitMouthExit = false
+		elseif not awaitMouthExit and (cooldownUntil[activeItem.id] == nil or os.clock() >= cooldownUntil[activeItem.id]) then
+			useQueued = true
+			queue({drink = activeItem, held = activeActor})
+		end
 	end
 	-- Prevent a selecting grip from also firing the mod's mouth/head gestures.
 	suppressGrips(state)
@@ -1248,6 +1356,46 @@ local function hideDrinkTool()
 	hiddenDrinkTool = tool
 end
 
+-- Shrink the held potion away after a confirmed drink, unless it is released or replaced.
+local function shrinkHeld(held)
+	local mesh = activeActor == held and uevrUtils.getValid(activeMesh) or nil
+	if mesh == nil then return end
+	local scale = mesh.RelativeScale3D
+	local x, y, z = scale.X, scale.Y, scale.Z
+	-- A reused lerp ID keeps its old callback, so replace any earlier shrink.
+	uevrUtils.cancelLerp("paletteDrinkShrink")
+	uevrUtils.lerp("paletteDrinkShrink", 1, 0, DRINK_SHRINK_SECONDS, nil, function(alpha, progress)
+		if activeActor ~= held or uevrUtils.getValid(mesh) == nil then
+			uevrUtils.cancelLerp("paletteDrinkShrink")
+		elseif progress >= 1 then
+			M.clearActiveMesh()
+		else
+			mesh:SetRelativeScale3D(uevrUtils.vector(x * alpha, y * alpha, z * alpha))
+		end
+	end)
+end
+
+-- From the gulp until DRINK_CONFIRM_SECONDS, shrink the potion once its count drops. Without a
+-- count from before the drink, shrink at the gulp as before. No drop means the game refused;
+-- the bottle stays in the hand and can be tried again once it has left the mouth.
+local function tickDrinkCheck(delta)
+	local check = drinkCheck
+	if activeActor ~= check.held then drinkCheck = nil; return end
+	check.elapsed = check.elapsed + delta
+	if check.elapsed < check.nextCheck then return end
+	check.nextCheck = check.nextCheck + DRINK_CHECK_INTERVAL
+	local count = check.before ~= nil and currentCount(check.item) or nil
+	if check.before == nil or (count ~= nil and count < check.before) then
+		drinkCheck = nil
+		shrinkHeld(check.held)
+	elseif check.elapsed >= DRINK_CONFIRM_SECONDS then
+		drinkCheck = nil
+		print("Palette: the game did not drink " .. check.item.name)
+		useQueued, awaitMouthExit = false, true
+		cooldownUntil[check.item.id] = nil -- Nothing was drunk, so nothing to cool down.
+	end
+end
+
 local function processAction(action)
 	if action.release then
 		M.clearActiveMesh()
@@ -1255,27 +1403,15 @@ local function processAction(action)
 		if action.use ~= nil then useItem(action.use) end
 	elseif action.drink ~= nil then
 		local held = action.held
+		local before = currentCount(action.drink)
 		if useItem(action.drink) then
 			drinkToolTime = DRINK_TOOL_HIDE_SECONDS
-			-- Keep our potion at the mouth until the gulp, then shrink it away, unless it
-			-- was released or replaced meanwhile.
-			uevrUtils.delay(DRINK_GULP_SECONDS * 1000, function()
-				local mesh = held ~= nil and activeActor == held and uevrUtils.getValid(activeMesh) or nil
-				if mesh == nil then return end
-				local scale = mesh.RelativeScale3D
-				local x, y, z = scale.X, scale.Y, scale.Z
-				-- A reused lerp ID keeps its old callback, so replace any earlier shrink.
-				uevrUtils.cancelLerp("paletteDrinkShrink")
-				uevrUtils.lerp("paletteDrinkShrink", 1, 0, DRINK_SHRINK_SECONDS, nil, function(alpha, progress)
-					if activeActor ~= held or uevrUtils.getValid(mesh) == nil then
-						uevrUtils.cancelLerp("paletteDrinkShrink")
-					elseif progress >= 1 then
-						M.clearActiveMesh()
-					else
-						mesh:SetRelativeScale3D(uevrUtils.vector(x * alpha, y * alpha, z * alpha))
-					end
-				end)
-			end)
+			-- Start any cooldown now: releasing the bottle early cancels the drink check below.
+			if action.drink.cooldown ~= nil then cooldownUntil[action.drink.id] = os.clock() + action.drink.cooldown end
+			-- Keep our potion at the mouth until the gulp; the tick then confirms the drink.
+			if held ~= nil and activeActor == held then
+				drinkCheck = {held = held, item = action.drink, before = before, elapsed = 0, nextCheck = DRINK_GULP_SECONDS}
+			end
 		elseif held == activeActor then
 			M.clearActiveMesh()
 		end
@@ -1296,7 +1432,7 @@ local function processAction(action)
 			if action.ring ~= actors or closing or transition ~= nil then return end
 			-- Diamond items are used rather than selected. In gesture mode a left grip
 			-- takes Felix Felicis into the hand to drink; it is gone once released.
-			if action.item.summon ~= nil or action.item.direct then
+			if layout == layouts.diamond then
 				if action.item.summon == nil and action.copy and gestureBased then
 					beginTransition(true)
 					local created, reason = M.createSelectedMesh(action.item)
@@ -1340,9 +1476,12 @@ local function runTick(engine, delta)
 		processAction(action)
 	end
 	-- Track thrusts while a plant copy is held. The detector needs every frame of the hold.
-	if activeItem ~= nil and activeItem.liquid == nil and type(delta) == "number" and delta > 0 and delta < math.huge then
+	if activeItem ~= nil and not isPotion(activeItem) and type(delta) == "number" and delta > 0 and delta < math.huge then
 		if thrustAge ~= nil then thrustAge = thrustAge + delta end
 		if gestures.detectGesture(gestures.Gesture.PUNCH, delta, Handed.Left) then thrustAge = 0 end
+	end
+	if drinkCheck ~= nil and type(delta) == "number" and delta > 0 and delta < math.huge then
+		tickDrinkCheck(delta)
 	end
 	if drinkToolTime ~= nil and type(delta) == "number" and delta > 0 and delta < math.huge then
 		hideDrinkTool()
@@ -1353,7 +1492,7 @@ local function runTick(engine, delta)
 		if transition ~= nil or apparition ~= nil or closing then
 			tickTransition(delta)
 		end
-		if countDisplay ~= nil and not closing and type(delta) == "number" and delta > 0 and delta < math.huge then
+		if countDisplay ~= nil and layout ~= nil and not closing and type(delta) == "number" and delta > 0 and delta < math.huge then
 			countElapsed = countElapsed + delta
 			if countElapsed >= COUNT_REFRESH_SECONDS then
 				countElapsed = 0
@@ -1407,6 +1546,7 @@ nearestItem = uevrUtils.profiler:wrap("Palette: nearest item", nearestItem)
 processAction = uevrUtils.profiler:wrap("Palette: action", processAction)
 useItem = uevrUtils.profiler:wrap("Palette: use held item", useItem)
 hideDrinkTool = uevrUtils.profiler:wrap("Palette: hide drink tool", hideDrinkTool)
+tickDrinkCheck = uevrUtils.profiler:wrap("Palette: confirm drink", tickDrinkCheck)
 captureInput = uevrUtils.profiler:wrap("Palette: capture input", captureInput)
 suppressInput = uevrUtils.profiler:wrap("Palette: suppress input", suppressInput)
 tickWheel = uevrUtils.profiler:wrap("Palette: tick wheel", runTick)

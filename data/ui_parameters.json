@@ -303,6 +303,9 @@
             "screen2DWhenActive": 1,
             "screen2DWhenActivePriority": "0"
         },
+        "WidgetBlueprintGeneratedClass /Game/UI/Common/UI_BP_Sparkels.UI_BP_Sparkels_C": {
+            "label": "UI_BP_Sparkels_C"
+        },
         "WidgetBlueprintGeneratedClass /Game/UI/Conjuration/UI_BP_ConjurationScreen.UI_BP_ConjurationScreen_C": {
             "alignment": [
                 0.0,
@@ -547,6 +550,9 @@
         },
         "WidgetBlueprintGeneratedClass /Game/UI/HUD/FightClub/UI_BP_FightClub.UI_BP_FightClub_C": {
             "label": "UI_BP_FightClub_C"
+        },
+        "WidgetBlueprintGeneratedClass /Game/UI/HUD/LoadDoor/UI_BP_LoadDoor.UI_BP_LoadDoor_C": {
+            "label": "UI_BP_LoadDoor_C"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/HUD/Notifications/UI_BP_RevelioPageNotification.UI_BP_RevelioPageNotification_C": {
             "label": "UI_BP_RevelioPageNotification_C"
@@ -845,6 +851,9 @@
             ],
             "screen2DWhenActive": 1,
             "screen2DWhenActivePriority": "0"
+        },
+        "WidgetBlueprintGeneratedClass /Game/UI/Menus/FieldGuide/UI_BP_NewIndicator.UI_BP_NewIndicator_C": {
+            "label": "UI_BP_NewIndicator_C"
         },
         "WidgetBlueprintGeneratedClass /Game/UI/Menus/FrontendFlow/UI_BP_PSO_FS.UI_BP_PSO_FS_C": {
             "alignment": [
@@ -1404,6 +1413,9 @@
         },
         "WidgetBlueprintGeneratedClass /Game/UI/Vignette/SceneRigUI/UI_BP_SceneRigGeneralInput.UI_BP_SceneRigGeneralInput_C": {
             "label": "UI_BP_SceneRigGeneralInput_C"
+        },
+        "WidgetBlueprintGeneratedClass /ModSupport/UI/Widgets/Misc/UI_BP_ModDetailsPipEndCaps.UI_BP_ModDetailsPipEndCaps_C": {
+            "label": "UI_BP_ModDetailsPipEndCaps_C"
         }
     }
 }

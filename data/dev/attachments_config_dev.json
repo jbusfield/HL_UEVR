@@ -128,7 +128,7 @@
     "uevr_attachments_BP_WandTool_C_Mesh_any_child": false,
     "uevr_attachments_BP_WandTool_C_Mesh_any_parent": false,
     "uevr_attachments_BP_WandTool_C_Mesh_delete_accessory_override": false,
-    "uevr_attachments_BP_WandTool_C_Mesh_grip_animation": 4,
+    "uevr_attachments_BP_WandTool_C_Mesh_grip_animation": 3,
     "uevr_attachments_BP_WandTool_C_Mesh_is_melee": false,
     "uevr_attachments_BP_WandTool_C_Mesh_is_scoped": false,
     "uevr_attachments_BP_WandTool_C_Mesh_is_two_handed": false,
@@ -318,7 +318,7 @@
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_any_child": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_any_parent": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_delete_accessory_override": false,
-    "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_grip_animation": 3,
+    "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_grip_animation": 4,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_melee": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_scoped": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_two_handed": false,
@@ -413,7 +413,7 @@
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_two_handed": false,
@@ -508,7 +508,7 @@
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_two_handed": false,
@@ -603,7 +603,7 @@
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_two_handed": false,
@@ -669,6 +669,101 @@
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_strip_child_suffix_length": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_use_laser": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_weight": 0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_end_time": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_existing_guid": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_activation_hand": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_attach_type": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_grip_animation": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_grip_priority": "1",
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_label": "",
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_socket_list": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_socket_name": "",
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_test_left_hand": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_test_right_hand": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_marker_picker": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_picker": 1,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_start_time": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_any_child": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_any_parent": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_delete_accessory_override": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_grip_animation": 4,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_melee": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_scoped": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_position": [
+        1.5,
+        -1.0,
+        -2.390000104904175
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_rotation": [
+        -75.5999984741211,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scale": [
+        0.746999979019165,
+        0.746999979019165,
+        0.746999979019165
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_brightness": 2.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_deactivate_distance": 50.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_max_fov": 20.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_min_fov": 2.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_show_debug": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_zoom_exponential": 0.5,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_scope_zoom_speed": 1.0,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_strip_child_suffix_length": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_use_laser": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_weight": 0,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_end_time": 0.0,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_existing_guid": 1,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_activation_distance": 0.0,
@@ -698,7 +793,7 @@
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_two_handed": false,
@@ -793,7 +888,7 @@
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_two_handed": false,
@@ -859,6 +954,101 @@
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_strip_child_suffix_length": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_use_laser": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_weight": 0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_end_time": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_existing_guid": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_activation_hand": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_attach_type": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_grip_animation": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_grip_priority": "1",
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_label": "",
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_socket_list": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_socket_name": "",
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_test_left_hand": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_test_right_hand": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_marker_picker": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_picker": 1,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_start_time": 0.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_any_child": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_any_parent": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_delete_accessory_override": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_grip_animation": 4,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_melee": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_scoped": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_position": [
+        -1.399999976158142,
+        -0.699999988079071,
+        11.986000061035156
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_rotation": [
+        -77.5,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scale": [
+        0.7720000147819519,
+        0.7720000147819519,
+        0.7720000147819519
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_brightness": 2.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_deactivate_distance": 50.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_max_fov": 20.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_min_fov": 2.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_show_debug": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_zoom_exponential": 0.5,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_scope_zoom_speed": 1.0,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_strip_child_suffix_length": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_use_laser": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_weight": 0,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_end_time": 0.0,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_existing_guid": 1,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_activation_distance": 0.0,
@@ -888,7 +1078,7 @@
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_two_handed": false,
@@ -983,7 +1173,7 @@
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_any_child": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_any_parent": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_delete_accessory_override": false,
-    "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_grip_animation": 3,
+    "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_grip_animation": 4,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_two_handed": false,

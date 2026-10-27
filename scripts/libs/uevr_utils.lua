@@ -3402,12 +3402,37 @@ end
     -- pressButton(state, XINPUT_GAMEPAD_DPAD_LEFT)
 -- end
 
-function M.getFilesInDirectory(directory)
+-- fs.glob regexes are case sensitive but Windows file names are not, so "png" becomes "[pP][nN][gG]"
+local function anyCasePattern(text)
+	return (text:gsub("%a", function(c) return "[" .. c:lower() .. c:upper() .. "]" end))
+end
+
+-- Files in a folder inside the data folder, as paths relative to data separated by backslashes.
+-- path is an ordinary folder path using / or \, with or without a trailing separator; nil or "" is data itself.
+-- extension matches in any case and nil matches every file. includeSubfolders also returns files in folders
+-- below path. Returns nil when fs.glob is unavailable.
+function M.getFiles(path, extension, includeSubfolders)
+	if fs == nil or fs.glob == nil then return nil end
+	local folder = (path or ""):gsub("[/\\]+", "\\"):gsub("^\\", ""):gsub("\\$", "")
+	local prefix = ""
+	if folder ~= "" then
+		-- folder names are literal, so escape regex characters, then add the separator
+		prefix = folder:gsub("([%^%$%(%)%.%[%]%*%+%?%{%}%|\\])", "\\%1") .. "\\\\"
+	end
+	local name = includeSubfolders and ".*" or "[^\\\\]*"
+	local suffix = extension ~= nil and ("\\." .. anyCasePattern(extension)) or ""
+	return fs.glob(prefix .. name .. suffix) or {}
+end
+
+-- directory is a regex for a folder inside data, with \\ between folders, or nil for data itself.
+-- With a directory, files in its subfolders also match. extension defaults to json and matches in any case
+function M.getFilesInDirectory(directory, extension)
 	local files = {}
+	local suffix = extension == nil and anyCasePattern("json") or ("\\." .. anyCasePattern(extension))
 	if directory ~= nil then
-		files = fs.glob(string.format([[%s\\.*json]], directory)) -- dev directory inside data
+		files = fs.glob(string.format([[%s\\.*%s]], directory, suffix)) -- dev directory inside data
 	else
-		files = fs.glob([[[^\\]*json]]) --root data directory
+		files = fs.glob([[[^\\]*]] .. suffix) --root data directory
 	end
 
 	--local json_files = fs.glob([[dev\\.*json]]) -- dev directory inside data
@@ -4179,9 +4204,19 @@ function M.createSceneCaptureComponent(options)
 	return component
 end
 
+-- A full-name lookup of an unloaded class scans every object; an unloaded Blueprint class has no instances.
+local function isWidgetClassLoaded(className)
+	if className == nil or className:find(" /Game/", 1, true) == nil then return true end
+	local data = M.getAssetDataFromPath(className)
+	local registry = M.find_first_of("Class /Script/AssetRegistry.AssetRegistryHelpers", true)
+	return data ~= nil and registry ~= nil and registry:IsAssetLoaded(data)
+end
+isWidgetClassLoaded = M.profiler:wrap("getActiveWidgetByClass: loaded check", isWidgetClassLoaded)
+
 -- Prefers a widget whose top level UserWidget is in the viewport, since stale copies (e.g. an old HUD after loading a save)
 -- can stay alive with the same owning pawn
 function M.getActiveWidgetByClass(className)
+	if not isWidgetClassLoaded(className) then return nil end
 	local widgets = M.find_all_instances(className, false)
 	if widgets ~= nil and M.getValid(pawn) ~= nil then
 		local widgetTreeClass = M.get_class("Class /Script/UMG.WidgetTree")
@@ -4201,6 +4236,7 @@ function M.getActiveWidgetByClass(className)
 		return fallback
 	end
 end
+M.getActiveWidgetByClass = M.profiler:wrap("getActiveWidgetByClass", M.getActiveWidgetByClass)
 
 function M.createWidget(className, playerController)
 	local widget = nil
