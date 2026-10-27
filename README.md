@@ -12,6 +12,8 @@ A mod for UEVR when playing Hogwarts Legacy
 - Controller based mouse movement in menus
 - Optional HUD widgets attached to hands
 - Boats can be ridden in and controlled
+- 3D Interactive Gadget Wheel
+- In game tutorial
 
 ## Guide:
 ### Settings
