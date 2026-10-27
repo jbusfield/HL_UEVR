@@ -1379,6 +1379,7 @@ end
 -- count from before the drink, shrink at the gulp as before. No drop means the game refused;
 -- the bottle stays in the hand and can be tried again once it has left the mouth.
 local function tickDrinkCheck(delta)
+	if drinkCheck == nil then return end
 	local check = drinkCheck
 	if activeActor ~= check.held then drinkCheck = nil; return end
 	check.elapsed = check.elapsed + delta

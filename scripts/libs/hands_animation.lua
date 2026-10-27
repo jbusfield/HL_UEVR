@@ -9,6 +9,9 @@ local inputHandlerAnimID = {}
 local activeComponents = {}
 local autoHandleInput = true
 local disableAnimations = false --used during hand configuration to prevent loaded animation from interfering
+-- A/B flag: when a hand's pose changes (attachment gripped or released), stop that hand's in-flight blends.
+-- Otherwise a blend started just before the change finishes over the new pose and leaves the previous pose.
+local cancelLerpsOnPoseChange = true
 
 
 local currentLogLevel = LogLevel.Error
@@ -110,6 +113,10 @@ function M.disableAnimations(value)
 	disableAnimations = value
 end
 
+function M.setCancelLerpsOnPoseChange(value)
+	cancelLerpsOnPoseChange = value
+end
+
 function M.setHoldingAttachment(hand, val)
 	holdingAttachment[hand] = val
 	M.updateAnimationState(hand)
@@ -128,6 +135,7 @@ function M.updateAnimationState(hand)
 		if isHoldingAttachment then
 			forEachUniqueTarget(function(target)
 				local handStr = hand == Handed.Left and "left" or "right"
+				if cancelLerpsOnPoseChange then animation.cancelLerps(handStr .. "_" .. target) end
 				animation.resetAnimation(handStr.."_"..target, handStr.."_grip_weapon" .. attachmentExtension, true) --forces an update regardless of current state
 				animation.resetAnimation(handStr.."_"..target, handStr.."_trigger_weapon" .. attachmentExtension, true) --forces an update regardless of current state
 				animation.pose(handStr .. "_" .. target, "grip_" .. handStr .. "_weapon" .. attachmentExtension)
@@ -135,6 +143,7 @@ function M.updateAnimationState(hand)
 		else
 			forEachUniqueTarget(function(target)
 				local handStr = hand == Handed.Left and "left" or "right"
+				if cancelLerpsOnPoseChange then animation.cancelLerps(handStr .. "_" .. target) end
 				animation.pose(handStr .. "_" .. target, "open_" .. handStr)
 			end)
 		end

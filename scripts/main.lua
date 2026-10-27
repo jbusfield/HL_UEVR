@@ -32,16 +32,17 @@ local interactions = require('helpers/interactions')
 local locomotion = require('helpers/locomotion')
 local boats = require('helpers/boats')
 local palette = require('helpers/palette')
+local skin = require('helpers/skin')
 
 local tutorial = require('libs/tutorial')
 local t = tutorial.new()   -- defaults to data/tutorial/ and data/tutorial/buttons/
 t:forceInteractionAtStartup(true)
 t:showOnce()               -- or t:show()
 
-local dev = require('libs/uevr_dev')
-dev.init()
+-- local dev = require('libs/uevr_dev')
+-- dev.init()
 
-uevrUtils.setLogLevel(LogLevel.Debug)
+-- uevrUtils.setLogLevel(LogLevel.Debug)
 -- reticule.setLogLevel(LogLevel.Debug)
 -- input.setLogLevel(LogLevel.Debug)
 -- attachments.setLogLevel(LogLevel.Debug)
@@ -53,12 +54,12 @@ uevrUtils.setLogLevel(LogLevel.Debug)
 -- ik.setLogLevel(LogLevel.Debug)
 --spells.setLogLevel(LogLevel.Debug)
 
-uevrUtils.setDeveloperMode(true)
+--uevrUtils.setDeveloperMode(true)
 -- hands.enableConfigurationTool()
-uevrUtils.profiler:toggle(true)
-register_key_bind("F1", function()
-    uevrUtils.profiler:report("alpha")
-end)
+-- uevrUtils.profiler:toggle(true)
+-- register_key_bind("F1", function()
+--     uevrUtils.profiler:report("alpha")
+-- end)
 
 gestureTrainer.init()
 ui.init()
@@ -94,9 +95,8 @@ if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
 
--- v2.0.6
 
-local versionTxt = "v2.0.7"
+local versionTxt = "v2.0.8"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
@@ -168,6 +168,15 @@ local configDefinition = {
 					speed = 0.5,
 					range = {-180, 180},
 					initialValue = {0, 0, 0},
+					isHidden = not isDeveloperMode,
+				},
+				{
+					widgetType = "drag_float3",
+					id = "custom_glove_wand_scale_left",
+					label = "Custom Glove Item Scale (Left)",
+					speed = 0.01,
+					range = {0.01, 10},
+					initialValue = {1, 1, 1},
 					isHidden = not isDeveloperMode,
 				},
 				{
@@ -586,9 +595,12 @@ local function updateWandSocketProxyTransform(hand)
 	local suffix = hand == Handed.Left and "left" or "right"
 	local pos = configui.getValue("custom_glove_wand_position_" .. suffix)
 	local rot = configui.getValue("custom_glove_wand_rotation_" .. suffix)
+	-- Only the left hand has a scale slider
+	local scale = configui.getValue("custom_glove_wand_scale_" .. suffix)
 	if uevrUtils.getValid(wandSocketProxies[hand]) == nil or pos == nil or rot == nil then return end
 	wandSocketProxies[hand]:K2_SetRelativeLocation(uevrUtils.vector(pos.X, pos.Y, pos.Z), false, reusable_hit_result, false)
 	wandSocketProxies[hand]:K2_SetRelativeRotation(uevrUtils.rotator(rot.X, rot.Y, rot.Z), false, reusable_hit_result, false)
+	if scale ~= nil then wandSocketProxies[hand]:SetRelativeScale3D(uevrUtils.vector(scale.X, scale.Y, scale.Z)) end
 end
 
 local function getWandAttachTarget(handComponent, socketName, hand)
@@ -962,8 +974,20 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	if gripEarLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_START) end
 	if gripEarRight then regenerateHands(configui.getValue("hands_type")) end
 	if gripMouthLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
+	-- A left grip that fires a head gesture belongs to the gesture. When the palette is not handling the grip,
+	-- nothing else hides it, so the game would see a short LB tap and use the selected quick item (e.g. drink a potion).
+	if gripEarLeft or gripMouthLeft then
+		status.headGestureGripLeft = true
+	elseif not uevrUtils.isButtonPressed(state, XINPUT_GAMEPAD_LEFT_SHOULDER) then
+		status.headGestureGripLeft = nil
+	end
 
 end, 20)
+
+-- Hide the gesture's grip from the game only after all pre-input callbacks: the palette still needs it to drink at the mouth.
+uevrUtils.registerOnPostInputGetStateCallback(function(retval, user_index, state)
+	if status.headGestureGripLeft then uevrUtils.unpressButton(state, XINPUT_GAMEPAD_LEFT_SHOULDER) end
+end)
 
 local function isWearingRobeAndGloves()
 	local character = mounts.getMountType() ~= nil and mounts.getMountPawn(pawn) or pawn
@@ -1155,16 +1179,6 @@ local function fixFlicker()
 	end
 end
 
--- -- Native Mode needs to update body yaw on only one eye,
--- -- while AFW Mode needs to update body yaw on both eyes.
--- local function setInputBodyYawMode()
--- 	if uevrUtils.getUEVRParam_int("VR_RenderingMethod") == 0 then
--- 		input.setOptimizeBodyYawCalculations(true)
--- 	else
--- 		input.setOptimizeBodyYawCalculations(false)
--- 	end
--- end
-
 --when the UEVR overlay closes, update the body yaw mode and flicker fixer in case UEVR rendering mode changed
 uevrUtils.registerUEVRUIChangeCallback(function(isOpen)
     if isOpen == false then
@@ -1290,7 +1304,6 @@ on_level_change = function(level, levelName)
     regenerateHands(configui.getValue("hands_type") or 1)
 	delay(2000, hookLevelFunctions)
 	spells.activateAutoTargetSense(configui.getValue("use_auto_targeting"))
-	-- setInputBodyYawMode() 
 	fixFlicker()
 
 	uevr.api:dispatch_custom_event(configui.getValue("use_gesture_detection") and "GestureStart" or "GestureStop", "")
@@ -1314,9 +1327,6 @@ ui.registerWidgetChangeCallback("UI_BP_Tutorial_NonModal_C", function(active, wi
 	ui.setCustomState("handsEnabled", (active and (status.toolWheelTutorial or widget.TutorialName:to_string() == "Stupefy" or (pawn and pawn.bInCombatMode))) or nil, 1)
 	ui.setCustomState("viewLocked", (active and not (pawn and pawn.bInCombatMode)) or (not active and nil), 1)
 
-	--input.setRotationModeRotationDisabled(active)
-	--input.setBodyYawWritesSuppressed(active)
-	--mounts.hideViewableMesh(pawn, not active)
 end)
 
 ui.onUpdate("handsEnabled", function(value)
@@ -1352,6 +1362,7 @@ configui.onUpdate("custom_glove_wand_position_right", function(value) updateWand
 configui.onUpdate("custom_glove_wand_rotation_right", function(value) updateWandSocketProxyTransform(Handed.Right) end)
 configui.onUpdate("custom_glove_wand_position_left", function(value) updateWandSocketProxyTransform(Handed.Left) end)
 configui.onUpdate("custom_glove_wand_rotation_left", function(value) updateWandSocketProxyTransform(Handed.Left) end)
+configui.onUpdate("custom_glove_wand_scale_left", function(value) updateWandSocketProxyTransform(Handed.Left) end)
 
 configui.onUpdate("hand_spell_icon_position", function(value)
 	updateHandSpellIconTransform()
@@ -1556,166 +1567,9 @@ uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
     end
 end)
 
----------------- Handler for arms mesh visibility during Disillusionment and Invisibility Potion --------------------
-local function getHandsMeshes()
-	local meshes = {}
-	local handsType = configui.getValue("hands_type")
-	if handsType == HandsType.IKArms then
-		local index = 1
-		local mesh = ik.exists() and ik.getCurrentMesh(index) or nil
-		while mesh ~= nil do
-			meshes[#meshes + 1] = mesh
-			index = index + 1
-			mesh = ik.getCurrentMesh(index)
-		end
-	elseif handsType == HandsType.Forearms then
-		for _, hand in ipairs({Handed.Left, Handed.Right}) do
-			for _, mesh in ipairs(hands.getHandComponentsForHand(hand)) do
-				meshes[#meshes + 1] = mesh
-			end
-		end
-	end
-	return meshes
-end
-
--- Pairs each hands mesh with the pawn mesh it was built from.
--- The IK descriptors also cover every mesh getCustomHandComponent() can return (which has side effects).
-local function getHandsMaterialSources()
-	local handsSources = {}
-	local meshes = getHandsMeshes()
-	if #meshes == 0 then return handsSources end
-	local sources = {}
-	for _, template in ipairs(getCustomIKComponent() or {}) do
-		local source = uevrUtils.getValid(uevrUtils.getObjectFromDescriptor(template.descriptor, false))
-		if source ~= nil and source.SkeletalMesh ~= nil then
-			sources[source.SkeletalMesh:get_address()] = source
-		end
-	end
-	for _, mesh in ipairs(meshes) do
-		local source = uevrUtils.getValid(mesh) ~= nil and mesh.SkeletalMesh ~= nil and sources[mesh.SkeletalMesh:get_address()]
-		if source then
-			handsSources[#handsSources + 1] = {mesh = mesh, source = source}
-		end
-	end
-	return handsSources
-end
-
--- Copy the current materials (e.g. a SkinFX effect) from the pawn meshes the hands were built from
-local function setHandsMaterials(handsSources)
-	for _, hand in ipairs(handsSources or getHandsMaterialSources()) do
-		uevrUtils.copyMaterials(hand.source, hand.mesh)
-	end
-end
-setHandsMaterials = uevrUtils.profiler:wrap("Hands: sync materials", setHandsMaterials)
-
--- SkinFX effects (disillusionment, invisibility potion) swap the pawn materials when they start and again
--- only after their fade-out ends. If the swap hasn't happened at the state change, watch one source
--- material and copy everything once it changes.
-local function startHandsMaterialsSync()
-	status.handsMaterialsWatch = nil
-	local handsSources = getHandsMaterialSources()
-	local hand = handsSources[1]
-	if hand == nil then return end
-	local material = hand.source:GetMaterial(0)
-	local current = hand.mesh:GetMaterial(0)
-	local address = material and material:get_address()
-	if address ~= (current and current:get_address()) then
-		setHandsMaterials(handsSources)
-	else
-		status.handsMaterialsWatch = {source = hand.source, material = address}
-	end
-end
-
-local function checkHandsMaterialsWatch()
-	local watch = status.handsMaterialsWatch
-	local source = uevrUtils.getValid(watch.source)
-	if source == nil then
-		-- Rebuilt hands copy the current materials when they are created
-		status.handsMaterialsWatch = nil
-		return
-	end
-	local material = source:GetMaterial(0)
-	if (material and material:get_address()) ~= watch.material then
-		status.handsMaterialsWatch = nil
-		setHandsMaterials()
-	end
-end
-checkHandsMaterialsWatch = uevrUtils.profiler:wrap("Hands: watch materials", checkHandsMaterialsWatch)
-
--- The first state seen needs no sync because newly created hands copy the current materials
-local function checkDisillusioned()
-	local p = uevrUtils.getValid(pawn)
-	status.osi = uevrUtils.getValid(status.osi) or (p and p.GetObjectStateInfo and p:GetObjectStateInfo())
-	if status.osi == nil then return end
-	local isDisillusioned = status.osi:IsDisillusioned()
-	if status.isDisillusioned ~= isDisillusioned then
-		local wasKnown = status.isDisillusioned ~= nil
-		status.isDisillusioned = isDisillusioned
-		if wasKnown then startHandsMaterialsSync() end
-	end
-end
-checkDisillusioned = uevrUtils.profiler:wrap("Hands: check disillusioned", checkDisillusioned)
-
-local function checkInvisibility()
-	local p = uevrUtils.getValid(pawn)
-	if p == nil then return end
-	local isInvisible = p.bIsInvisible == true
-	if status.isInvisible ~= isInvisible then
-		local wasKnown = status.isInvisible ~= nil
-		status.isInvisible = isInvisible
-		if wasKnown then startHandsMaterialsSync() end
-	end
-end
-checkInvisibility = uevrUtils.profiler:wrap("Hands: check invisibility", checkInvisibility)
-
-local isInvincible = false
-uevrUtils.registerPostEngineTickCallback(function(engine, deltaTime)
-	--checkDisillusioned()
-	checkInvisibility()
-	if status.handsMaterialsWatch ~= nil then checkHandsMaterialsWatch() end
-
-	if isInvincible then
-		pawn:RestoreHealth() --invincibility
-	end
-end)
-setInterval(500, checkDisillusioned)
-------------------------- End of arms visibility Handler --------------------
-
 
 uevr.params.sdk.callbacks.on_script_reset(function()
 	cleanup()
 end)
 
-register_key_bind("F3", boats.placeOrSpawnBoat)
 
-register_key_bind("F2", function()
-	isInvincible = not isInvincible
-end)
-
--- Testing: set every palette gadget's count to TEST_GADGET_COUNT (adds or removes stock),
--- or to its own count in testGadgetCounts.
-local TEST_GADGET_COUNT = 10
-local testGadgets = {"Edurus", "Maxima", "AMFillPotion", "AutoDamagePotion", "InvisibilityPotion",
-	"Mandrake_Byproduct", "ChompingCabbage_Byproduct", "VenomousTentacula_Byproduct", "WoundCleaning"}
-local testGadgetCounts = {WoundCleaning = 20} -- Wiggenweld.
-register_key_bind("F4", function()
-	local inventory = uevrUtils.getValid(uevrUtils.find_default_instance("Class /Script/Phoenix.InventoryManagerInterface"))
-	local p = uevrUtils.getValid(pawn)
-	if inventory == nil or p == nil then return end
-	local character = p:GetCharacterID()
-	local holder, none = uevrUtils.fname_from_string("ActorBackpack"), uevrUtils.fname_from_string("None")
-	for _, id in ipairs(testGadgets) do
-		local item = uevrUtils.fname_from_string(id)
-		local target = testGadgetCounts[id] or TEST_GADGET_COUNT
-		local count = inventory:GetCount(character, item, 0, 0, holder, none)
-		if type(count) == "number" and count ~= target then
-			-- Reason 4 = INVENTORY_CHANGE_REASON_CONSOLE_DEBUG; suppress the HUD popup.
-			inventory:AdjustCount(character, item, target - count, 4, holder, none, true, false, none, false, false, false)
-		end
-	end
-	print("Gadget counts set to " .. TEST_GADGET_COUNT .. " (Wiggenweld " .. testGadgetCounts.WoundCleaning .. ")")
-end)
-
-register_key_bind("F5", function()
-	print("get_aim_pose:", uevr.params.vr.get_aim_pose)		
-end)

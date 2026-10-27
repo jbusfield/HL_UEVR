@@ -587,17 +587,21 @@ local function castOppugno(pawn)
 	status.isOppugnoCasting = true
 end
 
+-- Rechecked on each use: if the Blueprint class is unloaded its class default object is freed with it
+local function getGadgetWheelDefault()
+	status.gadgetWheelWidget = uevrUtils.getValid(status.gadgetWheelWidget) or uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
+	return status.gadgetWheelWidget
+end
+
 -- The stock gadget wheel's CanMountCreature, called on its class default object, is false while
 -- no mount can be summoned (e.g. swimming) and true on solid ground. The wheel greys out all
 -- three mounts together on it. Without the class, leave the decision to the summon itself.
 local function canMountNow()
-	if status.gadgetWheelWidget == nil then
-		status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
-	end
-	if status.gadgetWheelWidget == nil then return true end
+	local gadgetWheel = getGadgetWheelDefault()
+	if gadgetWheel == nil then return true end
 	-- Native scalar out parameters write to the supplied table's result field.
 	local result = {}
-	status.gadgetWheelWidget:CanMountCreature(result)
+	gadgetWheel:CanMountCreature(result)
 	return result.result == true
 end
 M.canMountNow = canMountNow
@@ -607,14 +611,12 @@ local function castUpBroom(pawn)
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
 	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseBroom(true) and canMountNow() then
-		if status.gadgetWheelWidget == nil then
-			status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
-		end
-		if status.gadgetWheelWidget ~= nil then
+		local gadgetWheel = getGadgetWheelDefault()
+		if gadgetWheel ~= nil then
 			local found = {}
 			local itemName = {}
 			local holder = uevrUtils.fname_from_string("ActiveBroom")
-			status.gadgetWheelWidget:FindSlottedBroomMountItem(holder, found, itemName)
+			gadgetWheel:FindSlottedBroomMountItem(holder, found, itemName)
 			if found.result then
 				pawn:LoadInventoryItemByName(itemName.result, holder)
 				pawn:UseInventoryItemByName(itemName.result, holder)
@@ -640,14 +642,12 @@ local function castUpHippogriff(pawn)
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
 	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseHippogriff() and canMountNow() then
-		if status.gadgetWheelWidget == nil then
-			status.gadgetWheelWidget = uevrUtils.find_default_instance("WidgetBlueprintGeneratedClass /Game/UI/GadgetWheel/UI_BP_GadgetWheel.UI_BP_GadgetWheel_C")
-		end
-		if status.gadgetWheelWidget ~= nil then
+		local gadgetWheel = getGadgetWheelDefault()
+		if gadgetWheel ~= nil then
 			local found = {}
 			local itemName = {}
 			local holder = uevrUtils.fname_from_string("ActiveFlyingMount")
-			status.gadgetWheelWidget:FindSlottedBroomMountItem(holder, found, itemName)
+			gadgetWheel:FindSlottedBroomMountItem(holder, found, itemName)
 			if found.result then
 				pawn:LoadInventoryItemByName(itemName.result, holder)
 				pawn:UseInventoryItemByName(itemName.result, holder)
@@ -668,7 +668,8 @@ local creatureToolClasses = {
 
 local function endCurrentTool(tool)
 	if tool == status.currentTool then
-		tool:EndItemUsage()
+		-- The fallback timer can fire after the game has destroyed the tool
+		if UEVR_UObjectHook.exists(tool) then tool:EndItemUsage() end
 		status.currentTool, status.feedCan = nil, nil
 	end
 end
@@ -1309,6 +1310,7 @@ local function onSpellHover(spell)
 	if spell ~= "" and spell ~= status.hoveredSpellName then
 		uevrUtils.print("onSpellHover " .. spell)
 		status.hoveredSpellName = spell
+		status.currentSpellIcon:setVisible(true)
 		status.currentSpellIcon:setTexture(spell .. ".png")
 		if status.currentSpellText ~= nil then
 			status.currentSpellText:setText(spellNameExpressions[spell] or spell)
@@ -1323,12 +1325,9 @@ local function onSpellUnhover(spell)
 		if spell ~= "" and spell ~= status.hoveredSpellName then return end
 	end
 	status.hoveredSpellName = nil
-	if status.currentSpellIcon.image ~= nil then
-		status.currentSpellIcon.image:SetVisibility(1) -- Collapsed
-		if status.currentSpellText ~= nil then
-			status.currentSpellText:setText("")
-		end
-
+	status.currentSpellIcon:setVisible(false)
+	if status.currentSpellText ~= nil then
+		status.currentSpellText:setText("")
 	end
 end
 
@@ -1337,7 +1336,11 @@ end
 -- Essential ItemId is not the spell name (Stupefy is "StupefySpecial_Send"); the widget's object name is.
 local function syncEssentialHoverFromSelection()
 	if status.currentSpellIcon == nil or status.actionSelectionWidget == nil then return end
-	local sel = status.actionSelectionWidget
+	local sel = uevrUtils.getValid(status.actionSelectionWidget)
+	if sel == nil then
+		status.actionSelectionWidget = nil
+		return
+	end
 	local name = nil
 	for _, screen in ipairs({ sel.ActionSelection_MKB, sel.ActionSelection_Controller }) do
 		-- if screen ~= nil and screen.isItemHovering and screen.HoveredItem ~= nil then
@@ -1347,8 +1350,10 @@ local function syncEssentialHoverFromSelection()
         --         break
         --     end
 		-- FName casing of this property varies between game sessions
-		if screen ~= nil and (screen.isItemHovering or screen.IsItemHovering) and screen.HoveredItem ~= nil then
-			name = screen.HoveredItem:get_fname():to_string()
+		screen = uevrUtils.getValid(screen)
+		local item = screen ~= nil and (screen.isItemHovering or screen.IsItemHovering) and uevrUtils.getValid(screen, {"HoveredItem"}) or nil
+		if item ~= nil then
+			name = item:get_fname():to_string()
 			break
 		end
 	end
@@ -1364,6 +1369,28 @@ local function syncEssentialHoverFromSelection()
 	end
 end
 
+-- The hover hooks only queue the spell name. The pre-engine tick applies it, so the texture import and
+-- the bridge SetText calls never run inside a hook. Events are replayed in the order the hooks saw them.
+local function queueHoverEvent(hovered, button)
+	if status.currentSpellIcon == nil then return end
+	status.pendingHoverEvents = status.pendingHoverEvents or {}
+	table.insert(status.pendingHoverEvents, { hovered = hovered, name = button and button.IconName })
+end
+
+local function applyPendingHoverEvents()
+	local events = status.pendingHoverEvents
+	if events == nil then return end
+	status.pendingHoverEvents = nil
+	for _, event in ipairs(events) do
+		if event.hovered then
+			status.hoverFromEssential = false
+			onSpellHover(event.name)
+		else
+			onSpellUnhover(event.name)
+		end
+	end
+end
+
 ------------------------ End Spell Screen Hover Handlers --------------------
 
 
@@ -1371,16 +1398,13 @@ local function hookLevelFunctions()
 	hook_function(
 		"WidgetBlueprintGeneratedClass /Game/UI/Common/UI_BP_ItemScrollBox.UI_BP_ItemScrollBox_C", "ButtonHovered", false, nil,
 		function(fn, obj, locals, result)
-			local button = locals and locals.Button
-			status.hoverFromEssential = false
-			onSpellHover(button and button.IconName)
+			queueHoverEvent(true, locals and locals.Button)
 		end, false)
 
 	hook_function(
 		"WidgetBlueprintGeneratedClass /Game/UI/Common/UI_BP_ItemScrollBox.UI_BP_ItemScrollBox_C", "ButtonUnhovered", false, nil,
 		function(fn, obj, locals, result)
-			local button = locals and locals.Button
-			onSpellUnhover(button and button.IconName)
+			queueHoverEvent(false, locals and locals.Button)
 		end, false)
 end
 
@@ -1411,6 +1435,7 @@ end)
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
 	wandFrame = wandFrame + 1
 	updatePelletFlight(deltaTime)
+	applyPendingHoverEvents()
 	syncEssentialHoverFromSelection()
 end)
 

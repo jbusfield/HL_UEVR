@@ -526,6 +526,23 @@ local function lerpCallback(alpha, progress, userdata)
 end
 
 local animStates = {}
+-- Blends started per animID, so a newly applied pose can stop them before they finish over it
+local animLerps = {}
+
+local function startLerp(animID, animName, startAlpha, endAlpha, duration)
+	local lerpID = animID .. "-" .. animName
+	if animLerps[animID] == nil then animLerps[animID] = {} end
+	animLerps[animID][lerpID] = true
+	uevrUtils.lerp(lerpID, startAlpha, endAlpha, duration, {animID = animID, animName = animName}, lerpCallback)
+end
+
+function M.cancelLerps(animID)
+	local lerps = animLerps[animID]
+	if lerps == nil then return end
+	for lerpID in pairs(lerps) do uevrUtils.cancelLerp(lerpID) end
+	animLerps[animID] = nil
+end
+
 function M.updateAnimation(animID, animName, isPressed, lerpParam)
 	if animStates[animID] == nil then
 		animStates[animID] = {}
@@ -536,7 +553,7 @@ function M.updateAnimation(animID, animName, isPressed, lerpParam)
 	if isPressed then
 		if not animStates[animID][animName] == true then
 			if lerpParam ~= nil then
-				uevrUtils.lerp(animID.."-"..animName, lerpParam.startAlpha == nil and 0.0 or lerpParam.startAlpha, lerpParam.endAlpha == nil and 1.0 or lerpParam.endAlpha, lerpParam.duration == nil and 0.3 or lerpParam.duration, {animID = animID, animName = animName}, lerpCallback)
+				startLerp(animID, animName, lerpParam.startAlpha == nil and 0.0 or lerpParam.startAlpha, lerpParam.endAlpha == nil and 1.0 or lerpParam.endAlpha, lerpParam.duration == nil and 0.3 or lerpParam.duration)
 			else
 				M.animate(animID, animName, "on")
 			end
@@ -545,7 +562,7 @@ function M.updateAnimation(animID, animName, isPressed, lerpParam)
 	else
 		if animStates[animID][animName] == true then
 			if lerpParam ~= nil then
-				uevrUtils.lerp(animID.."-"..animName, lerpParam.startAlpha == nil and 1.0 or lerpParam.startAlpha, lerpParam.endAlpha == nil and 0.0 or lerpParam.endAlpha, lerpParam.duration == nil and 0.3 or lerpParam.duration, {animID = animID, animName = animName}, lerpCallback)
+				startLerp(animID, animName, lerpParam.startAlpha == nil and 1.0 or lerpParam.startAlpha, lerpParam.endAlpha == nil and 0.0 or lerpParam.endAlpha, lerpParam.duration == nil and 0.3 or lerpParam.duration)
 			else
 				M.animate(animID, animName, "off")
 			end

@@ -4,45 +4,45 @@
     "broom_accessory_end_time": 0.0,
     "broom_accessory_existing_guid": 1,
     "broom_accessory_item_activation_distance": 35.0,
-    "broom_accessory_item_activation_hand": 15,
+    "broom_accessory_item_activation_hand": 14,
     "broom_accessory_item_attach_type": 1,
     "broom_accessory_item_grip_animation": 1,
     "broom_accessory_item_grip_priority": "1",
-    "broom_accessory_item_id": "343406b6-ced7-42f3-9c64-c9604ea6690f",
-    "broom_accessory_item_label": "RightHandBroom",
+    "broom_accessory_item_id": "09cb7699-03f3-4e78-9fed-e52ca5ddfa6a",
+    "broom_accessory_item_label": "LeftHandBroom",
     "broom_accessory_item_location": [
-        14.300000190734863,
-        -1.2000000476837158,
-        -7.300000190734863
+        11.600000381469727,
+        -2.5,
+        -5.699999809265137
     ],
     "broom_accessory_item_rotation": [
-        -23.0,
-        16.899999618530273,
-        -143.5
+        -22.899999618530273,
+        15.300000190734863,
+        -172.39999389648438
     ],
     "broom_accessory_item_socket_list": 2,
     "broom_accessory_item_socket_name": "handSocket",
     "broom_accessory_item_test_left_hand": false,
     "broom_accessory_item_test_right_hand": false,
     "broom_accessory_marker_picker": 1,
-    "broom_accessory_picker": 1,
+    "broom_accessory_picker": 2,
     "broom_accessory_start_time": 0.0,
     "broom_delete_accessory_override": false,
     "broom_high_speed_head_offset": -13.593999862670898,
     "broom_max_dive_pitch_offset": -12.236000061035156,
     "broom_max_rise_pitch_offset": -9.079999923706055,
     "custom_glove_wand_position_left": [
-        -2.5,
-        -1.7999999523162842,
-        -2.0
+        -2.799999952316284,
+        0.10000000149011612,
+        -1.0
     ],
     "custom_glove_wand_position_right": [
-        0.16899999976158142,
-        0.08100000023841858,
-        -0.39399999380111694
+        1.069000005722046,
+        0.8809999823570251,
+        0.906000018119812
     ],
     "custom_glove_wand_rotation_left": [
-        0.0,
+        12.5,
         0.0,
         180.0
     ],
@@ -50,6 +50,11 @@
         10.152999877929688,
         90.0,
         -12.753999710083008
+    ],
+    "custom_glove_wand_scale_left": [
+        1.2300000190734863,
+        1.2300000190734863,
+        1.2300000190734863
     ],
     "enable_flick_casting": true,
     "enable_stick_casting": false,
@@ -281,7 +286,7 @@
     "use_mount_hand_controlled_movement": true,
     "use_voice_detection": true,
     "use_volumetric_fog": false,
-    "use_widget_hand_placement": true,
+    "use_widget_hand_placement": false,
     "voice_min_confidence": 0.4,
     "voice_test": "Wingardium",
     "wand_position": [

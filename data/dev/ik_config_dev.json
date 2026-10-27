@@ -1,6 +1,6 @@
 {
     "uevr_ik_active": true,
-    "uevr_ik_active_profile": 2,
+    "uevr_ik_active_profile": 1,
     "uevr_ik_allow_stretch": false,
     "uevr_ik_allow_wrist_affects_elbow": true,
     "uevr_ik_animation_ik_pose_authoritative": false,

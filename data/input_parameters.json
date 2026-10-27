@@ -285,11 +285,11 @@
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
         "fixStickDrift": true,
-        "headBoneName": "Spine2",
+        "headBoneName": "head",
         "headOffset": {
-            "X": 8.26,
+            "X": 22.95,
             "Y": 0.0,
-            "Z": -16.935
+            "Z": -15.754
         },
         "isDisabledOverride": false,
         "optimizeBodyLocationCalculations": true,
@@ -306,9 +306,9 @@
         "pawnRotationModeUseRootPitchRoll": true,
         "rootBoneName": "Reference",
         "rootOffset": {
-            "X": 50.372,
+            "X": 47.3289,
             "Y": 0.0,
-            "Z": -82.0653
+            "Z": -74.9982
         },
         "smoothTurnSpeed": 50,
         "snapAngle": 30,

@@ -249,11 +249,25 @@ function M.loadTexture(imageName, path)
 	return texture
 end
 
+-- exists() passes for a new object that reuses a freed address; the full name rejects it
+local function isSameLiveObject(obj, fullName)
+	return uevrUtils.getValid(obj) ~= nil and fullName ~= nil and obj:get_full_name() == fullName
+end
+
+-- The image and its slot, only while they are still the ones addToWidget created
+local function liveImage(image)
+	return isSameLiveObject(image.image, image.imageName) and image.image or nil
+end
+local function liveSlot(image)
+	return isSameLiveObject(image.slot, image.slotName) and image.slot or nil
+end
+
 -- Collapsed while hidden or while there is nothing to draw
 local function updateImageVisibility(image)
-	if image.image == nil then return end
+	local widget = liveImage(image)
+	if widget == nil then return end
 	local visible = not image.hidden and (image.texture ~= nil or image.color ~= nil)
-	image.image:SetVisibility(visible and 0 or 1) -- Visible or Collapsed
+	widget:SetVisibility(visible and 0 or 1) -- Visible or Collapsed
 end
 
 function Image:setTextureObject(texture)
@@ -266,12 +280,14 @@ function Image:setTextureObject(texture)
 	else
 		self.drawSize = uevrUtils.vector2D(self.maxDim, self.maxDim)
 	end
-	if self.image ~= nil then
-		self.image:SetBrushFromTexture(texture, true)
-		self.image:SetBrushSize(self.drawSize)
+	local widget = liveImage(self)
+	if widget ~= nil then
+		widget:SetBrushFromTexture(texture, true)
+		widget:SetBrushSize(self.drawSize)
 		updateImageVisibility(self)
-		if self.slot ~= nil then
-			self.slot:SetSize(self.drawSize)
+		local slot = liveSlot(self)
+		if slot ~= nil then
+			slot:SetSize(self.drawSize)
 		end
 	end
 	return true
@@ -280,8 +296,9 @@ end
 function Image:setTexture(imageName, path, hideIfMissing)
 	if hideIfMissing == nil then hideIfMissing = true end
 	if self:setTextureObject(M.loadTexture(imageName, path)) then return true end
-	if hideIfMissing and self.image ~= nil then
-		self.image:SetVisibility(1) -- Collapsed
+	local widget = hideIfMissing and liveImage(self) or nil
+	if widget ~= nil then
+		widget:SetVisibility(1) -- Collapsed
 	end
 	return false
 end
@@ -295,26 +312,30 @@ end
 function Image:setColor(hex)
 	if type(hex) ~= "string" then return end
 	self.color = hex
-	if self.image ~= nil then
-		self.image:SetColorAndOpacity(linearColorFromHex(hex))
+	local widget = liveImage(self)
+	if widget ~= nil then
+		widget:SetColorAndOpacity(linearColorFromHex(hex))
 		updateImageVisibility(self)
 	end
 end
 
 function Image:setRenderScale(scale)
 	self.renderScale = scale
-	if self.image ~= nil then
-		self.image:SetRenderScale(uevrUtils.vector2D(scale, scale))
+	local widget = liveImage(self)
+	if widget ~= nil then
+		widget:SetRenderScale(uevrUtils.vector2D(scale, scale))
 	end
 end
 
 function Image:setSize(size2D)
 	if size2D == nil then return end
 	self.drawSize = uevrUtils.vector2D(size2D.X, size2D.Y)
-	if self.image ~= nil then
-		self.image:SetBrushSize(self.drawSize)
-		if self.slot ~= nil then
-			self.slot:SetSize(self.drawSize)
+	local widget = liveImage(self)
+	if widget ~= nil then
+		widget:SetBrushSize(self.drawSize)
+		local slot = liveSlot(self)
+		if slot ~= nil then
+			slot:SetSize(self.drawSize)
 		end
 	end
 end
@@ -343,9 +364,10 @@ local function setSlotLayout(slot, opts)
 end
 
 function Image:setLayout(opts)
-	if self.slot == nil then return end
-	if setSlotLayout(self.slot, opts) then
-		self.slot:SetSize(self.drawSize)
+	local slot = liveSlot(self)
+	if slot == nil then return end
+	if setSlotLayout(slot, opts) then
+		slot:SetSize(self.drawSize)
 	end
 end
 
@@ -356,6 +378,7 @@ function Image:addToWidget(widget, opts)
 	if self.image == nil then
 		self.image = uevrUtils.spawn_object("Class /Script/UMG.Image", widget.WidgetTree)
 		if self.image == nil then return false end
+		self.imageName = self.image:get_full_name()
 		if self.texture ~= nil then
 			self.image:SetBrushFromTexture(self.texture, true)
 		end
@@ -370,6 +393,7 @@ function Image:addToWidget(widget, opts)
 			self.image:SetVisibility(1) -- Collapsed until shown and given a texture or color
 		end
 		self.slot = panel:AddChildToCanvas(self.image)
+		self.slotName = self.slot ~= nil and self.slot:get_full_name() or nil
 	end
 	if opts ~= nil and opts.X ~= nil then
 		opts = { position = opts }
@@ -383,11 +407,14 @@ function Image:setPosition(position2D)
 end
 
 function Image:remove()
-	if uevrUtils.getValid(self.image) ~= nil and self.image.RemoveFromParent ~= nil then
-		self.image:RemoveFromParent()
+	local widget = liveImage(self)
+	if widget ~= nil and widget.RemoveFromParent ~= nil then
+		widget:RemoveFromParent()
 	end
 	self.image = nil
+	self.imageName = nil
 	self.slot = nil
+	self.slotName = nil
 	self.texture = nil
 end
 
@@ -418,7 +445,7 @@ end
 -- Native UEVR Lua cannot marshal FText, so SetText goes through the plugin
 function Text:setText(text)
 	self.text = text or ""
-	if self.textBlock ~= nil then
+	if isSameLiveObject(self.textBlock, self.textBlockName) then
 		plugin.executeFunction(self.textBlock, "SetText", self.text)
 	end
 end
@@ -475,6 +502,7 @@ function Text:addToWidget(widget, opts)
 	if self.textBlock == nil then
 		self.textBlock = uevrUtils.spawn_object("Class /Script/UMG.TextBlock", widget.WidgetTree)
 		if self.textBlock == nil then return false end
+		self.textBlockName = self.textBlock:get_full_name()
 		self.slot = panel:AddChildToCanvas(self.textBlock)
 		self:setText(self.text)
 		if self.color ~= nil then self:setColor(self.color) end
@@ -497,6 +525,7 @@ function Text:remove()
 		self.textBlock:RemoveFromParent()
 	end
 	self.textBlock = nil
+	self.textBlockName = nil
 	self.slot = nil
 end
 
