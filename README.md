@@ -30,7 +30,7 @@ The Gadget Wheel is where your potions and mounts can be accessed. Open the whee
 [![Watch Video](https://img.youtube.com/vi/ZKa1V_I1c-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=ZKa1V_I1c-w)
 
 ### Wand Holstering, Item Pickup and Ladder Climbing
-- Holstering - To holster or unholster, point your wand hand straight down at your side and grip. You will feel a slight vibration when done correctly. The location doesn't matter, it just matters the you are pointing straight down.
+- Holstering - To holster or unholster, point your wand hand straight down at your side and grip. You will feel a slight vibration when done correctly. The location doesn't matter, it just matters that you are pointing straight down.
 - Pick up items - When prompted, grip with your left hand and the item will come to your hand. Release your grip to drop it or bring it near your left ear and release grip to put it in your inventory
 - Ladders - Walk up to the ladder until you are on the ladder. Once on it you can grip the rungs or sides of the ladder to pull yourself up or down
 See this video for a demonstration
