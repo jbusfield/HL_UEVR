@@ -1,6 +1,6 @@
 {
     "uevr_ik_active": true,
-    "uevr_ik_active_profile": 1,
+    "uevr_ik_active_profile": 3,
     "uevr_ik_allow_stretch": false,
     "uevr_ik_allow_wrist_affects_elbow": true,
     "uevr_ik_animation_ik_pose_authoritative": false,
@@ -70,7 +70,7 @@
     "uevr_ik_max_stretch_scale": 0.0,
     "uevr_ik_max_twist_delta_deg": 12.0,
     "uevr_ik_mesh": "Custom",
-    "uevr_ik_mesh_combo": 12,
+    "uevr_ik_mesh_combo": 10,
     "uevr_ik_mesh_combo_show_children": true,
     "uevr_ik_mesh_location_offset": [
         -5.861100196838379,

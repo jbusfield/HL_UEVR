@@ -1,4 +1,76 @@
 {
+    "uevr_gunstock_Actor_SM_Loot_Pouch_C_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Loot_Pouch_C_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Loot_Pouch_C_use_default": true,
+    "uevr_gunstock_Actor_SM_Loot_Pouch_C_use_default_offhand_location_offset": true,
+    "uevr_gunstock_Actor_SM_Potion_DugbogTongue_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_DugbogTongue_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_DugbogTongue_use_default": true,
+    "uevr_gunstock_Actor_SM_Potion_DugbogTongue_use_default_offhand_location_offset": true,
+    "uevr_gunstock_Actor_SM_Potion_SpiderFang_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_SpiderFang_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_SpiderFang_use_default": true,
+    "uevr_gunstock_Actor_SM_Potion_SpiderFang_use_default_offhand_location_offset": true,
+    "uevr_gunstock_Actor_SM_Potion_TrollMucus_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_TrollMucus_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_TrollMucus_use_default": true,
+    "uevr_gunstock_Actor_SM_Potion_TrollMucus_use_default_offhand_location_offset": true,
+    "uevr_gunstock_Actor_SM_Potion_WolfPelt_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_WolfPelt_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Potion_WolfPelt_use_default": true,
+    "uevr_gunstock_Actor_SM_Potion_WolfPelt_use_default_offhand_location_offset": true,
+    "uevr_gunstock_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_offhand_location_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_gunstock_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_use_default": true,
+    "uevr_gunstock_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_use_default_offhand_location_offset": true,
     "uevr_gunstock_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_offhand_location_offset": [
         0.0,
         0.0,

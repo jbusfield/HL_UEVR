@@ -181,6 +181,90 @@
                 0.0,
                 0.0
             ]
+        },
+        {
+            "id": "Actor_SM_Loot_Pouch_C",
+            "label": "Actor_SM_Loot_Pouch_C",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "Actor_SM_Potion_WolfPelt",
+            "label": "Actor_SM_Potion_WolfPelt",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "Actor_SM_Potion_DugbogTongue",
+            "label": "Actor_SM_Potion_DugbogTongue",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "Actor_SM_Potion_SpiderFang",
+            "label": "Actor_SM_Potion_SpiderFang",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "Actor_SM_Potion_TrollMucus",
+            "label": "Actor_SM_Potion_TrollMucus",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
+        },
+        {
+            "id": "Actor_SM_Sanc_Skull_Dwiz_01A_Loot",
+            "label": "Actor_SM_Sanc_Skull_Dwiz_01A_Loot",
+            "offhand_location_offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ]
         }
     ]
 }

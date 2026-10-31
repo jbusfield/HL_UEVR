@@ -22,6 +22,8 @@ local widget = require("libs/widget")
 local widgetComponent = require("libs/widgetcomponent")
 local gestures = require("libs/gestures")
 local accessories = require("libs/accessories")
+local grip = require("libs/grip")
+local GRIP_PRIORITY = require("helpers/grip_priority")
 local spells = require("helpers/spells")
 local audio = require("helpers/audio")
 
@@ -63,6 +65,9 @@ local WIND_PARAMETERS = {"Movement Amount", "Wind Texture Scale"}
 -- Seconds after a left grip in which a right grip still counts as LB+RB (Ancient Magic).
 -- That chord goes to the game instead of creating a held copy. Closed wheel only.
 local CHORD_WINDOW = 0.2
+-- Seconds a closed-wheel left grip waits before making its held copy, so a near-simultaneous RB
+-- becomes a chord without the copy flashing in the hand first.
+local COPY_DELAY = 0.1
 -- Using a held copy (gesture mode). A potion is used when the hand reaches the mouth
 -- zone from libs/gestures. A plant is used when the grip is released within
 -- THROW_RELEASE_WINDOW seconds of a thrust (the gestures punch detector).
@@ -230,7 +235,8 @@ local cooldownUntil = {}
 local attachMesh = nil
 ---@type any
 local selectionService = nil
-local accessPawn, gadgetAvailable = nil, false
+-- paletteAccess: this pawn can use the palette. gadgetAvailable: the game's wheel is unlocked, which stock gadgets need.
+local accessPawn, paletteAccess, gadgetAvailable = nil, false, false
 local availabilityResult = {}
 local countDisplay = nil
 local cachedCounts = nil
@@ -240,6 +246,8 @@ local tapTime = nil -- When an unclassified trigger tap began (os.clock), until 
 local gripWasPressed = {[0] = true, [1] = true}
 local consumeGrip = {[0] = false, [1] = false}
 local leftChord, leftPressTime = false, nil -- Current left grip belongs to an LB+RB chord.
+local leftChordEnded = false -- RB left the chord first; LB stays hidden from the game until released.
+local leftCopyPending = false -- Closed-wheel left grip waiting COPY_DELAY before its copy.
 local leftAccessory = false -- Current left grip belongs to an accessory (e.g. a broom handle).
 local pending = {}
 local grips = {
@@ -314,7 +322,8 @@ local function restoreDrinkTool()
 	drinkToolTime = nil
 	local tool = uevrUtils.getValid(hiddenDrinkTool)
 	hiddenDrinkTool = nil
-	if tool ~= nil then tool:SetActorHiddenInGame(false) end
+	-- The saved reference can outlive the tool, so its address may now hold a different object.
+	if tool ~= nil and tool.SetActorHiddenInGame ~= nil then tool:SetActorHiddenInGame(false) end
 end
 
 function M.setGestureBased(on)
@@ -353,13 +362,15 @@ end
 
 function M.reset()
 	selectionService = nil
-	accessPawn, gadgetAvailable = nil, false
+	accessPawn, paletteAccess, gadgetAvailable = nil, false, false
 	pending = {}
 	triggerWasPressed = true
 	tapTime = nil
 	gripWasPressed = {[0] = true, [1] = true}
 	consumeGrip = {[0] = false, [1] = false}
 	leftChord, leftPressTime = false, nil
+	leftChordEnded = false
+	leftCopyPending = false
 	leftAccessory = false
 	M.clearActiveMesh()
 	restoreDrinkTool()
@@ -393,16 +404,17 @@ local function getSelectionService()
 	end
 end
 
-local function hasGadgetAccess()
-	accessPawn, gadgetAvailable = pawn, false
+local function hasPaletteAccess()
+	accessPawn, paletteAccess, gadgetAvailable = pawn, false, false
 	if uevrUtils.getValid(pawn) == nil then return false end
 	local service = getSelectionService()
 	if service == nil then return false end
+	paletteAccess = true
 	-- Native scalar out parameters write to the supplied table's result field.
 	availabilityResult.result = nil
 	service:IsItemWheelAvailable(availabilityResult)
 	gadgetAvailable = availabilityResult.result == true
-	return gadgetAvailable
+	return true
 end
 
 local function canSpawn()
@@ -410,9 +422,28 @@ local function canSpawn()
 		and not uevrUtils.isGamePaused() and not uevrUtils.isInCutscene()
 end
 
+-- True while the wheel is open for the current pawn.
+function M.isWheelOpen()
+	return #actors > 0 and not closing and displayPawn == pawn
+end
+
+-- Grip arbitration (libs/grip): a left grip that starts with the wheel open belongs to the palette for selecting from it, above an item
+-- grab or interaction and the ear gesture. The palette still hides its own presses (its hider below), so the claim hides nothing.
+grip.registerClaim("palette", function(hand, state, press)
+	if hand == Handed.Left and enabled and M.isWheelOpen() then return GRIP_PRIORITY.PALETTE_WHEEL end
+	return nil
+end, {hide = grip.Hide.None})
+
+-- Grip hiding (libs/grip): a grip the palette consumes (a wheel selection, a gadget copy, or LB after RB left an LB+RB chord first)
+-- is hidden from the game, and from input callbacks below the palette's own (6), such as accessories, holster and hand animation.
+-- captureInput decides consumeGrip at 6, so the hider runs just after it; callbacks above 6 (gestures, grip.lua) still see the grip.
+grip.registerHider("palette", function(hand, press)
+	return enabled and consumeGrip[hand] == true and accessPawn == pawn and paletteAccess and ui.isRemapDisabled() == false
+end, {fromPriority = 5.9})
+
 function M.getActiveMesh()
 	if not enabled or not gestureBased or (not TOGGLE_GRIP_FOR_ADJUSTMENTS and not gripWasPressed[Handed.Left])
-		or activePawn ~= pawn or accessPawn ~= pawn or not gadgetAvailable or not canSpawn() then return nil end
+		or activePawn ~= pawn or accessPawn ~= pawn or not paletteAccess or not canSpawn() then return nil end
 	if uevrUtils.getValid(activeActor) == nil then return nil end
 	return uevrUtils.getValid(activeMesh)
 end
@@ -707,7 +738,7 @@ end
 -- Copies the game's selected gadget, or a given diamond item (Felix Felicis), into the left hand.
 function M.createSelectedMesh(chosen)
 	if not enabled or not gestureBased or (not TOGGLE_GRIP_FOR_ADJUSTMENTS and not gripWasPressed[Handed.Left])
-		or not canSpawn() or not hasGadgetAccess() then return false end
+		or not canSpawn() or not hasPaletteAccess() then return false end
 	-- No copy while the wheel is open. A successful wheel selection starts closing
 	-- before this runs, so gripping an item still copies it immediately.
 	if #actors > 0 and not closing then return false end
@@ -716,6 +747,8 @@ function M.createSelectedMesh(chosen)
 		return false, "Left hand tracking is unavailable"
 	end
 	local item = chosen
+	-- Before the game's wheel unlocks, Wiggenweld is the only item a grip can take.
+	if item == nil and not gadgetAvailable then item = wiggenweld end
 	if item == nil then
 		local defaultManager = uevrUtils.find_default_instance("Class /Script/Phoenix.QuickActionManager")
 		local manager = defaultManager and uevrUtils.getValid(defaultManager:Get())
@@ -783,7 +816,8 @@ end
 
 -- Like the stock wheel, an item is available once either its recipe or its pickup lock
 -- is open. Without lock data every model is shown; stock confirmation still rejects
--- a locked selection. Mounts show a lock until progression unlocks them.
+-- a locked selection. Mounts show a lock until progression unlocks them, and stock gadgets
+-- until the game's wheel unlocks, because selecting one needs that wheel.
 local function readLocks(list)
 	local locked = {}
 	local manager = uevrUtils.getValid(uevrUtils.find_default_instance("Class /Script/Phoenix.LockManagerInterface"))
@@ -793,6 +827,8 @@ local function readLocks(list)
 		if item.summon ~= nil then
 			library = library or functionLibrary()
 			locked[index] = not mountUnlocked(item, library)
+		elseif not item.direct and not gadgetAvailable then
+			locked[index] = true
 		elseif manager ~= nil and item.recipeLock ~= nil then
 			locked[index] = manager:IsLocked(cachedFName(item.recipeLock)) == true
 				and manager:IsLocked(cachedFName(item.pickupLock)) == true
@@ -987,7 +1023,7 @@ end
 -- Opens a layout: the eight-gadget ring by default, or layouts.diamond.
 function M.show(shown)
 	shown = shown or layouts.ring
-	if not canSpawn() or not hasGadgetAccess() then return false end
+	if not canSpawn() or not hasPaletteAccess() then return false end
 	local left = uevrUtils.getValid(controllers.getController(Handed.Left, true))
 	local hmd = uevrUtils.getValid(controllers.getController(2, true))
 	local hand = controllers.getControllerLocation(Handed.Left)
@@ -1142,8 +1178,9 @@ local function clearSelection()
 end
 
 local function selectItem(item)
-	if not hasGadgetAccess() then return false, "The game gadget wheel is unavailable" end
+	if not hasPaletteAccess() then return false, "The palette is unavailable for this character" end
 	if item.clearsSelection then return clearSelection() end
+	if not gadgetAvailable then return false, "The game gadget wheel is unavailable" end
 	local service = selectionService
 	-- Never take over a stock wheel that the game already owns.
 	if uevrUtils.getValid(service.ItemWheelWidget) ~= nil then
@@ -1207,13 +1244,6 @@ local function queue(action)
 	if #pending < 16 then pending[#pending + 1] = action end
 end
 
-local function suppressGrips(state)
-	if accessPawn ~= pawn or not gadgetAvailable or ui.isRemapDisabled() ~= false then return end
-	for _, grip in ipairs(grips) do
-		if consumeGrip[grip.hand] then uevrUtils.unpressButton(state, grip.button) end
-	end
-end
-
 local function captureInput(retval, userIndex, state)
 	if not enabled or userIndex ~= 0 then return end
 	local allowed = canSpawn()
@@ -1222,12 +1252,12 @@ local function captureInput(retval, userIndex, state)
 	local tapped = trigger and not triggerWasPressed
 	-- Refresh on interaction edges, including after an unlock, rather than on tick.
 	local checkAccess = accessPawn ~= pawn or tapped
-	for _, grip in ipairs(grips) do
-		if not gripWasPressed[grip.hand] and uevrUtils.isButtonPressed(state, grip.button)
-			and (#actors > 0 or (gestureBased and grip.hand == Handed.Left)) then checkAccess = true end
+	for _, entry in ipairs(grips) do
+		if not gripWasPressed[entry.hand] and uevrUtils.isButtonPressed(state, entry.button)
+			and (#actors > 0 or (gestureBased and entry.hand == Handed.Left)) then checkAccess = true end
 	end
-	if allowed and checkAccess then hasGadgetAccess() end
-	allowed = allowed and accessPawn == pawn and gadgetAvailable
+	if allowed and checkAccess then hasPaletteAccess() end
+	allowed = allowed and accessPawn == pawn and paletteAccess
 	-- Classify taps before acting: a second tap within DOUBLE_TAP_WINDOW opens the diamond
 	-- (or swaps the open display); otherwise the single tap acts once the window has passed.
 	if tapTime ~= nil and (not allowed or os.clock() - tapTime > DOUBLE_TAP_WINDOW) then
@@ -1252,46 +1282,62 @@ local function captureInput(retval, userIndex, state)
 	local rightPressed = uevrUtils.isButtonPressed(state, XINPUT_GAMEPAD_RIGHT_SHOULDER)
 	if not leftPressed then
 		leftChord, leftPressTime = false, nil
+		leftChordEnded = false
+		leftCopyPending = false
 		leftAccessory = false
+	elseif leftChord and not rightPressed then
+		-- RB let go first. A held LB alone opens the game's gadget wheel, so hide it until it is released.
+		leftChord, leftChordEnded = false, true
 	elseif gestureBased and not wheelOpen then
 		if not gripWasPressed[Handed.Left] then
 			leftChord, leftPressTime = rightPressed, os.clock()
 			-- A grip that attaches to, or starts while holding, an accessory passes through
-			-- for the whole hold, so it never makes a copy.
-			leftAccessory = allowed and accessories.isGripHandEngaged(Handed.Left)
+			-- for the whole hold, so it never makes a copy. The same applies to a grip another system claims (e.g. an item grab).
+			local owner = grip.getOwner(Handed.Left)
+			leftAccessory = allowed and (accessories.isGripHandEngaged(Handed.Left) or (owner ~= nil and owner ~= "palette"))
 		elseif not leftChord and rightPressed and not gripWasPressed[Handed.Right]
 			and leftPressTime ~= nil and os.clock() - leftPressTime <= CHORD_WINDOW then
 			-- RB followed LB quickly: release LB to the game and drop any copy it created.
-			leftChord = true
+			leftChord, leftCopyPending = true, false
 			queue({release = true})
 		end
 	end
-	for _, grip in ipairs(grips) do
-		local pressed = uevrUtils.isButtonPressed(state, grip.button)
+	for _, entry in ipairs(grips) do
+		local pressed = uevrUtils.isButtonPressed(state, entry.button)
 		if not pressed then
-			consumeGrip[grip.hand] = false
-			if not TOGGLE_GRIP_FOR_ADJUSTMENTS and gestureBased and grip.hand == Handed.Left and gripWasPressed[grip.hand] then
+			consumeGrip[entry.hand] = false
+			if not TOGGLE_GRIP_FOR_ADJUSTMENTS and gestureBased and entry.hand == Handed.Left and gripWasPressed[entry.hand] then
 				-- Decide a plant throw now: the tick removes the copy on release before
 				-- queued actions run, clearing the held item and its thrust.
 				local thrown = activeItem ~= nil and not isPotion(activeItem)
 					and thrustAge ~= nil and thrustAge <= THROW_RELEASE_WINDOW
 				queue({release = true, use = thrown and activeItem or nil})
 			end
-		elseif grip.hand == Handed.Left and (leftChord or leftAccessory) then
-			consumeGrip[grip.hand] = false
-		elseif allowed and (wheelOpen or (gestureBased and grip.hand == Handed.Left)) then
+		elseif entry.hand == Handed.Left and leftChordEnded then
+			consumeGrip[entry.hand] = true
+		elseif entry.hand == Handed.Left and (leftChord or leftAccessory) then
+			consumeGrip[entry.hand] = false
+		elseif allowed and (wheelOpen or (gestureBased and entry.hand == Handed.Left)) then
 			-- Retain this latch through closure until release, preventing tap-to-use.
-			consumeGrip[grip.hand] = true
-			if not gripWasPressed[grip.hand] then
+			consumeGrip[entry.hand] = true
+			if not gripWasPressed[entry.hand] then
 				local item = nil
 				if wheelOpen and transition == nil then
-					item = nearestItem(grip.hand)
+					item = nearestItem(entry.hand)
 				end
-				local copy = gestureBased and grip.hand == Handed.Left
-				if item ~= nil or copy then queue({item = item, ring = actors, copy = copy}) end
+				local copy = gestureBased and entry.hand == Handed.Left
+				if item == nil and copy and not wheelOpen then
+					leftCopyPending = true
+				elseif item ~= nil or copy then
+					queue({item = item, ring = actors, copy = copy})
+				end
+			elseif entry.hand == Handed.Left and leftCopyPending and leftPressTime ~= nil
+				and os.clock() - leftPressTime >= COPY_DELAY then
+				leftCopyPending = false
+				queue({ring = actors, copy = true})
 			end
 		end
-		gripWasPressed[grip.hand] = pressed
+		gripWasPressed[entry.hand] = pressed
 	end
 	-- Drinking: a held potion reaching the mouth is used once, or again after a refusal once it
 	-- has left the mouth. Read the gesture before the grip is suppressed below.
@@ -1303,14 +1349,11 @@ local function captureInput(retval, userIndex, state)
 			queue({drink = activeItem, held = activeActor})
 		end
 	end
-	-- Prevent a selecting grip from also firing the mod's mouth/head gestures.
-	suppressGrips(state)
 end
 
 local function suppressInput(retval, userIndex, state)
 	if not enabled or userIndex ~= 0 then return end
-	if accessPawn == pawn and gadgetAvailable and ui.isRemapDisabled() == false then state.Gamepad.bLeftTrigger = 0 end
-	suppressGrips(state)
+	if accessPawn == pawn and paletteAccess and ui.isRemapDisabled() == false then state.Gamepad.bLeftTrigger = 0 end
 end
 
 -- Use the gadget a held copy represented. The grip stays latched until release, so the
@@ -1458,7 +1501,7 @@ end
 local function runTick(engine, delta)
 	local actions = pending
 	if actions[1] ~= nil then pending = {} end
-	local allowed = canSpawn() and accessPawn == pawn and gadgetAvailable
+	local allowed = canSpawn() and accessPawn == pawn and paletteAccess
 	if activeActor ~= nil and (not allowed or not gestureBased
 		or (not TOGGLE_GRIP_FOR_ADJUSTMENTS and not gripWasPressed[Handed.Left]) or activePawn ~= pawn
 		or uevrUtils.getValid(activeActor) == nil or uevrUtils.getValid(activeMesh) == nil

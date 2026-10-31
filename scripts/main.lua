@@ -14,6 +14,8 @@ local interaction = require('libs/interaction')
 local ui = require('libs/ui')
 local remap = require('libs/remap')
 local gestures = require('libs/gestures')
+local grip = require('libs/grip')
+local GRIP_PRIORITY = require('helpers/grip_priority')
 local gunstock = require('libs/gunstock')
 local scopes = require('libs/scope')
 local ik = require('libs/ik')
@@ -33,6 +35,8 @@ local locomotion = require('helpers/locomotion')
 local boats = require('helpers/boats')
 local palette = require('helpers/palette')
 local skin = require('helpers/skin')
+local holster = require('helpers/holster')
+local ladder = require('helpers/ladder')
 
 local tutorial = require('libs/tutorial')
 local t = tutorial.new()   -- defaults to data/tutorial/ and data/tutorial/buttons/
@@ -54,8 +58,8 @@ t:showOnce()               -- or t:show()
 -- ik.setLogLevel(LogLevel.Debug)
 --spells.setLogLevel(LogLevel.Debug)
 
---uevrUtils.setDeveloperMode(true)
--- hands.enableConfigurationTool()
+-- uevrUtils.setDeveloperMode(true)
+-- -- hands.enableConfigurationTool()
 -- uevrUtils.profiler:toggle(true)
 -- register_key_bind("F1", function()
 --     uevrUtils.profiler:report("alpha")
@@ -96,7 +100,7 @@ if uevrUtils.getDeveloperMode() ~= nil then
 end
 
 
-local versionTxt = "v2.0.8"
+local versionTxt = "v2.0.9"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
@@ -130,6 +134,21 @@ local configDefinition = {
 					label = "Controller Based Mouse Movement in Menus",
 					initialValue = true
 				},
+				{
+					widgetType = "combo",
+					id = "widget_wheel_type",
+					label = "Potion Wheel",
+					selections = {"2D Native", "3D Left Trigger Activated"},
+					initialValue = 1
+				},
+				{ widgetType = "begin_group", id = "widget_wheel_3D_gesture_group", isHidden = true }, { widgetType = "indent", width = 20 },
+					{
+						widgetType = "checkbox",
+						id = "widget_wheel_3D_gesture_based",
+						label = "Left Grip Creates Selected Gadget in Hand",
+						initialValue = false
+					},
+				{ widgetType = "unindent", width = 20 }, { widgetType = "end_group" },
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
 
@@ -238,34 +257,35 @@ local configDefinition = {
 				{
 					widgetType = "checkbox",
 					id = "left_arm_block",
-					label = "Left Arm Raise for Protego",
+					label = "Left Arm Blocking Gesture for Protego",
 					initialValue = true,
 				},
 				{ widgetType = "indent", width = 30 },
 					{
-						widgetType = "text",
-						id = "left_arm_block_info",
-						wrapped = true,
-						label = "Raise your left arm in front of your face with palm out for Protego",
+						widgetType = "checkbox",
+						id = "left_arm_block_combat_only",
+						label = "Combat Only",
+						initialValue = false,
 					},
 				{ widgetType = "unindent", width = 30 },
 				{
-					widgetType = "combo",
-					id = "widget_wheel_type",
-					label = "Potion Wheel",
-					selections = {"2D Native", "3D Left Trigger Activated"},
-					initialValue = 1
+					widgetType = "checkbox",
+					id = "enable_ladder_climbing",
+					label = "Physical Ladder Climbing",
+					initialValue = true
 				},
-				{ widgetType = "begin_group", id = "widget_wheel_3D_gesture_group", isHidden = true },
-				{ widgetType = "indent", width = 20 },
 				{
 					widgetType = "checkbox",
-					id = "widget_wheel_3D_gesture_based",
-					label = "Left Grip Creates Selected Gadget in Hand",
+					id = "physical_item_grab",
+					label = "Physical Item Grab",
 					initialValue = false
 				},
-				{ widgetType = "unindent", width = 20 },
-				{ widgetType = "end_group" },
+				{
+					widgetType = "checkbox",
+					id = "enable_holster",
+					label = "Wand Holstering",
+					initialValue = true
+				},
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
 
@@ -289,6 +309,12 @@ local configDefinition = {
 					id = "use_mount_hand_controlled_movement",
 					label = "Hand Controlled Movement",
 					initialValue = true,
+				},
+				{
+					widgetType = "checkbox",
+					id = "no_flight_restrictions",
+					label = "No Flight Restrictions",
+					initialValue = false,
 				},
 				{ widgetType = "begin_group", id = "use_mount_hand_controlled_movement_group" },{ widgetType = "indent", width = 20 },
 					{ widgetType = "text", wrapped = true, id = "mount_hand_controlled_movement_help", label = "Pitch your hands up and down to make the mount fly up and dive. Roll your hands left and right to make the mount turn left and right. " },
@@ -405,6 +431,12 @@ local configDefinition = {
 				},
 				{ widgetType = "begin_group", id = "use_gesture_detection_group" },{ widgetType = "indent", width = 20 },
 					{
+						widgetType = "checkbox",
+						id = "mute_spell_voice",
+						label = "Mute Game Spell Voice",
+						initialValue = false,
+					},
+					{
 						widgetType = "slider_float",
 						id = "gesture_min_confidence",
 						label = "Minimum Confidence",
@@ -460,12 +492,6 @@ local configDefinition = {
 				},
 				{ widgetType = "begin_group", id = "use_voice_detection_group" },{ widgetType = "indent", width = 20 },
 					{
-						widgetType = "checkbox",
-						id = "mute_spell_voice",
-						label = "Mute Game Spell Voice",
-						initialValue = false,
-					},
-					{
 						widgetType = "slider_float",
 						id = "voice_min_confidence",
 						label = "Minimum Confidence",
@@ -505,6 +531,19 @@ local configDefinition = {
 							range = {0, 16},
 						},
 					{ widgetType = "unindent", width = 40 },{ widgetType = "end_group", },
+					{
+						widgetType = "checkbox",
+						id = "check_mic_level",
+						label = "Check Level",
+						initialValue = false,
+					},
+					{ widgetType = "same_line" },
+					{
+						widgetType = "text_colored",
+						id = "check_mic_level_status",
+						label = "",
+						color = "#AAAAAAFF",
+					},
 				{ widgetType = "unindent", width = 20 },{ widgetType = "end_group", },
 			{ widgetType = "end_rect", additionalSize = 12, rounding = 5 }, { widgetType = "unindent", width = 20 },
 			{ widgetType = "new_line" },
@@ -523,6 +562,7 @@ local configDefinition = {
 			{ widgetType = "new_line" },
 			{ widgetType = "tree_node", id = "advanced_tree", label = "Advanced" },
 				{ widgetType = "checkbox", id = "frame_compatibility", label = "Frame Compatibility", initialValue = false },
+				{ widgetType = "checkbox", id = "disable_spell_icons", label = "Disable Spell Icons", initialValue = false },
 				{
 					widgetType = "checkbox",
 					id = "use_auto_targeting",
@@ -626,6 +666,12 @@ local function attachHandSpellIcon(rightHandComponent)
 	updateHandSpellIconTransform()
 end
 
+-- On creature mounts (hippogriff, graphorn) the possessed pawn is the creature, which has no wand; cast with the rider.
+local function getSpellPawn()
+	if mounts.getMountType() ~= nil and not mounts.isRidingCart() then return mounts.getMountPawn(pawn) or pawn end
+	return pawn
+end
+
 local spellNameRemap = {}
 spellNameRemap["BasicShot"] = "Spell_PewPew"
 spellNameRemap["AvadaKedavra"] = "Spell_Avadakedavra"
@@ -640,7 +686,7 @@ local function onSpellRecognize(pawn, spellName, muteVoice)
 	if spellName == nil then return end
 	if uevrUtils.isInCutscene() then return end
 
-	if uevrUtils.getValid(status.handSpellComponent) == nil and getHandComponents() ~= nil then
+	if not configui.getValue("disable_spell_icons") and uevrUtils.getValid(status.handSpellComponent) == nil and getHandComponents() ~= nil then
 		status.handSpellComponent, status.handSpellIcon, status.handSpellWidgetComponent = widgetcomponent.createImageComponent(40, {
 			scale = {0.08, 0.08, 0.08},
 			twoSided = true,
@@ -662,8 +708,18 @@ local function onSpellRecognize(pawn, spellName, muteVoice)
 	-- else
 	-- 	spellName = "Spell_" .. spellName
 	-- end
-	spells.castSpell(pawn, spellName, muteVoice)
+	spells.castSpell(getSpellPawn(), spellName, muteVoice)
 
+end
+
+local function setMicLevelStatus(active, peak)
+	if active then
+		configui.setLabel("check_mic_level_status", string.format("Mic: audio detected (%.2f)", peak or 0))
+		configui.setColor("check_mic_level_status", "#00FF00FF")
+	else
+		configui.setLabel("check_mic_level_status", "Mic: silent")
+		configui.setColor("check_mic_level_status", "#AAAAAAFF")
+	end
 end
 
 uevr.sdk.callbacks.on_lua_event(function(eventName, eventData)
@@ -690,6 +746,12 @@ uevr.sdk.callbacks.on_lua_event(function(eventName, eventData)
 	if eventName == "VoiceRecognizePeak" then
 		print("VoiceRecognizePeak ", eventName, tostring(eventData))
 	end
+	if eventName == "VoiceLevel" then
+		local data = json.load_string(eventData)
+		if data ~= nil and configui.getValue("check_mic_level") then
+			setMicLevelStatus(data.active, data.peak)
+		end
+	end
 end)
 
 local function dispatchVoiceSettings()
@@ -698,6 +760,7 @@ local function dispatchVoiceSettings()
 		agc_target = configui.getValue("agc_target"),
 		agc_max_gain = configui.getValue("agc_max_gain"),
 		microphone_volume = configui.getValue("microphone_volume"),
+		check_level = configui.getValue("check_mic_level"),
 		min_confidence = configui.getValue("voice_min_confidence"),
 		override_voices = {
 			Descendo = { override = "Diffindo", confidence = 0.15 },
@@ -729,7 +792,7 @@ gestures.registerFlickCallback(function(strength, hand)
 	--if uevrUtils.isInCutscene() or os.clock() - (status.cutsceneEndTime or 0) < 1.0 then return end
 	--debounce so the spell goes to the intended wand location instead of where the wand is when the gesture is released
 	delay(200, function()
-		spells.castCurrentFlickSpell(pawn)
+		spells.castCurrentFlickSpell(getSpellPawn())
 	end)
 end, uevrUtils.getHandedness() == Handed.Right, uevrUtils.getHandedness() == Handed.Left) -- rightHand, leftHand
 
@@ -774,7 +837,13 @@ end
 
 local function getWeaponMesh()
 	local wand = spells.getWand(pawn)
-	if wand == nil or not spells.isWandDrawn(pawn) then
+	-- Holster: on creature mounts the possessed pawn has no wand; the rider's wand stays out.
+	local riderWand = wand == nil and holster.getMountedRiderWand(pawn) or nil
+	wand = wand or riderWand
+	if wand == nil then return nil end
+	local drawn = not holster.isWandStowed() and (riderWand ~= nil or spells.isWandDrawn(pawn))
+	holster.updateWandHidden(wand)
+	if not drawn then
 		return nil
 	end
 	wand:ActivateFx()
@@ -893,6 +962,7 @@ end
 
 attachments.registerOnGripUpdateCallback(function()
 	local paletteMesh = palette.getActiveMesh()
+	local heldItem = interactions.getHeldItemMesh()
 	local can = paletteMesh or spells.getCreatureFeedCan()
 	--print("can", can, can and can:get_full_name())
 
@@ -912,7 +982,8 @@ attachments.registerOnGripUpdateCallback(function()
 		rightTarget, weaponAttachSocket = getWandAttachTarget(rightHandComponent, weaponAttachSocket, Handed.Right)
         local leftTarget, leftHandAttachSocket = getWandAttachTarget(leftHandComponent, "SKT_LeftHand", Handed.Left)
 		--print(rightHandComponent, weaponMesh, weaponAttachSocket)
-        return rightTarget and weaponMesh, rightTarget, weaponAttachSocket, (paletteMesh or (leftTarget and can)), leftTarget, leftHandAttachSocket, defaultAttachOptions, paletteMesh and paletteAttachOptions or nil --, controllers.getController(Handed.Right)
+		-- A held loot bag has no origin to return to, so like a palette copy it uses paletteAttachOptions.
+        return rightTarget and weaponMesh, rightTarget, weaponAttachSocket, (paletteMesh or heldItem or (leftTarget and can)), leftTarget, leftHandAttachSocket, defaultAttachOptions, (paletteMesh or heldItem) and paletteAttachOptions or nil --, controllers.getController(Handed.Right)
     end
 
 end)
@@ -943,7 +1014,7 @@ end)
 
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	--stick casting implementation
-	if configui.getValue("enable_stick_casting") then
+	if configui.getValue("enable_stick_casting") and not holster.isWandStowed() then
 		if state.Gamepad.bRightTrigger > 128 then
 			if state.Gamepad.sThumbRY > 22000 then
 				uevrUtils.pressButton(state, XINPUT_GAMEPAD_Y)
@@ -965,15 +1036,18 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 		end
 	end
 
-	if configui.getValue("left_arm_block") and status.isBlocking then
+	if configui.getValue("left_arm_block") and status.isBlocking and (not configui.getValue("left_arm_block_combat_only") or (pawn and pawn.bInCombatMode)) then
 		uevrUtils.pressButton(state, XINPUT_GAMEPAD_Y)
 	end
 
 	local gripMouthLeft, gripEyesLeft, gripHeadLeft, gripEarLeft, triggerMouthLeft, triggerEyesLeft, triggerHeadLeft, triggerEarLeft = gestures.getHeadGestures(state, Handed.Left, true)
 	local gripMouthRight, gripEyesRight, gripHeadRight, gripEarRight, triggerMouthRight, triggerEyesRight, triggerHeadRight, triggerEarRight = gestures.getHeadGestures(state, Handed.Right, false)
-	if gripEarLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_START) end
+	-- While an item from Physical Item Grab is in the left hand, a left grip collects or drops it instead of opening the menu or drinking.
+	local holdingItem = interactions.isHoldingItem()
+	if gripEarLeft and not holdingItem then uevrUtils.pressButton(state, XINPUT_GAMEPAD_START) end
 	if gripEarRight then regenerateHands(configui.getValue("hands_type")) end
-	if gripMouthLeft then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
+	-- With the 3D potion wheel (Potion Wheel = 2) the palette drinks at the mouth, so the grip does not also press D-pad down.
+	if gripMouthLeft and not holdingItem and configui.getValue("widget_wheel_type") ~= 2 then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
 	-- A left grip that fires a head gesture belongs to the gesture. When the palette is not handling the grip,
 	-- nothing else hides it, so the game would see a short LB tap and use the selected quick item (e.g. drink a potion).
 	if gripEarLeft or gripMouthLeft then
@@ -984,9 +1058,21 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 
 end, 20)
 
--- Hide the gesture's grip from the game only after all pre-input callbacks: the palette still needs it to drink at the mouth.
-uevrUtils.registerOnPostInputGetStateCallback(function(retval, user_index, state)
-	if status.headGestureGripLeft then uevrUtils.unpressButton(state, XINPUT_GAMEPAD_LEFT_SHOULDER) end
+-- Grip arbitration (libs/grip): a left grip that starts at the ear belongs to the menu gesture, so the palette doesn't make a gadget
+-- copy and an item grab or interaction doesn't start. An open palette wheel still wins, and an item already being carried keeps the
+-- grip (its release at the ear collects it); see helpers/grip_priority. The mouth is not claimed: the palette drinks there. The gesture's own
+-- hiding stays below (headGestureGripLeft), so the claim hides nothing.
+grip.registerClaim("head_gesture", function(hand, state, press)
+	if hand ~= Handed.Left then return nil end
+	local _, _, _, gripEar = gestures.getHeadGestures(state, Handed.Left, true)
+	if gripEar then return GRIP_PRIORITY.HEAD_GESTURE end
+	return nil
+end, {hide = grip.Hide.None})
+
+-- Grip hiding (libs/grip): a left grip that fires an ear or mouth gesture is hidden from the game until it is released. Only from the
+-- game: input callbacks still see it (the palette needs it to drink at the mouth).
+grip.registerHider("head_gesture", function(hand, press)
+	return hand == Handed.Left and status.headGestureGripLeft == true
 end)
 
 local function isWearingRobeAndGloves()
@@ -1179,10 +1265,9 @@ local function fixFlicker()
 	end
 end
 
---when the UEVR overlay closes, update the body yaw mode and flicker fixer in case UEVR rendering mode changed
+--when the UEVR overlay closes, update the flicker fixer in case UEVR rendering mode changed
 uevrUtils.registerUEVRUIChangeCallback(function(isOpen)
     if isOpen == false then
-		--setInputBodyYawMode()
 		fixFlicker()
 	end
 end)
@@ -1190,6 +1275,10 @@ end)
 local function solveAstronomyMinigame()
 	pawn:CHEAT_SolveMinigame()
 end
+
+-- hook_ptr adds another callback on every call. These widget classes stay loaded across levels (same UFunction after
+-- several level changes), so each is hooked once; a failed hook (class not loaded yet) is retried at the next level change.
+local persistentHooksInstalled = {}
 
 local function hookLevelFunctions()
 	--move the attack indicator in front of and further away from the hmd
@@ -1259,24 +1348,28 @@ local function hookLevelFunctions()
 		end)
 	end
 
-	hook_function("WidgetBlueprintGeneratedClass /Game/UI/Actor/UI_BP_Astronomy_minigame.UI_BP_Astronomy_minigame_C", "ConstellationImageLoaded", true, nil,
-	function(fn, obj, locals, result)
-			--print("Astronomy MiniGame ConstellationImageLoaded\n")
-			--auto solve game unless we can find a solution for UEVR FOV locking
-			obj:Solved()
-			delay(3000, function()
-				solveAstronomyMinigame()
-			end)
-		end
-	, true)
+	if not persistentHooksInstalled.ConstellationImageLoaded then
+		persistentHooksInstalled.ConstellationImageLoaded = hook_function("WidgetBlueprintGeneratedClass /Game/UI/Actor/UI_BP_Astronomy_minigame.UI_BP_Astronomy_minigame_C", "ConstellationImageLoaded", true, nil,
+		function(fn, obj, locals, result)
+				--print("Astronomy MiniGame ConstellationImageLoaded\n")
+				--auto solve game unless we can find a solution for UEVR FOV locking
+				obj:Solved()
+				delay(3000, function()
+					solveAstronomyMinigame()
+				end)
+			end
+		, true)
+	end
 
 	-- the camera stack re-shows the letterbox/pillarbox bars whenever it constrains aspect ratio
 	for _, fnName in ipairs({"UI_UpdateLetterbox", "UI_UpdatePillarbox"}) do
-		hook_function("WidgetBlueprintGeneratedClass /Game/Data/Camera/UI_BP_AspectRatioWidget.UI_BP_AspectRatioWidget_C", fnName, false, nil,
-			function(fn, obj, locals, result)
-				obj:UI_HideBars()
-			end
-		, true)
+		if not persistentHooksInstalled[fnName] then
+			persistentHooksInstalled[fnName] = hook_function("WidgetBlueprintGeneratedClass /Game/Data/Camera/UI_BP_AspectRatioWidget.UI_BP_AspectRatioWidget_C", fnName, false, nil,
+				function(fn, obj, locals, result)
+					obj:UI_HideBars()
+				end
+			, true)
+		end
 	end
 
 end
@@ -1347,6 +1440,10 @@ configui.onCreateOrUpdate("widget_wheel_3D_gesture_based", function(value)
 	palette.setGestureBased(value)
 end)
 
+configui.onCreateOrUpdate("physical_item_grab", function(value)
+	interactions.setItemGrabEnabled(value)
+end)
+
 local function updateWandAttachmentTransform(pos, rot)
 	attachments.updateAttachmentTransform(pos, rot, nil, wandAttachmentId, Handed.Right)
 	attachments.updateAttachmentTransform(pos, rot, nil, wandAttachmentId, Handed.Left)
@@ -1372,12 +1469,28 @@ configui.onUpdate("hand_spell_icon_rotation", function(value)
 	updateHandSpellIconTransform()
 end)
 
+configui.onCreateOrUpdate("disable_spell_icons", function(value)
+	spells.setDisableSpellIcons(value)
+	if value and status.handSpellWidgetComponent ~= nil then
+		status.handSpellWidgetComponent:destroy()
+		status.handSpellComponent, status.handSpellIcon, status.handSpellWidgetComponent = nil, nil, nil
+	end
+end)
+
 configui.onUpdate("mute_spell_voice", function(value)
 	spells.setMuteSpellVoice(value)
 end)
 
 configui.onUpdate("respect_spell_cooldowns", function(value)
 	spells.setRespectCooldowns(value)
+end)
+
+configui.onCreateOrUpdate("enable_holster", function(value)
+	holster.setEnabled(value)
+end)
+
+configui.onCreateOrUpdate("enable_ladder_climbing", function(value)
+	ladder.setEnabled(value)
 end)
 
 configui.onCreateOrUpdate("enable_flick_casting", function(value)
@@ -1405,6 +1518,10 @@ end)
 configui.onCreateOrUpdate("use_gesture_detection", function(value)
 	uevr.api:dispatch_custom_event(value and "GestureStart" or "GestureStop", "")
 	configui.setHidden("use_gesture_detection_group", not value)
+end)
+
+configui.onCreateOrUpdate("no_flight_restrictions", function(value)
+	spells.setNoFlightRestrictions(value)
 end)
 
 configui.onCreateOrUpdate("use_mount_hand_controlled_movement", function(value)
@@ -1463,6 +1580,15 @@ configui.onUpdate("voice_min_confidence", function(value)
 	dispatchVoiceSettings()
 end)
 
+configui.onCreateOrUpdate("check_mic_level", function(value)
+	if value then
+		setMicLevelStatus(false)
+	else
+		configui.setLabel("check_mic_level_status", "")
+	end
+	dispatchVoiceSettings()
+end)
+
 configui.onCreateOrUpdate("use_auto_targeting", function(value)
 	spells.activateAutoTargetSense(value)
 end)
@@ -1476,7 +1602,7 @@ configui.onCreateOrUpdate("use_controller_mouse", function(value)
 end)
 
 configui.onCreateOrUpdate("left_arm_block", function(value)
-	configui.setHidden("left_arm_block_info", value ~= true)
+	configui.setHidden("left_arm_block_combat_only", value ~= true)
 	gestures.autoDetectGesture(gestures.Gesture.BLOCK, value == true, Handed.Left)
 	if value ~= true then
 		status.isBlocking = false
@@ -1571,5 +1697,3 @@ end)
 uevr.params.sdk.callbacks.on_script_reset(function()
 	cleanup()
 end)
-
-

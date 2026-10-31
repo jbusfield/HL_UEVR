@@ -95,7 +95,7 @@
             "location": [
                 0.699999988079071,
                 -0.800000011920929,
-                -1.371000051498413
+                -1.9709999561309814
             ],
             "melee": false,
             "parent": "StaticMeshActor",
@@ -369,6 +369,175 @@
                 0.746999979019165,
                 0.746999979019165,
                 0.746999979019165
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "animation": "",
+            "any_child": false,
+            "any_parent": true,
+            "child": "SM_Loot_Pouch_C",
+            "id": "Actor_SM_Loot_Pouch_C",
+            "location": [
+                -2.0999999046325684,
+                -6.099999904632568,
+                1.7000000476837158
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -41.099998474121094,
+                -5.699999809265137,
+                18.200000762939453
+            ],
+            "scale": [
+                0.6000000238418579,
+                0.6000000238418579,
+                0.6000000238418579
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Potion_WolfPelt",
+            "id": "Actor_SM_Potion_WolfPelt",
+            "location": [
+                6.0,
+                -8.699999809265137,
+                4.099999904632568
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -2.8480000495910645,
+                36.71900177001953,
+                1.2070000171661377
+            ],
+            "scale": [
+                0.36000001430511475,
+                0.35999998450279236,
+                0.35956108570098877
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Potion_DugbogTongue",
+            "id": "Actor_SM_Potion_DugbogTongue",
+            "location": [
+                12.300000190734863,
+                -13.100000381469727,
+                1.600000023841858
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -85.0,
+                -37.099998474121094,
+                109.9000015258789
+            ],
+            "scale": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Potion_SpiderFang",
+            "id": "Actor_SM_Potion_SpiderFang",
+            "location": [
+                0.6000000238418579,
+                0.30000001192092896,
+                2.5999999046325684
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -40.400001525878906,
+                -42.900001525878906,
+                -0.20000000298023224
+            ],
+            "scale": [
+                0.800000011920929,
+                0.800000011920929,
+                0.800000011920929
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Potion_TrollMucus",
+            "id": "Actor_SM_Potion_TrollMucus",
+            "location": [
+                0.10000000149011612,
+                -3.4000000953674316,
+                3.299999952316284
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -110.0999984741211,
+                -41.29999923706055,
+                119.0999984741211
+            ],
+            "scale": [
+                0.699999988079071,
+                0.699999988079071,
+                0.699999988079071
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
+        },
+        {
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_Sanc_Skull_Dwiz_01A_Loot",
+            "id": "Actor_SM_Sanc_Skull_Dwiz_01A_Loot",
+            "location": [
+                3.700000047683716,
+                -7.099999904632568,
+                -1.0
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                -65.0,
+                56.20000076293945,
+                -30.100000381469727
+            ],
+            "scale": [
+                0.800000011920929,
+                0.800000011920929,
+                0.800000011920929
             ],
             "scoped": false,
             "strip_child_suffix_length": false,

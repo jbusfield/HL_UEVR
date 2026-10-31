@@ -6,6 +6,10 @@ local ui = require('libs/ui')
 local widgetModule = require('libs/widget')
 local particles = require('libs/particles')
 local boats = require('helpers/boats')
+local holster = require('helpers/holster')
+
+-- Spell icons are re-imported on every hover otherwise (~21 ms each). Module-wide setting.
+widgetModule.enableTextureCache = true
 
 local M = {}
 
@@ -140,6 +144,9 @@ function M.isWandDrawn(pawn)
 		return false
 	end
 
+	-- Holster: swimming or climbing on foot (ladders, ledges) puts the wand away.
+	if holster.isAwayForMovement(pawn) then return false end
+
 	-- Outside tutorial: HoldItem is the in-hand pose. Wand* abilities cover casts (arm leaves HoldItem).
 	local anim = pawn.Mesh and pawn.Mesh:GetAnimInstance()
 	if anim ~= nil and anim.IsWandEquipped then return true end
@@ -155,6 +162,8 @@ function M.isWandDrawn(pawn)
 			end
 		end
 	end
+	-- Holster: an idle arm with the wand still equipped (left that way after swimming) counts as drawn on foot.
+	if holster.isDrawnAfterGameHolster(pawn, arm) then return true end
 	return false
 
 end
@@ -233,7 +242,11 @@ local function pullAccioPage(pawn, page)
 				local abp = page.ABP
 				if abp ~= nil then abp.bCollect = true end
 				page:OnSpellEffective(pawn)
-				page:InteractionInitiated()
+				-- latest joey releases fix the issue of crashing with deadlock errors
+				-- but since we cant depend on people using the latest joey releases we
+				-- instead use the plugin to execute the function and bypass the lua deadlock error
+				--page:InteractionInitiated()
+				plugin.executeFunction(page, "InteractionInitiated")
 				page:DestroyActorTimer()
 			end
 			mesh:K2_SetWorldLocation(dest, false, reusable_hit_result, true)
@@ -289,6 +302,10 @@ end
 
 function M.setRespectCooldowns(val)
 	status.respectCooldowns = val == true
+end
+
+function M.setDisableSpellIcons(val)
+	status.disableSpellIcons = val == true
 end
 
 function M.setMuteSpellVoice(val)
@@ -428,6 +445,7 @@ end
 -- we just need to add the taget actor to castSpellImmediate
 -- and it will target the highlighted characters
 local function castPewPew(pawn, noAnim)
+	if holster.isWandStowed() then return end
 	local wand = getWand(pawn)
 	if wand == nil then return end
 	-- CastSpellImmediate + bTriggerCastAnim=false skips ABL_WandCast_* so movement is not paused.
@@ -435,7 +453,7 @@ local function castPewPew(pawn, noAnim)
 		local helper = getSpellHelper()
 		local aim = M.getWandAim(pawn)
 		local source = getWandTip()
-		if helper ~= nil then
+		if helper ~= nil and aim ~= nil and source ~= nil then
 			local actor = (status.autoAiming or not pawn.bInCombatMode) and pawn:GetBestAutoTargetActor() or nil
 			helper:CastSpellImmediate(actor, source, wand.SpellPewPew, aim, pawn, false, 0, true, true, false, false, 0, false, 0, false, false, false, true, -1)
 		end
@@ -553,6 +571,7 @@ local function castCurrentFlickSpell(pawn)
 end
 
 function M.castCurrentFlickSpell(pawn)
+	if holster.isWandStowed() then return end
 	if status.muteSpellVoice then
 		beginSpellVoiceSuppress(pawn, 2000)
 	end
@@ -567,8 +586,12 @@ local function castAlohomora(pawn)
 	status.isAlohomoraCasting = true
 end
 
+-- Petrificus Totalis is the wand's stealth takedown. It is cast directly rather than with the game's X, which would collect an item
+-- (or use any other interaction prompt) instead whenever one is showing. With no valid target nothing happens.
 local function castPetrificus(pawn)
-	status.isPetrificusCasting = true
+	local wand = getWand(pawn)
+	if wand == nil then return end
+	wand:CastStealthTakedown()
 end
 
 local function castViaspecto(pawn)
@@ -596,7 +619,13 @@ end
 -- The stock gadget wheel's CanMountCreature, called on its class default object, is false while
 -- no mount can be summoned (e.g. swimming) and true on solid ground. The wheel greys out all
 -- three mounts together on it. Without the class, leave the decision to the summon itself.
+local noFlightRestrictions = false
+function M.setNoFlightRestrictions(enabled)
+	noFlightRestrictions = enabled == true
+end
+
 local function canMountNow()
+	if noFlightRestrictions then return true end
 	local gadgetWheel = getGadgetWheelDefault()
 	if gadgetWheel == nil then return true end
 	-- Native scalar out parameters write to the supplied table's result field.
@@ -606,11 +635,17 @@ local function canMountNow()
 end
 M.canMountNow = canMountNow
 
+-- A second summon while a mount is still spawning in restarts the handler's spawn-and-mount and
+-- strands the rider half-mounted. Only the on-foot biped has this query; a creature pawn is already mounted.
+local function isMountBusy(pawn)
+	return pawn.GetIsOnAMountOrInTransition ~= nil and pawn:GetIsOnAMountOrInTransition()
+end
+
 local function castUpBroom(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseBroom(true) and canMountNow() then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseBroom(true) and canMountNow() and not isMountBusy(pawn) then
 		local gadgetWheel = getGadgetWheelDefault()
 		if gadgetWheel ~= nil then
 			local found = {}
@@ -629,7 +664,7 @@ local function castUpGraphorn(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseGraphorn() and canMountNow() then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseGraphorn() and canMountNow() and not isMountBusy(pawn) then
 		local graphorn = uevrUtils.fname_from_string("GraphornMount")
 		local holder = uevrUtils.fname_from_string("ActorBackpack")
 		pawn:LoadInventoryItemByName(graphorn, holder)
@@ -641,7 +676,7 @@ local function castUpHippogriff(pawn)
 	if status.phoenixBlueprintLibrary == nil then
 		status.phoenixBlueprintLibrary = uevrUtils.find_default_instance("Class /Script/Phoenix.UIBlueprintFunctionLibrary")
 	end
-	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseHippogriff() and canMountNow() then
+	if status.phoenixBlueprintLibrary ~= nil and status.phoenixBlueprintLibrary:CanUseHippogriff() and canMountNow() and not isMountBusy(pawn) then
 		local gadgetWheel = getGadgetWheelDefault()
 		if gadgetWheel ~= nil then
 			local found = {}
@@ -734,7 +769,10 @@ hook_function("Class /Script/Phoenix.CaptureDeviceItemTool", "OnCaptureStateChan
 --ITEM_CaptureDevice - Sanctuaria, S (replace transformation with something else)
 --ITEM_CreatureFeed - Nutritio, U left to right
 --Item_CreaturePettingBrush - Placato, sideways figure 8
+-- Holster: these summon a mount or the boat, or open the map view, without the wand, so they still work while it is put away.
+local castWhileStowed = { Spell_UpBroom = true, Spell_UpHippogriff = true, Spell_UpGraphorn = true, Spell_Navigato = true, Spell_Viaspecto = true }
 local function castSpellByName(pawn, spellName, muteVoice)
+	if holster.isWandStowed() and not castWhileStowed[spellName] then return end
 	local wand = getWand(pawn)
 	if spellName ~= nil and spellName ~= "" and wand ~= nil then
 
@@ -937,10 +975,9 @@ function M.destroyWandTrail()
 end
 
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
-	if status.isAlohomoraCasting or status.isPetrificusCasting then
+	if status.isAlohomoraCasting then
 		uevrUtils.pressButton(state, XINPUT_GAMEPAD_X)
 		status.isAlohomoraCasting = false
-		status.isPetrificusCasting = false
 	end
 	if status.isViaspectoCasting then
 		uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_UP)
@@ -973,7 +1010,9 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 				if now - status.rightTriggerStart < 0.2 then state.Gamepad.bRightTrigger = 0 end
 			elseif status.rightTriggerStart ~= nil then
 				if now - status.rightTriggerStart < 0.2 then
-					castPewPew(pawn, true)
+					-- On creature mounts the possessed pawn is the creature, which has no wand; cast with the rider.
+					local caster = (mounts.getMountType() ~= nil and not mounts.isRidingCart()) and mounts.getMountPawn(pawn) or pawn
+					castPewPew(caster, true)
 				else
 					status.rightTriggerHoldUntil = math.max(now, status.rightTriggerStart + 0.8)
 				end
@@ -1318,12 +1357,8 @@ local function onSpellHover(spell)
 	end
 end
 
-local function onSpellUnhover(spell)
+local function onSpellUnhover()
 	if status.currentSpellIcon == nil then return end
-	if spell ~= nil and spell ~= "" then
-		spell = tostring(spell):gsub("%z", "")
-		if spell ~= "" and spell ~= status.hoveredSpellName then return end
-	end
 	status.hoveredSpellName = nil
 	status.currentSpellIcon:setVisible(false)
 	if status.currentSpellText ~= nil then
@@ -1331,8 +1366,10 @@ local function onSpellUnhover(spell)
 	end
 end
 
--- CurrentHighlightedItem lags until help popup and often stays set after leave.
--- Essentials: HoveredItem + IsItemHovering. Grid spells: ItemScrollBox ButtonHovered.
+-- Hover is polled from the selection screens; no hooks. Verified live: the MKB screen is the active one in VR,
+-- even with a controller. CurrentHighlightedItem lags and stays set after leave, so it is not used.
+-- Grid spells: IsSpellHovering + HoveredSpell, which clears on unhover. HoveredSpell.IconName is the spell name.
+-- Essentials: IsItemHovering + HoveredItem. HoveredItem stays set after unhover, so the flag is required.
 -- Essential ItemId is not the spell name (Stupefy is "StupefySpecial_Send"); the widget's object name is.
 local function syncEssentialHoverFromSelection()
 	if status.currentSpellIcon == nil or status.actionSelectionWidget == nil then return end
@@ -1349,67 +1386,35 @@ local function syncEssentialHoverFromSelection()
         --         name = id
         --         break
         --     end
-		-- FName casing of this property varies between game sessions
+		-- FName casing of these properties varies between game sessions
 		screen = uevrUtils.getValid(screen)
-		local item = screen ~= nil and (screen.isItemHovering or screen.IsItemHovering) and uevrUtils.getValid(screen, {"HoveredItem"}) or nil
-		if item ~= nil then
-			name = item:get_fname():to_string()
-			break
+		if screen ~= nil then
+			local button = (screen.isSpellHovering or screen.IsSpellHovering) and uevrUtils.getValid(screen, {"HoveredSpell"}) or nil
+			if button ~= nil then
+				name = button.IconName
+				break
+			end
+			local item = (screen.isItemHovering or screen.IsItemHovering) and uevrUtils.getValid(screen, {"HoveredItem"}) or nil
+			if item ~= nil then
+				name = item:get_fname():to_string()
+				break
+			end
 		end
 	end
 	if name ~= nil then
 		name = tostring(name):gsub("%z", "")
-		status.hoverFromEssential = true
-		if name ~= "" and name ~= status.hoveredSpellName then
-			onSpellHover(name)
-		end
-	elseif status.hoverFromEssential then
-		status.hoverFromEssential = false
-		onSpellUnhover()
 	end
-end
-
--- The hover hooks only queue the spell name. The pre-engine tick applies it, so the texture import and
--- the bridge SetText calls never run inside a hook. Events are replayed in the order the hooks saw them.
-local function queueHoverEvent(hovered, button)
-	if status.currentSpellIcon == nil then return end
-	status.pendingHoverEvents = status.pendingHoverEvents or {}
-	table.insert(status.pendingHoverEvents, { hovered = hovered, name = button and button.IconName })
-end
-
-local function applyPendingHoverEvents()
-	local events = status.pendingHoverEvents
-	if events == nil then return end
-	status.pendingHoverEvents = nil
-	for _, event in ipairs(events) do
-		if event.hovered then
-			status.hoverFromEssential = false
-			onSpellHover(event.name)
-		else
-			onSpellUnhover(event.name)
-		end
+	if name ~= nil and name ~= "" then
+		onSpellHover(name)
+	elseif status.hoveredSpellName ~= nil then
+		onSpellUnhover()
 	end
 end
 
 ------------------------ End Spell Screen Hover Handlers --------------------
 
-
-local function hookLevelFunctions()
-	hook_function(
-		"WidgetBlueprintGeneratedClass /Game/UI/Common/UI_BP_ItemScrollBox.UI_BP_ItemScrollBox_C", "ButtonHovered", false, nil,
-		function(fn, obj, locals, result)
-			queueHoverEvent(true, locals and locals.Button)
-		end, false)
-
-	hook_function(
-		"WidgetBlueprintGeneratedClass /Game/UI/Common/UI_BP_ItemScrollBox.UI_BP_ItemScrollBox_C", "ButtonUnhovered", false, nil,
-		function(fn, obj, locals, result)
-			queueHoverEvent(false, locals and locals.Button)
-		end, false)
-end
-
 ui.registerWidgetChangeCallback("UI_BP_ActionSelection_PC_C", function(active, widget)
-	if active then
+	if active and not status.disableSpellIcons then
 		status.actionSelectionWidget = widget
 		status.currentSpellIcon = widgetModule.Image.new(300)
 		status.currentSpellIcon:addToWidget(widget, { align = widgetModule.Image.ALIGN.BOTTOM_RIGHT, offset = uevrUtils.vector2D(-170, -100)})
@@ -1419,7 +1424,6 @@ ui.registerWidgetChangeCallback("UI_BP_ActionSelection_PC_C", function(active, w
 		status.currentSpellText:setFontSize(20)
 		status.currentSpellText:setFont(nil, "Regular")
 		status.hoveredSpellName = nil
-		status.hoverFromEssential = false
 	elseif status.currentSpellIcon ~= nil then
 		status.currentSpellIcon:remove()
 		status.currentSpellIcon = nil
@@ -1427,7 +1431,6 @@ ui.registerWidgetChangeCallback("UI_BP_ActionSelection_PC_C", function(active, w
 		status.currentSpellText = nil
 		status.actionSelectionWidget = nil
 		status.hoveredSpellName = nil
-		status.hoverFromEssential = false
 	end
 end)
 
@@ -1435,7 +1438,6 @@ end)
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, deltaTime)
 	wandFrame = wandFrame + 1
 	updatePelletFlight(deltaTime)
-	applyPendingHoverEvents()
 	syncEssentialHoverFromSelection()
 end)
 
@@ -1448,7 +1450,6 @@ end)
 uevrUtils.registerLevelChangeCallback(function(level, levelName)
 	M.reset()
 	status.isDeathlyHallows = levelName ~= nil and string.find(levelName, "DeathlyHallows", 1, true) ~= nil
-	hookLevelFunctions()
 end, 1)
 
 -- Nested timings are inclusive. Toggle and report with uevrUtils.profiler.

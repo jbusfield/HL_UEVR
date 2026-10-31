@@ -632,19 +632,31 @@ local function setCurrentHeadBone(value)
 	end
 end
 
-local function setBoneNames()
-	local mesh = pawnModule.getBodyMesh()
-	if mesh ~= nil then
-		boneList = uevrUtils.getBoneNames(mesh)
-		if boneList ~= nil and #boneList > 0 then
-			configui.setSelections(widgetPrefix .. "headBones", boneList)
+-- Like the height bone list: follow the body mesh, which can be missing right after a reset or a profile change, and
+-- select the profile's saved head bone by name. Writing the name at the saved index would take a bone from whatever
+-- skeleton is current (e.g. the hippogriff's) and save it into the profile.
+local headBoneMesh = nil
+local function setBoneNames(force)
+	local mesh = uevrUtils.getValid(pawnModule.getBodyMesh())
+	if not force and mesh == headBoneMesh then return end
+	headBoneMesh = mesh
+	if mesh == nil then return end
+	boneList = uevrUtils.getBoneNames(mesh) or {}
+	if #boneList == 0 then return end
+	configui.setSelections(widgetPrefix .. "headBones", boneList)
+	local params = paramManager and paramManager:getAllActiveProfileParams() or configDefaults
+	for i, name in ipairs(boneList) do
+		if name == params.headBoneName then
+			configui.setValue(widgetPrefix .. "headBones", i, true)
+			break
 		end
 	end
-	local currentHeadBoneIndex = configui.getValue(widgetPrefix .. "headBones")
-	if currentHeadBoneIndex~= nil and currentHeadBoneIndex > 1 then
-		setCurrentHeadBone(currentHeadBoneIndex)
-	end
 end
+
+setInterval(1000, function() setBoneNames(false) end)
+uevrUtils.registerUEVRCallback("on_pawn_param_change", function(name)
+	if name == "bodyMeshName" or name == "profile" then setBoneNames(true) end
+end)
 
 local function updateUIState(key)
     local exKey = widgetPrefix .. key
@@ -937,7 +949,7 @@ end)
 -- end)
 
 uevrUtils.registerLevelChangeCallback(function(level)
-	setBoneNames()
+	setBoneNames(true)
 	setHeightBoneNames(true)
 end)
 
@@ -995,6 +1007,7 @@ function M.init(m_paramManager)
 	paramManager:initProfileHandler(widgetPrefix, function(profileParams)
 		updateUI(profileParams)
 		syncHeightUI(profileParams)
+		setBoneNames(true)
 		setPawnCameraList(profileParams["aimCamera"], true)
 	end)
 

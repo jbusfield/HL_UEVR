@@ -9,6 +9,21 @@ local mounts = require('helpers/mounts')
 local M = {}
 local status = {}
 local EMPTY_NAME = uevrUtils.fname_from_string("")
+-- Abilities whose motion adjust steers the body mesh to a world target. While one is active (enabled = true),
+-- the view carries the head-alignment offset instead of the mesh, so the capsule lands where the game intends,
+-- but the view follows the animation's head sway. Matched by substring in order; the first match wins.
+local meshOffsetOnCameraAbilities = {
+	{ prefix = "ABL_ClimbLadder_MountTop", enabled = true }, -- required: otherwise the mount ends at floor height
+	{ prefix = "ABL_ClimbLadder_", enabled = false }, -- rest of the ladder
+	{ prefix = "ABL_Climb", enabled = false }, -- ledge climbs and mantles
+	{ prefix = "ABL_JumpVault", enabled = false },
+	{ prefix = "ABL_SwimClimbLedge", enabled = false },
+	{ prefix = "ABL_OpenChest", enabled = false },
+	{ prefix = "ABL_TeeterOnEdge", enabled = false },
+}
+
+-- Kept outside status: cleanup() clears status on every level change, and hook_ptr adds another callback on every call.
+local cameraShakeHooksInstalled = false
 
 local function disableCameraShakes(currentPawn)
 	if status.cameraShakesDisabled then
@@ -54,19 +69,23 @@ local function disableCameraShakes(currentPawn)
 	-- 	end
 	-- end
 
-	local function blockShake()
-		return true
+	if not cameraShakeHooksInstalled then
+		local function blockShake()
+			return true
+		end
+		hook_function("Class /Script/Engine.PlayerCameraManager", "StartCameraShake", true, blockShake, nil, false)
+		hook_function("Class /Script/Engine.PlayerCameraManager", "StartCameraShakeFromSource", true, blockShake, nil, false)
+		hook_function("Class /Script/Engine.PlayerController", "ClientStartCameraShake", true, blockShake, nil, false)
+		hook_function("Class /Script/Engine.PlayerController", "ClientStartCameraShakeFromSource", true, blockShake, nil, false)
+		cameraShakeHooksInstalled = true
 	end
-	hook_function("Class /Script/Engine.PlayerCameraManager", "StartCameraShake", true, blockShake, nil, false)
-	hook_function("Class /Script/Engine.PlayerCameraManager", "StartCameraShakeFromSource", true, blockShake, nil, false)
-	hook_function("Class /Script/Engine.PlayerController", "ClientStartCameraShake", true, blockShake, nil, false)
-	hook_function("Class /Script/Engine.PlayerController", "ClientStartCameraShakeFromSource", true, blockShake, nil, false)
 
 	status.cameraShakesDisabled = true
 end
 
 local function isNativeSprintActive(currentPawn)
-	return (status.L3Pressed and mounts.isWalking()) or (status.pawnHasSpeedModifier and currentPawn:IsUsingSpeedModifier())
+	-- Sprint state can carry over into a mount, where forcing body yaw from the HMD would feed back through the view.
+	return mounts.isWalking() and (status.L3Pressed or (status.pawnHasSpeedModifier and currentPawn:IsUsingSpeedModifier()))
 end
 
 -- Keep native Ambulatory locomotion, but use its strafe variants in first person.
@@ -179,6 +198,14 @@ local function isAbilityActive(abilityName, ablName)
 	return abilityName ~= nil and string.find(abilityName, ablName, 1, true) ~= nil
 end
 
+local function isMeshOffsetOnCamera(abilityName)
+	if abilityName == nil then return false end
+	for _, entry in ipairs(meshOffsetOnCameraAbilities) do
+		if string.find(abilityName, entry.prefix, 1, true) ~= nil then return entry.enabled end
+	end
+	return false
+end
+
 -- Full name of the pawn's active ability, read by this module's pre-engine tick.
 -- That tick is registered when this module loads, so later pre-engine tick callbacks see this frame's value.
 function M.getActiveAbilityName()
@@ -208,14 +235,30 @@ local function configureAmbulatoryFP(currentPawn, abilityName)
 		status.pawnHasFocusDirection = currentPawn.bUseDesiredFocusDirection ~= nil
 	end
 
+	-- Ladder abilities set the pawn's yaw, including the 180-degree turn when mounting from the top.
+	-- Let the game own body yaw on the ladder; input mirrors those turns into the view.
+	local onLadder = isAbilityActive(abilityName, "ABL_ClimbLadder_")
+	input.setBodyYawWritesSuppressed(onLadder)
+
+	-- The head-under-HMD mesh offset would displace the capsule from motion-adjust targets (beside the ladder
+	-- at floor height after MountTop). Only look the ability up in the table when it changes.
+	if status.meshOffsetAbilityName ~= abilityName or status.meshOffsetOnCamera == nil then
+		status.meshOffsetAbilityName = abilityName
+		local meshOffsetOnCamera = isMeshOffsetOnCamera(abilityName)
+		if status.meshOffsetOnCamera ~= meshOffsetOnCamera then
+			input.setMeshOffsetAppliedToCamera(meshOffsetOnCamera)
+			status.meshOffsetOnCamera = meshOffsetOnCamera
+		end
+	end
+
 	-- Sprint only runs forward, so face the body along the stick relative to the HMD to sprint sideways without turning the view.
 	local sprintYaw = nil
-	local sprinting = isNativeSprintActive(currentPawn)
+	local sprinting = not onLadder and isNativeSprintActive(currentPawn)
 	if sprinting then
 		local x, y = status.moveStickLX or 0, status.moveStickLY or 0
 		if y < 5000 then
 			-- Past sideways the body would turn away from the view.
-			if currentPawn:IsUsingSpeedModifier() then currentPawn:SprintStop() end
+			if currentPawn.IsUsingSpeedModifier ~= nil and currentPawn:IsUsingSpeedModifier() then currentPawn:SprintStop() end
 		else
 			local hmdRot = controllers.getControllerRotation(2)
 			if hmdRot ~= nil then

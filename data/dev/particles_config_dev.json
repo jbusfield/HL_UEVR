@@ -1,9 +1,9 @@
 {
-    "uevr_particles_active_profile": 2,
+    "uevr_particles_active_profile": 1,
     "uevr_particles_allow_delete": false,
     "uevr_particles_asset": "NiagaraSystem /Game/VFX/Particles/Magic/Accio/VFX_NS_AccioTarget.VFX_NS_AccioTarget",
-    "uevr_particles_effect_enabled": false,
-    "uevr_particles_effect_list": 3,
+    "uevr_particles_effect_enabled": true,
+    "uevr_particles_effect_list": 1,
     "uevr_particles_finder_effect_enabled": true,
     "uevr_particles_finder_effect_list": 1,
     "uevr_particles_finder_emitter_type": 1,

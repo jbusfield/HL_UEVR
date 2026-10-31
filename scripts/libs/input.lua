@@ -270,6 +270,12 @@ Usage
 		example:
 			input.setMeshRelativePositionDisabled(true)
 
+	input.setMeshOffsetAppliedToCamera(val) - when true, the body mesh keeps its unshifted XY and the
+		VR view moves by the opposite of the head-alignment offset instead, so the view still follows
+		the animated head. Use while the game positions the pawn from its mesh (e.g. motion warping).
+		example:
+			input.setMeshOffsetAppliedToCamera(true)
+
 	input.updateMeshRelativePosition((optional)setDisabled) - manually updates (or clears if
 		setDisabled) body mesh RelativeLocation from head/anim/eye offsets
 		example:
@@ -528,6 +534,13 @@ function M.setMeshRelativePositionDisabled(val)
 	status.meshRelativePositionDisabled = val
 	if val == true then
 		M.updateMeshRelativePosition(true)
+	end
+end
+
+function M.setMeshOffsetAppliedToCamera(val)
+	status.meshOffsetAppliedToCamera = val == true
+	if not status.meshOffsetAppliedToCamera then
+		status.cameraMeshOffsetX, status.cameraMeshOffsetY = nil, nil
 	end
 end
 
@@ -1663,6 +1676,15 @@ local lateYaw = false
 local rootWriteCount = 0
 -- Advanced by this module's pre-engine tick; stereo views in the same tick share camera offsets
 local stereoTick = 0
+-- Alternating-eye rendering (e.g. AFW) produces one stereo view per engine tick and
+-- alternates its index, so a view-index gate would skip every other tick. When the
+-- engine ticks have a single view, the first view of each tick is treated as the first eye.
+-- Occasional ticks have a different view count than the rendering mode normally produces, so
+-- the state only flips after a sustained run of ticks disagreeing with it (a real mode change).
+local STEREO_VIEW_LATCH_TICKS = 30
+local stereoViewsThisTick = 0
+local singleStereoViewPerTick = false
+local stereoViewDisagreeTicks = 0
 
 local function setRootWorldYaw(yaw)
 	if rootComponent == nil then return end
@@ -1892,6 +1914,11 @@ local function applyMeshRelativePosition(meshList, settings)
 	if animationDelta ~= nil and settings.useMeshHeightForHeadOffset and status.meshZOffset == nil then
 		status.meshZOffset = animationDelta.Z / 2 - 90 + (headOffset and headOffset.Z or 0)
 	end
+	if status.meshOffsetAppliedToCamera then
+		-- The view carries the offset so the mesh stays where the game expects it
+		status.cameraMeshOffsetX, status.cameraMeshOffsetY = x, y
+		x, y = 0, 0
+	end
 	for _, mesh in ipairs(meshList) do
 		-- Fetch the reflected FVector once, but keep writing each tick: the game
 		-- may have moved the mesh even when our requested XY is unchanged.
@@ -1906,6 +1933,7 @@ end
 
 local function updateMeshRelativePosition(setDisabled)
 	if setDisabled then
+		status.cameraMeshOffsetX, status.cameraMeshOffsetY = nil, nil
 		local meshList = getBodyMesh()
 		if  meshList ~= nil then
 			for _, mesh in ipairs(meshList) do
@@ -2013,6 +2041,18 @@ end
 uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
 	stereoTick = stereoTick + 1
 	updateEyeIndexDetection()
+	if stereoViewsThisTick > 0 then
+		if (stereoViewsThisTick == 1) == singleStereoViewPerTick then
+			stereoViewDisagreeTicks = 0
+		else
+			stereoViewDisagreeTicks = stereoViewDisagreeTicks + 1
+			if stereoViewDisagreeTicks >= STEREO_VIEW_LATCH_TICKS then
+				singleStereoViewPerTick = not singleStereoViewPerTick
+				stereoViewDisagreeTicks = 0
+			end
+		end
+	end
+	stereoViewsThisTick = 0
 	--set the global rootComponent variable on the earliest tick callback so it will be valid everywhere
 
 	--calculate the controller rotation here so it is available for updateBodyYaw and updateAim?
@@ -2264,6 +2304,7 @@ local prevRotation = {X=0, Y=0, Z=0}
 local vrCameraOffsetsCache = {}
 uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device, view_index, world_to_meters, position, rotation, is_double)
 	observeStereoViewIndex(view_index)
+	stereoViewsThisTick = stereoViewsThisTick + 1
 	--Fix for UEVR using invalid rotations in Hogwarts
 	if rotation ~= nil and rotation.x == -90 and rotation.y == 90 and rotation.z == -90 and prevRotation.X ~= nil and prevRotation.Y ~= nil and prevRotation.Z ~= nil then
 		rotation.x = prevRotation.X
@@ -2275,17 +2316,22 @@ uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device,
 	--End fix
 
 	if not isDisabled then --and getParameter("aimMethod") ~= M.AimMethod.UEVR then
-		local firstStereoViewIndex = M.getFirstStereoViewIndex()
+		local isFirstStereoView
+		if singleStereoViewPerTick then
+			isFirstStereoView = stereoViewsThisTick == 1
+		else
+			isFirstStereoView = view_index == M.getFirstStereoViewIndex()
+		end
 		--print(optimizeBodyYawCalculations == false, getParameter("optimizeBodyRotationCalculations") ~= true, view_index)
-		if isRotationModeEarlyUpdateDisabled() == false and lateYaw == false and (optimizeBodyYawCalculations == false or getParameter("optimizeBodyRotationCalculations") ~= true or view_index == firstStereoViewIndex) then
+		if isRotationModeEarlyUpdateDisabled() == false and lateYaw == false and (optimizeBodyYawCalculations == false or getParameter("optimizeBodyRotationCalculations") ~= true or isFirstStereoView) then
 			updateBodyYaw()
 		end
 		--print(view_index)
-		if getParameter("optimizeBodyLocationCalculations") ~= true or view_index == firstStereoViewIndex then
+		if getParameter("optimizeBodyLocationCalculations") ~= true or isFirstStereoView then
 			updatePawnPositionRoomscale(world_to_meters)
 		end
 
-		if lateYaw == false and view_index == firstStereoViewIndex and M.isBodyMeshPositionAdjustmentAllowed() then
+		if lateYaw == false and isFirstStereoView and M.isBodyMeshPositionAdjustmentAllowed() then
 			updateMeshRelativePosition()
 		end
 
@@ -2308,6 +2354,17 @@ uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device,
 			if x ~= nil then position.x = x end
 			if y ~= nil then position.y = y end
 			if z ~= nil then position.z = z end
+		end
+		local meshOffsetX, meshOffsetY = status.cameraMeshOffsetX, status.cameraMeshOffsetY
+		if meshOffsetX ~= nil and uevrUtils.getValid(rootComponent) ~= nil then
+			-- Mesh RelativeLocation XY is in root space; moving the view by its opposite keeps the head under the view
+			local rootRotation = uevrUtils.getComponentRotation(rootComponent)
+			if rootRotation ~= nil then
+				local radians = rootRotation.Yaw * math.pi / 180
+				local cosine, sine = math.cos(radians), math.sin(radians)
+				position.x = position.x - (meshOffsetX * cosine - meshOffsetY * sine)
+				position.y = position.y - (meshOffsetX * sine + meshOffsetY * cosine)
+			end
 		end
 		if getPawnRotationMode() ~= M.PawnRotationMode.NONE and isRotationModeRotationDisabled() ~= true then --getParameter("pawnRotationModeDisableRotation") ~= true then
 			if pitch ~= nil then rotation.Pitch = pitch end

@@ -2432,7 +2432,7 @@ end
 
 function M.getComponentLocation(component)
 	if uevrLib.extremeCompatibilityMode == false then
-		return component:K2_GetComponentLocation()
+		return component ~= nil and component.K2_GetComponentLocation ~= nil and component:K2_GetComponentLocation() or nil
 	else
 		if checkPluginExists() then
 			---@diagnostic disable-next-line: need-check-nil

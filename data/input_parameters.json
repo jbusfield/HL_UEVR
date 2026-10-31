@@ -103,6 +103,7 @@
         "aimMethod": 1,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
+        "fixStickDrift": false,
         "headBoneName": "Spine3",
         "headOffset": {
             "X": 1.8789,
@@ -193,7 +194,7 @@
         "aimMethod": 1,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
-        "headBoneName": "neckskin_right_05",
+        "headBoneName": "head",
         "headOffset": {
             "X": 0.0,
             "Y": 23.3929,
@@ -213,7 +214,7 @@
         "pawnRotationModeDisableInEarlyUpdate": false,
         "pawnRotationModeDisableRotation": true,
         "pawnRotationModeUseRootPitchRoll": true,
-        "rootBoneName": "Root",
+        "rootBoneName": "Reference",
         "rootOffset": {
             "X": 0.0948,
             "Y": -0.044,
@@ -345,7 +346,7 @@
         "autoDetectEyeIndices": true,
         "eyeOffset": 0.18299999833106995,
         "fixSpatialAudio": true,
-        "fixStickDrift": false,
+        "fixStickDrift": true,
         "headBoneName": "head",
         "headOffset": {
             "X": 11.2049,
@@ -353,7 +354,7 @@
             "Z": 0.0
         },
         "isDisabledOverride": false,
-        "optimizeBodyLocationCalculations": true,
+        "optimizeBodyLocationCalculations": false,
         "optimizeBodyRotationCalculations": true,
         "orientRotationToMovement": 1,
         "overridePlayerControllerYaw": false,
@@ -415,7 +416,7 @@
         "rootOffset": {
             "X": 0.0,
             "Y": 0.0,
-            "Z": -49.077
+            "Z": -54.2911
         },
         "smoothTurnSpeed": 60,
         "snapAngle": 30,

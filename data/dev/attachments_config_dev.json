@@ -4,6 +4,576 @@
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_any_child": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_any_parent": true,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_is_melee": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_is_scoped": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_position": [
+        -2.0999999046325684,
+        -6.099999904632568,
+        1.7000000476837158
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_rotation": [
+        -41.099998474121094,
+        -5.699999809265137,
+        18.200000762939453
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_use_laser": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_weight": 0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_any_child": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_any_parent": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_melee": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_scoped": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_position": [
+        12.300000190734863,
+        -13.100000381469727,
+        1.600000023841858
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_rotation": [
+        -85.0,
+        -37.099998474121094,
+        109.9000015258789
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scale": [
+        0.5,
+        0.5,
+        0.5
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_use_laser": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_weight": 0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_any_child": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_any_parent": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_is_melee": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_is_scoped": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_position": [
+        0.6000000238418579,
+        0.30000001192092896,
+        2.5999999046325684
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_rotation": [
+        -40.400001525878906,
+        -42.900001525878906,
+        -0.20000000298023224
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scale": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_use_laser": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_weight": 0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_any_child": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_any_parent": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_is_melee": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_is_scoped": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_position": [
+        0.10000000149011612,
+        -3.4000000953674316,
+        3.299999952316284
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_rotation": [
+        -110.0999984741211,
+        -41.29999923706055,
+        119.0999984741211
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_use_laser": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_weight": 0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_any_child": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_any_parent": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_is_melee": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_is_scoped": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_position": [
+        6.0,
+        -8.699999809265137,
+        4.099999904632568
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_rotation": [
+        -2.8480000495910645,
+        36.71900177001953,
+        1.2070000171661377
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scale": [
+        0.36000001430511475,
+        0.35999998450279236,
+        0.35956108570098877
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_use_laser": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_weight": 0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_any_child": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_any_parent": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_grip_animation": 1,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_melee": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_scoped": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_position": [
+        3.700000047683716,
+        -7.099999904632568,
+        -1.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_rotation": [
+        -65.0,
+        56.20000076293945,
+        -30.100000381469727
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scale": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_use_laser": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_weight": 0,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_end_time": 0.0,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_existing_guid": 1,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_activation_distance": 0.0,
@@ -900,7 +1470,7 @@
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_position": [
         0.699999988079071,
         -0.800000011920929,
-        -1.371000051498413
+        -1.9709999561309814
     ],
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_rotation": [
         -75.30000305175781,
