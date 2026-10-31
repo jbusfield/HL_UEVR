@@ -14,6 +14,8 @@ A mod for UEVR when playing Hogwarts Legacy
 - Boats can be ridden in and controlled
 - 3D Interactive Gadget Wheel
 - In game tutorial
+- Climb ladders with physical gestures
+- Pick up items with physical gestures
 
 ## Guide:
 ### Settings
@@ -25,6 +27,13 @@ Setting for the mod can be accessed by pressing L3+R3 (or INS on your keyboard) 
 The Gadget Wheel is where your potions and mounts can be accessed. Open the wheel by holding out your left hand and tapping the left trigger. You will then see all of your potions and combat plants in a circle around your hand. Grab one of the items with your left hand. To use a potion, bring it to your mouth. To use an plant, toss your hand forward while releasing the grip. You can also just release a grabbed item and it wont be consumed but will become your active item. See the video below for a tutorial on how to use the Gadget Wheel. If you prefer the standard Gadget Wheel that the game provides, set "Potion Wheel" to "2D Native" in the Hogwarts Legacy Config settings.
 <BR><BR>
 [![Watch Video](https://img.youtube.com/vi/ZKa1V_I1c-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=ZKa1V_I1c-w)
+
+### Item Pickup and Ladder Climbing
+- Pick up items - When prompted, grip with your left hand and the item will come to your hand. Release your grip to drop it or bring it near your left ear and release grip to put it in your inventory
+- Ladders - Walk up to the ladder until you are on the ladder. Once on it you can grip the rungs or sides of the ladder to pull yourself up or down
+See this video for a demonstration
+<BR><BR>
+[![Watch Video](https://img.youtube.com/vi/m4a_sXA0ZbU/maxresdefault.jpg)](https://www.youtube.com/watch?v=m4a_sXA0ZbU)
 
 ### Spells
 Spells can optionally be cast by drawing glyphs or speaking the spell. Spells can be cast this way at any time (as long as you have already learned the spell) They do not need to be assigned to one of the 4 active spell slots
