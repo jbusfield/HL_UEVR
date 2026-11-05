@@ -58,7 +58,7 @@ t:showOnce()               -- or t:show()
 -- ik.setLogLevel(LogLevel.Debug)
 --spells.setLogLevel(LogLevel.Debug)
 
--- uevrUtils.setDeveloperMode(true)
+--uevrUtils.setDeveloperMode(true)
 -- -- hands.enableConfigurationTool()
 -- uevrUtils.profiler:toggle(true)
 -- register_key_bind("F1", function()
@@ -100,7 +100,7 @@ if uevrUtils.getDeveloperMode() ~= nil then
 end
 
 
-local versionTxt = "v2.0.9"
+local versionTxt = "v2.1.0"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
@@ -682,21 +682,27 @@ spellNameRemap["BeastTool_Brush"] = "Item_CreaturePettingBrush"
 spellNameRemap["BeastTool_Bag"] = "ITEM_CaptureDevice"
 spellNameRemap["LeviosoAlt"] = "Spell_Levioso"
 
+-- Creating the widget takes about 80 ms, so it is done at level change rather than on the first cast.
+-- The icon stays collapsed until it has a texture. Hand creation callbacks attach it once the hands exist.
+local function createHandSpellIcon()
+	if configui.getValue("disable_spell_icons") or uevrUtils.getValid(status.handSpellComponent) ~= nil then return end
+	status.handSpellComponent, status.handSpellIcon, status.handSpellWidgetComponent = widgetcomponent.createImageComponent(40, {
+		scale = {0.08, 0.08, 0.08},
+		twoSided = true,
+		drawSize = {120, 120},
+		useExposure = true,
+		exposure = configui.getValue("hand_spell_icon_exposure"),
+	})
+	attachHandSpellIcon()
+end
+
 local function onSpellRecognize(pawn, spellName, muteVoice)
 	if spellName == nil then return end
 	if uevrUtils.isInCutscene() then return end
 
-	if not configui.getValue("disable_spell_icons") and uevrUtils.getValid(status.handSpellComponent) == nil and getHandComponents() ~= nil then
-		status.handSpellComponent, status.handSpellIcon, status.handSpellWidgetComponent = widgetcomponent.createImageComponent(40, {
-			scale = {0.08, 0.08, 0.08},
-			twoSided = true,
-			drawSize = {120, 120},
-			useExposure = true,
-			exposure = configui.getValue("hand_spell_icon_exposure"),
-		})
-		if status.handSpellComponent ~= nil then
-			attachHandSpellIcon()
-		end
+	createHandSpellIcon()
+	if uevrUtils.getValid(status.handSpellComponent) ~= nil and status.handSpellComponent:GetAttachParent() == nil then
+		attachHandSpellIcon()
 	end
 	if status.handSpellIcon ~= nil then
 		status.handSpellIcon:setTexture(spellName .. ".png")
@@ -962,7 +968,7 @@ end
 
 attachments.registerOnGripUpdateCallback(function()
 	local paletteMesh = palette.getActiveMesh()
-	local heldItem = interactions.getHeldItemMesh()
+	local heldItem = interactions.getHeldItemMesh(Handed.Left)
 	local can = paletteMesh or spells.getCreatureFeedCan()
 	--print("can", can, can and can:get_full_name())
 
@@ -996,6 +1002,9 @@ attachments.registerAttachmentChangeCallback(function(id, gripHand, attachment)
 			spells.destroyWandTrail()
 			return
 		end
+		-- A Physical Item Grab copy (libs/grabbable shows it itself when its flight lands) is neither shown here nor the wand trail mesh.
+		local heldItem = interactions.getHeldItemMesh(Handed.Right)
+		if heldItem ~= nil and heldItem:get_address() == attachment:get_address() then return end
 		attachment:SetVisibility(true, true)
 		--attachment:SetHiddenInGame(false, false)
 		local mesh = attachment
@@ -1043,8 +1052,26 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	local gripMouthLeft, gripEyesLeft, gripHeadLeft, gripEarLeft, triggerMouthLeft, triggerEyesLeft, triggerHeadLeft, triggerEarLeft = gestures.getHeadGestures(state, Handed.Left, true)
 	local gripMouthRight, gripEyesRight, gripHeadRight, gripEarRight, triggerMouthRight, triggerEyesRight, triggerHeadRight, triggerEarRight = gestures.getHeadGestures(state, Handed.Right, false)
 	-- While an item from Physical Item Grab is in the left hand, a left grip collects or drops it instead of opening the menu or drinking.
-	local holdingItem = interactions.isHoldingItem()
+	local holdingItem = interactions.isHoldingItem(Handed.Left)
 	if gripEarLeft and not holdingItem then uevrUtils.pressButton(state, XINPUT_GAMEPAD_START) end
+	-- Left ear scratch (left trigger pulled at the ear) opens the map (Back). The pull must start at the ear: one that passed 128
+	-- (the palette's tap and the gesture's default trigger threshold) elsewhere first already belongs to the palette or the game.
+	-- Until the trigger is nearly released it is hidden from every later handler, so the palette sees no tap (wheel toggle) and
+	-- the game sees no LT. The tutorial's left eye scratch runs before this callback and hides its own pull.
+	local leftTrigger = state.Gamepad.bLeftTrigger
+	if status.earScratchLeft then
+		if leftTrigger > 30 then
+			state.Gamepad.bLeftTrigger = 0
+			uevrUtils.pressButton(state, XINPUT_GAMEPAD_BACK)
+		else
+			status.earScratchLeft = nil
+		end
+	elseif triggerEarLeft and not status.leftTriggerWasHeld then
+		status.earScratchLeft = true
+		state.Gamepad.bLeftTrigger = 0
+		uevrUtils.pressButton(state, XINPUT_GAMEPAD_BACK)
+	end
+	status.leftTriggerWasHeld = leftTrigger > 128
 	if gripEarRight then regenerateHands(configui.getValue("hands_type")) end
 	-- With the 3D potion wheel (Potion Wheel = 2) the palette drinks at the mouth, so the grip does not also press D-pad down.
 	if gripMouthLeft and not holdingItem and configui.getValue("widget_wheel_type") ~= 2 then uevrUtils.pressButton(state, XINPUT_GAMEPAD_DPAD_DOWN) end
@@ -1395,6 +1422,7 @@ on_level_change = function(level, levelName)
 	--print("on_level_change ", level, levelName)
     cleanup()
     regenerateHands(configui.getValue("hands_type") or 1)
+	createHandSpellIcon()
 	delay(2000, hookLevelFunctions)
 	spells.activateAutoTargetSense(configui.getValue("use_auto_targeting"))
 	fixFlicker()

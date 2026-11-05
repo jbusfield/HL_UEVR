@@ -1643,7 +1643,8 @@ local function detectBody(state, hand, continuous)
 	return gripChest
 end
 
-local headGripOn = false
+-- Per hand (was one flag for both), so one hand's held grip doesn't block the other hand's "grip started at the head" check.
+local headGripOn = {}
 local function detectFace(state, hand, continuous)
 	local gripMouth, gripEyes, gripHead, gripEar = false, false, false, false
 	local triggerMouth, triggerEyes, triggerHead, triggerEar = false, false, false, false
@@ -1651,8 +1652,8 @@ local function detectFace(state, hand, continuous)
 	local triggerThreshold = getParam({"face", "triggerThreshold"})
 	local isGripped, isTriggerred = getHandGripTrigger(state, hand, triggerThreshold)
 
-	if (continuous == true or not headGripOn) and (isGripped or isTriggerred)  then
-		headGripOn = true
+	if (continuous == true or not headGripOn[hand]) and (isGripped or isTriggerred)  then
+		headGripOn[hand] = true
 		local headLocation = controllers.getControllerLocation(2)
 		local handLocation = controllers.getControllerLocation(hand)
 		if headLocation ~= nil and handLocation ~= nil then
@@ -1691,8 +1692,8 @@ local function detectFace(state, hand, continuous)
 			end
 
 		end
-	elseif headGripOn and not (isGripped or isTriggerred) then
-		headGripOn = false
+	elseif headGripOn[hand] and not (isGripped or isTriggerred) then
+		headGripOn[hand] = false
 	end
 	return gripMouth, gripEyes, gripHead, gripEar, triggerMouth, triggerEyes, triggerHead, triggerEar
 end

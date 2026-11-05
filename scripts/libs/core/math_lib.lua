@@ -930,6 +930,63 @@ function M.makeRotFromXZ_Components(xx, xy, xz, zx, zy, zz)
 	return kismet_math_library:MakeRotator(roll, pitch, yaw)
 end
 
+-- FQuat::Slerp: the shorter way round, then normalized.
+function M.quatSlerp_Components(ax, ay, az, aw, bx, by, bz, bw, alpha)
+	local rawCos = (ax * bx) + (ay * by) + (az * bz) + (aw * bw)
+	local cos = math.abs(rawCos)
+	local scale0, scale1
+	if cos < 0.9999 then
+		local omega = math.acos(cos)
+		local invSin = 1 / math.sin(omega)
+		scale0 = math.sin((1 - alpha) * omega) * invSin
+		scale1 = math.sin(alpha * omega) * invSin
+	else
+		scale0, scale1 = 1 - alpha, alpha
+	end
+	if rawCos < 0 then scale1 = -scale1 end
+	local x, y, z, w = (scale0 * ax) + (scale1 * bx), (scale0 * ay) + (scale1 * by), (scale0 * az) + (scale1 * bz), (scale0 * aw) + (scale1 * bw)
+	local length = math.sqrt((x * x) + (y * y) + (z * z) + (w * w))
+	if length > 0 then x, y, z, w = x / length, y / length, z / length, w / length end
+	return x, y, z, w
+end
+
+-- Transforms as plain tables: {qx, qy, qz, qw (rotation quaternion), tx, ty, tz (translation), sx, sy, sz (scale)}.
+-- transformCompose and transformRelative follow FTransform's math for positive scales only (with a negative or zero scale the
+-- engine works through matrices), so check transformHasPositiveScale on the inputs first.
+
+-- An engine FTransform struct as a plain transform table, or nil when its fields can't be read.
+function M.transformFromStruct(transform)
+	if transform == nil then return nil end
+	local r, t, s = transform.Rotation, transform.Translation, transform.Scale3D
+	if r == nil or t == nil or s == nil then return nil end
+	return {qx = r.X, qy = r.Y, qz = r.Z, qw = r.W, tx = t.X, ty = t.Y, tz = t.Z, sx = s.X, sy = s.Y, sz = s.Z}
+end
+
+function M.transformHasPositiveScale(t)
+	return t.sx > 0 and t.sy > 0 and t.sz > 0
+end
+
+-- The child's transform from its local transform and its parent's (FTransform localTransform * parentTransform, ComposeTransforms(local, parent)).
+function M.transformCompose(localTransform, parentTransform)
+	local p = parentTransform
+	local qx, qy, qz, qw = M.quatMultiply_Components(p.qx, p.qy, p.qz, p.qw, localTransform.qx, localTransform.qy, localTransform.qz, localTransform.qw)
+	local ox, oy, oz = M.vectorRotate_Components(p.qx, p.qy, p.qz, p.qw, p.sx * localTransform.tx, p.sy * localTransform.ty, p.sz * localTransform.tz)
+	return {qx = qx, qy = qy, qz = qz, qw = qw,
+		tx = p.tx + ox, ty = p.ty + oy, tz = p.tz + oz,
+		sx = p.sx * localTransform.sx, sy = p.sy * localTransform.sy, sz = p.sz * localTransform.sz}
+end
+
+-- The child's local transform relative to its parent, so that transformCompose(result, parent) gives the child back
+-- (FTransform::GetRelativeTransform, MakeRelativeTransform(child, parent)).
+function M.transformRelative(childTransform, parentTransform)
+	local p, c = parentTransform, childTransform
+	local qx, qy, qz, qw = M.quatMultiply_Components(-p.qx, -p.qy, -p.qz, p.qw, c.qx, c.qy, c.qz, c.qw)
+	local x, y, z = M.vectorRotate_Components(-p.qx, -p.qy, -p.qz, p.qw, c.tx - p.tx, c.ty - p.ty, c.tz - p.tz)
+	return {qx = qx, qy = qy, qz = qz, qw = qw,
+		tx = x / p.sx, ty = y / p.sy, tz = z / p.sz,
+		sx = c.sx / p.sx, sy = c.sy / p.sy, sz = c.sz / p.sz}
+end
+
 function M.init()
 	kismet_math_library = uevrLib.find_default_instance("Class /Script/Engine.KismetMathLibrary")
 end

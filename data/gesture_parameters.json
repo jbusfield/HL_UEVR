@@ -27,7 +27,7 @@
         "face": {
             "ear": {
                 "forwardDotThreshold": 0.8,
-                "triggerDistance": 25.0
+                "triggerDistance": 27.5
             },
             "eyes": {
                 "forwardDotThreshold": 0.85,

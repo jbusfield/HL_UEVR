@@ -1290,11 +1290,14 @@ local function captureInput(retval, userIndex, state)
 		leftChord, leftChordEnded = false, true
 	elseif gestureBased and not wheelOpen then
 		if not gripWasPressed[Handed.Left] then
-			leftChord, leftPressTime = rightPressed, os.clock()
 			-- A grip that attaches to, or starts while holding, an accessory passes through
 			-- for the whole hold, so it never makes a copy. The same applies to a grip another system claims (e.g. an item grab).
 			local owner = grip.getOwner(Handed.Left)
-			leftAccessory = allowed and (accessories.isGripHandEngaged(Handed.Left) or (owner ~= nil and owner ~= "palette"))
+			local ownedElsewhere = owner ~= nil and owner ~= "palette"
+			-- A grip another system claims isn't half of an LB+RB chord either (e.g. the left hand taking an item from the right): its
+			-- owner already hides it from the game, and hiding it here once RB lets go would also hide it from that system (a drop).
+			leftChord, leftPressTime = rightPressed and not ownedElsewhere, os.clock()
+			leftAccessory = allowed and (accessories.isGripHandEngaged(Handed.Left) or ownedElsewhere)
 		elseif not leftChord and rightPressed and not gripWasPressed[Handed.Right]
 			and leftPressTime ~= nil and os.clock() - leftPressTime <= CHORD_WINDOW then
 			-- RB followed LB quickly: release LB to the game and drop any copy it created.

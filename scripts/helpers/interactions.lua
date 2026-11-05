@@ -3,18 +3,17 @@ local plugin = require('libs/core/plugin')
 local controllers = require('libs/controllers')
 local configui = require('libs/configui')
 local grabbable = require('libs/grabbable')
+local prompts = require('libs/prompts')
 local GRIP_PRIORITY = require('helpers/grip_priority')
 local gestures = require('libs/gestures')
+local accessories = require('libs/accessories')
 
 local M = {}
 
 local status = {}
-local resetItemGrab
-
 local reset = function()
     uevrUtils.setIsInCutsceneOverride(nil)
 	status = {}
-	resetItemGrab()
 end
 -- World props (food, drinks, etc.) play an interaction ability without a cinematic; GetAbilityClass is called once when it starts.
 -- Treat it as a cutscene while the ability plays so it's watched from the third-person camera instead of happening inside the head.
@@ -99,9 +98,10 @@ hook_function("Class /Script/Phoenix.SimpleInteractObject", "GetAbilityClass", t
 end)
 
 ------------------- Physical item grab -------------------
--- Hogwarts Legacy settings for libs/grabbable: a left grip on a loot bag or inventory item (e.g. a wolf pelt) flies it into the
--- left hand; releasing at the left ear collects it with the game's X, releasing elsewhere throws or drops it. A grip on any other
--- interaction prompt holds X. main.lua's grip update callback attaches the held copy (getHeldItemMesh).
+-- Hogwarts Legacy settings for libs/grabbable: a grip on a loot bag or inventory item (e.g. a wolf pelt) flies it into that hand; the
+-- right hand only grabs while it has nothing else (the wand drawn, a mount's accessory). Releasing at that hand's ear collects it with
+-- the game's X, releasing elsewhere throws or drops it. A left grip on any other interaction prompt holds X. main.lua's grip update
+-- callback attaches the left hand's copy (getHeldItemMesh); libs/grabbable attaches the right hand's.
 -- Loot bags by class name; anything derived from Phoenix.InventoryObject is grabbable too. Breakables such as moonstones are neither.
 local GRAB_CLASSES = {BP_LootDrop_Container_C = true}
 local GRAB_SCAN_INTERVAL = 250 -- ms between prompt icon checks (and palm pointing scans)
@@ -119,25 +119,32 @@ local GRAB_REQUIRE_POINTING = false
 --Use real physics for dropped or thrown items
 grabbable.useRealPhysics(true)
 
-local itemGrabEnabled = false
 local inventoryObjectClass, callOutClass, stencilManager, targetEffect = nil, nil, nil, nil
-local promptWidget = nil
+local itemGrab = nil -- created below; canClaim asks it whether the other hand is holding an item
 
 local function isGrabbable(actor)
 	inventoryObjectClass = inventoryObjectClass or uevrUtils.get_class("Class /Script/Phoenix.InventoryObject")
 	return GRAB_CLASSES[actor:get_class():get_fname():to_string()] == true or (inventoryObjectClass ~= nil and actor:is_a(inventoryObjectClass))
 end
 
--- What the game's interaction prompt (callout) is on.
-local function getInteractTarget()
-	return uevrUtils.getValid(pawn, {"Controller", "CurrentInteractTarget"})
+-- What the game's interaction prompt (callout) is on. The right hand only grabs: a prompt on anything else is left to the left grip.
+local function getInteractTarget(state, hand)
+	local target = uevrUtils.getValid(pawn, {"Controller", "CurrentInteractTarget"})
+	if hand == Handed.Right and target ~= nil and not isGrabbable(target) then return nil end
+	return target
 end
 
--- The left mouth grip gesture and the LB+RB Ancient Magic chord take precedence over grabbing and interacting. An open palette wheel and
--- the left ear grip (menu) take precedence through their own grip claims.
-local function canClaim(state)
+-- The LB+RB Ancient Magic chord (a hand doesn't claim while the other grip is down), a mount's accessory the hand holds or would grip,
+-- and the left mouth grip gesture take precedence over grabbing and interacting. An open palette wheel and the left ear grip (menu) take
+-- precedence through their own grip claims; a drawn wand keeps the right hand busy (libs/grabbable).
+local function canClaim(state, hand)
 	if configui.getValue("left_handed_mode") then return false end
-	if uevrUtils.isButtonPressed(state, XINPUT_GAMEPAD_RIGHT_SHOULDER) then return false end
+	-- The other grip holding an item is a hold, not half of the chord (e.g. a hand-to-hand handoff).
+	local otherHand = hand == Handed.Left and Handed.Right or Handed.Left
+	if uevrUtils.isButtonPressed(state, otherHand == Handed.Right and XINPUT_GAMEPAD_RIGHT_SHOULDER or XINPUT_GAMEPAD_LEFT_SHOULDER)
+		and not (itemGrab ~= nil and itemGrab:isHolding(otherHand)) then return false end
+	if accessories.isGripHandEngaged(hand) then return false end
+	if hand ~= Handed.Left then return true end
 	local gripMouth = gestures.getHeadGestures(state, Handed.Left, true)
 	return not gripMouth
 end
@@ -150,23 +157,31 @@ local function setHighlight(actor, on)
 	stencilManager:SetStencilEffect(actor, targetEffect, on)
 end
 
-local itemGrab = grabbable.new({
-	name = "item_grab",
+itemGrab = grabbable.new({
+	names = {[Handed.Left] = "item_grab", [Handed.Right] = "item_grab_right"},
 	claimPriority = GRIP_PRIORITY.ITEM_GRAB,
 	heldPriority = GRIP_PRIORITY.ITEM_HELD,
-	hand = Handed.Left,
+	hands = {Handed.Left, Handed.Right},
 	isGrabbable = isGrabbable,
 	canClaim = canClaim,
 	getInteractTarget = getInteractTarget,
 	interactButton = XINPUT_GAMEPAD_X,
 	-- The hidden item sits at the hand, so the game's X targets it.
-	isCollectGesture = function(state)
-		local _, _, _, gripEar = gestures.getHeadGestures(state, Handed.Left, true)
+	isCollectGesture = function(state, hand)
+		local _, _, _, gripEar = gestures.getHeadGestures(state, hand, true)
 		return gripEar
 	end,
 	collectButton = XINPUT_GAMEPAD_X,
+	-- Drawing the wand into the right hand drops what it holds; an open palette only makes a left-hand item wait.
+	dropWhenHandTaken = {[Handed.Right] = true},
 	toggleGrip = GRAB_TOGGLE_GRIP,
+	-- Full 0.4 s flight from 1 m or more; a grab right next to the hand (e.g. a catch) is almost immediate.
+	flightDistance = 100,
 	dropRescaleTime = 0.5,
+	-- Barely rescales right after release, most of it near the end of the drop.
+	dropRescaleEase = 3,
+	-- Keeps its release size this long first, so a toss to the other hand doesn't visibly rescale.
+	dropRescaleDelay = .4,
 	pointing = {
 		enabled = GRAB_REQUIRE_POINTING,
 		highlight = setHighlight,
@@ -179,56 +194,49 @@ local itemGrab = grabbable.new({
 	},
 })
 
--- The prompt is the target's CallOutComponent widget (UI_BP_InteractBlip_C). The game creates and reuses these widgets and sets the
--- Interact key whenever one is shown, so the current prompt's key is checked on every interval and switched back to the grip's key.
--- A prompt can show X for up to one interval before it switches.
+-- The prompt is the target's CallOutComponent widget (UI_BP_InteractBlip_C), whose ButtonCallout shows the button. The game creates and
+-- reuses these widgets and sets the Interact key whenever one is shown; libs/prompts checks it every interval, switches it to the grip's
+-- key, and puts the game's key back when the swap stops applying, the feature is turned off, or on level change and script reset.
 -- FString values read from Lua can carry a hidden trailing null character (as spells.lua handles for spell names), so strip it before comparing.
-local function getPromptKey(button)
-	local key = button.LocalizationKey
-	return type(key) == "string" and (key:gsub("%z", "")) or nil
-end
-
-local function updatePromptIcon()
-	if not GRAB_PROMPT_ICON or not itemGrabEnabled or configui.getValue("left_handed_mode") then return end
-	local target = getInteractTarget()
-	if target == nil then return end
-	callOutClass = callOutClass or uevrUtils.get_class("Class /Script/Phoenix.CallOutComponent")
-	local widget = callOutClass ~= nil and uevrUtils.getValid(target:GetComponentByClass(callOutClass), {"Widget"}) or nil
-	local button = uevrUtils.getValid(widget, {"ButtonCallout"})
-	if button ~= nil and getPromptKey(button) == PROMPT_INTERACT_KEY then
-		button:SetTextKey(PROMPT_GRIP_KEY)
-		promptWidget = widget
-	end
-end
-uevrUtils.setInterval(GRAB_SCAN_INTERVAL, updatePromptIcon)
-
--- Puts the X back on the last prompt that was changed.
-local function restorePromptIcon()
-	local button = uevrUtils.getValid(promptWidget, {"ButtonCallout"})
-	if button ~= nil and getPromptKey(button) == PROMPT_GRIP_KEY then button:SetTextKey(PROMPT_INTERACT_KEY) end
-	promptWidget = nil
-end
-
--- itemGrab resets itself on level change and script reset.
-resetItemGrab = function()
-	restorePromptIcon()
-end
+local promptIcon = prompts.new({
+	interval = GRAB_SCAN_INTERVAL,
+	getPrompts = function()
+		local target = getInteractTarget()
+		if target == nil then return nil end
+		callOutClass = callOutClass or uevrUtils.get_class("Class /Script/Phoenix.CallOutComponent")
+		local widget = callOutClass ~= nil and uevrUtils.getValid(target:GetComponentByClass(callOutClass), {"Widget"}) or nil
+		local button = uevrUtils.getValid(widget, {"ButtonCallout"})
+		return button ~= nil and {button} or nil
+	end,
+	get = function(button)
+		local key = button.LocalizationKey
+		return type(key) == "string" and (key:gsub("%z", "")) or nil
+	end,
+	set = function(button, key)
+		button:SetTextKey(key)
+	end,
+	getReplacement = function(button, original)
+		if original == PROMPT_INTERACT_KEY and not configui.getValue("left_handed_mode") then return PROMPT_GRIP_KEY end
+		return nil
+	end,
+})
 
 function M.setItemGrabEnabled(value)
-	itemGrabEnabled = value == true
-	itemGrab:setEnabled(itemGrabEnabled)
-	if not itemGrabEnabled then restorePromptIcon() end
+	local enabled = value == true
+	itemGrab:setEnabled(enabled)
+	promptIcon:setEnabled(enabled and GRAB_PROMPT_ICON)
 end
 
--- The copy of the item's mesh, attached (hidden during the flight) from the start of a grab, for main.lua's grip update callback.
-function M.getHeldItemMesh()
-	return itemGrab:getHeldMesh()
+-- The copy of the item's mesh in hand, attached (hidden during the flight) from the start of a grab, for main.lua's grip update
+-- callback (left hand).
+function M.getHeldItemMesh(hand)
+	return itemGrab:getHeldMesh(hand)
 end
 
--- True while an item is in the left hand, and for the rest of a grip press that grabbed, collected or dropped one,
--- so main.lua's left grip head gestures stand aside (an ear release collect must not go on to open the menu).
-function M.isHoldingItem()
-	return itemGrab:isHolding()
+-- True while an item is in hand, and for the rest of a grip press that grabbed, collected or dropped one,
+-- so main.lua's grip head gestures stand aside (an ear release collect must not go on to open the menu).
+function M.isHoldingItem(hand)
+	return itemGrab:isHolding(hand)
 end
 ------------------- End physical item grab -------------------
 

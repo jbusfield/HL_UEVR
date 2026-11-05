@@ -8,6 +8,7 @@ local boats = require('helpers/boats')
 local configui = require("libs/configui")
 local hands = require("libs/hands")
 local accessories = require("libs/accessories")
+local ui = require("libs/ui")
 
 local M = {}
 
@@ -522,6 +523,22 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 		updateControllerPitchRoll(state)
 	end
 end)
+
+-- On a flying broom X gives the game's left trigger speed boost, since the palette keeps the physical left trigger and hides
+-- it from the game. X is read before the mod's own X press (stick casting) and hidden from the game; the boost is pressed
+-- after the palette's suppression (post-input priority -100). Menus (remap disabled) keep X.
+uevrUtils.registerOnPreInputGetStateCallback(function(retval, userIndex, state)
+	status.broomBoostX = nil
+	if userIndex ~= 0 or status.mountType ~= M.EMountTypes.Broom_Flying or ui.isRemapDisabled() then return end
+	if uevrUtils.isButtonPressed(state, XINPUT_GAMEPAD_X) then
+		uevrUtils.unpressButton(state, XINPUT_GAMEPAD_X)
+		status.broomBoostX = true
+	end
+end, 1000)
+
+uevrUtils.registerOnPostInputGetStateCallback(function(retval, userIndex, state)
+	if status.broomBoostX then state.Gamepad.bLeftTrigger = 255 end
+end, -200)
 
 -- The rider mesh is attached to the broom rather than the character capsule.
 -- World-space sockets preserve the broom's pitch and bank when we tilt the capsule.

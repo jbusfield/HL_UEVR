@@ -260,7 +260,7 @@ local function getConfigWidgets(m_paramManager)
 				widgetType = "combo",
 				id = widgetPrefix .. "cameraResetAction",
 				label = "On Camera Deactivation",
-				selections = {"Do not reset location and rotation", "Set to parent's location and rotation"}, --  "Zero location and rotation"},
+				selections = {"Do not reset location and rotation", "Set to parent's location and rotation", "Restore original relative location and rotation"}, --  "Zero location and rotation"},
 				initialValue = 1,
 			},
 			{ widgetType = "unindent", width = 10} ,

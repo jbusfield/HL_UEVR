@@ -7,6 +7,7 @@ local widgetModule = require('libs/widget')
 local particles = require('libs/particles')
 local boats = require('helpers/boats')
 local holster = require('helpers/holster')
+local remap = require('libs/remap')
 
 -- Spell icons are re-imported on every hover otherwise (~21 ms each). Module-wide setting.
 widgetModule.enableTextureCache = true
@@ -1002,11 +1003,17 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 		-- Hide the trigger from the game for the first 200ms so vanilla never sees a tap. Longer holds pass through
 		-- for slotted spell casting, and are kept held until the game has seen at least 0.5s (vanilla tap cutoff is ~300-400ms).
 		-- When pewPewCastWhileMoving is false, leave the trigger alone so vanilla handles pew pew.
-		if pewPewCastWhileMoving and not status.isDeathlyHallows then
+		-- A trigger taken over by a jump or dodge (post-input callback below) has no pew pew until it is released.
+		if status.rightTriggerYielded then
+			status.rightTriggerStart, status.rightTriggerHoldUntil = nil, nil
+		elseif pewPewCastWhileMoving and not status.isDeathlyHallows then
 			local now = os.clock()
 			if held then
 				status.rightTriggerStart = status.rightTriggerStart or now
-				if state.Gamepad.wButtons & 0xF000 ~= 0 then status.rightTriggerStart = math.min(status.rightTriggerStart, now - 0.2) end
+				-- A face button makes the pull a spell slot hold at once. The remap's right stick jump/dodge (A/B) doesn't count,
+				-- so pew pew still works with the stick held.
+				local faceButtons = remap.rawRightStickYPressed and (0xF000 & ~(XINPUT_GAMEPAD_A | XINPUT_GAMEPAD_B)) or 0xF000
+				if state.Gamepad.wButtons & faceButtons ~= 0 then status.rightTriggerStart = math.min(status.rightTriggerStart, now - 0.2) end
 				if now - status.rightTriggerStart < 0.2 then state.Gamepad.bRightTrigger = 0 end
 			elseif status.rightTriggerStart ~= nil then
 				if now - status.rightTriggerStart < 0.2 then
@@ -1050,6 +1057,50 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	end
 
 end)
+
+-- On foot, a right stick jump (A) or dodge (B) from the remap that starts while the trigger is held takes the trigger over,
+-- since trigger + A/B is the game's spell slot cast. The trigger stays hidden until released, so it can't return as a new
+-- pull (pew pew or the spell set). The game still casts if A/B arrives in the same frame the trigger drops, so A/B is held
+-- back for JUMP_DODGE_DELAY, then pressed for at least JUMP_DODGE_MIN_PRESS so a quick flick still counts.
+-- Post-input runs after every pre-input callback, so the remap's result for this frame is known whatever their order.
+-- Stick casting zeroes the stick before the remap when it casts, so the remap never reports it.
+local TRIGGER_RELEASED = 30 -- 0-255; a taken-over trigger below this counts as released
+local JUMP_DODGE_DELAY = 0.1 -- seconds
+local JUMP_DODGE_MIN_PRESS = 0.1 -- seconds
+local JUMP_DODGE_BUTTONS = XINPUT_GAMEPAD_A | XINPUT_GAMEPAD_B
+local jumpDodgeStart = nil -- when the trigger was taken over; nil when no delayed jump/dodge is pending
+local jumpDodgeButtons = 0 -- A/B held back during the delay
+local jumpDodgeStickWasPressed = false
+uevrUtils.registerOnPostInputGetStateCallback(function(retval, user_index, state)
+	if user_index ~= 0 then return end
+	local gamepad = state.Gamepad
+	local now = os.clock()
+	local stickPressed = remap.rawRightStickYPressed == true
+	local stickStarted = stickPressed and not jumpDodgeStickWasPressed
+	jumpDodgeStickWasPressed = stickPressed
+
+	if status.rightTriggerYielded then
+		if gamepad.bRightTrigger <= TRIGGER_RELEASED then status.rightTriggerYielded = nil end
+	-- spells hides the first 0.2s of a pull from the game, so a pending pew pew also counts as held.
+	elseif stickStarted and (gamepad.bRightTrigger > 0 or status.rightTriggerStart ~= nil)
+		and mounts.isWalking() and not ui.isRemapDisabled() then
+		status.rightTriggerYielded = true
+		status.rightTriggerStart, status.rightTriggerHoldUntil = nil, nil
+		jumpDodgeStart, jumpDodgeButtons = now, 0
+	end
+	if status.rightTriggerYielded then gamepad.bRightTrigger = 0 end
+
+	if jumpDodgeStart == nil then return end
+	local age = now - jumpDodgeStart
+	if age < JUMP_DODGE_DELAY then
+		jumpDodgeButtons = jumpDodgeButtons | (gamepad.wButtons & JUMP_DODGE_BUTTONS)
+		gamepad.wButtons = gamepad.wButtons & ~JUMP_DODGE_BUTTONS
+	elseif age < JUMP_DODGE_DELAY + JUMP_DODGE_MIN_PRESS then
+		gamepad.wButtons = gamepad.wButtons | jumpDodgeButtons
+	else
+		jumpDodgeStart = nil
+	end
+end, -1)
 
 -- While Wingardium is holding, pin the target to the wand ray.
 local function updateWingardiumWandHoldFullControl()

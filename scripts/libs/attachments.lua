@@ -31,7 +31,14 @@ Usage
         example:
             attachments.detach(myAttachment)
 
-    attachments.registerOnGripUpdateCallback(callback) - registers a callback function that handles automatic grip updates.
+    attachments.registerOnGripUpdateCallback(callback, priority) - registers a callback function that handles automatic grip updates.
+		priority (optional, default 0): several callbacks can be registered (each call adds one, e.g. the game's in main.lua and
+		another system's that puts something in a hand for a while). For each hand, the highest-priority callback that returns an
+		attachment for it decides that hand (equal priorities: the one registered first); a callback returning nil for a hand leaves
+		it to the callbacks below. When the deciding callback returns no mesh for its hand, the mesh and socket come from the first
+		callback (in priority order) that returns one for that hand (otherwise the raw controller), so e.g. a callback below the
+		game's can put something in a hand on the game's hand mesh and socket. With a single callback, its results are used exactly
+		as returned.
 		Your callback will be called periodically to request the item that is being gripped in the right or left hand as
 		well as the mesh or component being used for the right and left hands. If no item is currently being gripped then return nil.
         If rightMesh or leftMesh are nil then the attachments will be directly attached to the raw controller instead of a component.
@@ -2114,6 +2121,7 @@ local function createWeightSpringArm(handMesh, socketName, lagSpeed)
 end
 
 --options = {detachFromOriginOnGrip = true, maintainWorldPositionOnDetachFromOrigin = true, detachFromParentOnRelease = true, maintainWorldPositionOnDetachFromParent = true, reattachToOriginOnRelease = true, restoreTransformToOriginOnReattach = true, useZeroTransformOnReattach = false}
+--restoreSocketToOriginOnReattach (default false): with reattachToOriginOnRelease, reattach to the socket the attachment had when gripped rather than its socket at release
 function M.attachToMesh(attachment, mesh, socketName, gripHand, options)
 	--printMeshAttachmentList()
 	local success = false
@@ -2225,6 +2233,10 @@ function M.attachToMesh(attachment, mesh, socketName, gripHand, options)
 
 		if options.reattachToOriginOnRelease == true then
 			meshAttachmentList[meshName].attachments[attachmentName].parent = attachment.AttachParent
+			-- Opt-in: reattach to the original socket instead of the one the attachment is on at release.
+			if options.restoreSocketToOriginOnReattach == true then
+				meshAttachmentList[meshName].attachments[attachmentName].parentSocketName = attachment.AttachSocketName:to_string()
+			end
 			if options.restoreTransformToOriginOnReattach == true then
 				meshAttachmentList[meshName].attachments[attachmentName].originalTransform = {}
 				if options.useZeroTransformOnReattach or useZeroTransformOnReattach then
@@ -2352,6 +2364,10 @@ function M.attachToRawController(attachment, gripHand, options, hand)
 		meshAttachmentList[meshName].attachments[attachmentName] = {attachment=attachment, detachFromParentOnRelease = options.detachFromParentOnRelease, maintainWorldPositionOnDetachFromParent = options.maintainWorldPositionOnDetachFromParent, attachType = M.AttachType.RAW_CONTROLLER, gripHand = gripHand}
 		if options.reattachToOriginOnRelease == true and attachment ~= nil and attachment.AttachParent ~= nil then
 			meshAttachmentList[meshName].attachments[attachmentName].parent = attachment.AttachParent
+			-- Opt-in: reattach to the original socket instead of the one the attachment is on at release.
+			if options.restoreSocketToOriginOnReattach == true then
+				meshAttachmentList[meshName].attachments[attachmentName].parentSocketName = attachment.AttachSocketName:to_string()
+			end
 			if options.restoreTransformToOriginOnReattach == true then
 				meshAttachmentList[meshName].attachments[attachmentName].originalTransform = {}
 				if options.useZeroTransformOnReattach or useZeroTransformOnReattach then
@@ -2387,11 +2403,11 @@ function M.attachToRawController(attachment, gripHand, options, hand)
 	end
 end
 
-function M.detach(attachment, parent, attachType, originalTransform, detachFromParentOnRelease, maintainWorldPositionOnDetachFromParent)
+function M.detach(attachment, parent, attachType, originalTransform, detachFromParentOnRelease, maintainWorldPositionOnDetachFromParent, parentSocketName)
 	--print("Detaching attachment", attachment, parent or nil, attachType)
 	if uevrUtils.getValid(attachment) ~= nil then
 		--grab the name early before its detached or else it will be lost at reattach time
-		local attachSocketName = attachment.AttachSocketName
+		local attachSocketName = parentSocketName ~= nil and uevrUtils.fname_from_string(parentSocketName) or attachment.AttachSocketName
 
 		if attachType == M.AttachType.RAW_CONTROLLER then
 			M.print("Detaching attachment from raw controller: " .. attachment:get_full_name())
@@ -2489,7 +2505,7 @@ local function detachAndCleanup(attachmentData, reattachToParent)
     end
 
     local parent = reattachToParent and attachmentData.parent or nil
-    M.detach(attachmentData.attachment, parent, attachmentData.attachType, attachmentData.originalTransform, attachmentData.detachFromParentOnRelease, attachmentData.maintainWorldPositionOnDetachFromParent)
+    M.detach(attachmentData.attachment, parent, attachmentData.attachType, attachmentData.originalTransform, attachmentData.detachFromParentOnRelease, attachmentData.maintainWorldPositionOnDetachFromParent, parent and attachmentData.parentSocketName or nil)
 	-- Remove spring arm after the weapon has been detached from it.
 	if attachmentData.springArm ~= nil then
 		destroyWeightSpringArm(attachmentData.springArm)
@@ -2738,12 +2754,13 @@ configui.onUpdate("uevr_attachments_left_hand_flip_z", function(value)
 end)
 
 local autoUpdateCallbackCreated = false
-local gripUpdateCallback = nil
+-- Registered grip update callbacks, highest priority first (equal priorities in registration order).
+local gripUpdateCallbacks = {}
 local failedAttachments = {}
 
-local function runGripUpdate()
-	if gripUpdateCallback == nil then return false end
-	local rightAttachment, rightMesh, rightSocketName, leftAttachment, leftMesh, leftSocketName, attachOptionsRight, attachOptionsLeft = gripUpdateCallback()
+-- The attach options for each hand from a grip update callback's last two return values, which are either option tables or the
+-- detachFromParent and allowReattach booleans.
+local function getGripAttachOptions(attachOptionsRight, attachOptionsLeft)
 	local allowReattach = nil
 	if attachOptionsLeft ~= nil and type(attachOptionsLeft) == "boolean" then
 		allowReattach = attachOptionsLeft
@@ -2802,6 +2819,46 @@ local function runGripUpdate()
 			allowRenderInMainPassHandling = true
 		}
 	end
+
+	return attachOptionsRight, attachOptionsLeft
+end
+
+-- The attachment, mesh, socket and attach options for each hand. With one callback these are its results as they are. With
+-- several, each hand gets the attachment (and attach options) of the highest-priority callback that returns one for it, with
+-- that callback's mesh and socket, or when it returns no mesh, those of the first callback (in priority order) that returns one for
+-- that hand.
+local function getGripUpdateResults()
+	if #gripUpdateCallbacks == 1 then
+		local rightAttachment, rightMesh, rightSocketName, leftAttachment, leftMesh, leftSocketName, attachOptionsRight, attachOptionsLeft = gripUpdateCallbacks[1].callback()
+		attachOptionsRight, attachOptionsLeft = getGripAttachOptions(attachOptionsRight, attachOptionsLeft)
+		return rightAttachment, rightMesh, rightSocketName, leftAttachment, leftMesh, leftSocketName, attachOptionsRight, attachOptionsLeft
+	end
+	local chosen = {[Handed.Right] = {}, [Handed.Left] = {}}
+	local meshes = {[Handed.Right] = {}, [Handed.Left] = {}} -- the first mesh (and socket) any callback returns for each hand
+	for _, entry in ipairs(gripUpdateCallbacks) do
+		local rightAttachment, rightMesh, rightSocketName, leftAttachment, leftMesh, leftSocketName, attachOptionsRight, attachOptionsLeft = entry.callback()
+		attachOptionsRight, attachOptionsLeft = getGripAttachOptions(attachOptionsRight, attachOptionsLeft)
+		local results = {
+			[Handed.Right] = {attachment = rightAttachment, mesh = rightMesh, socket = rightSocketName, options = attachOptionsRight},
+			[Handed.Left] = {attachment = leftAttachment, mesh = leftMesh, socket = leftSocketName, options = attachOptionsLeft},
+		}
+		for hand, result in pairs(results) do
+			if chosen[hand].attachment == nil and result.attachment ~= nil then chosen[hand] = result end
+			if meshes[hand].mesh == nil and result.mesh ~= nil then meshes[hand] = result end
+		end
+	end
+	for hand, handChoice in pairs(chosen) do
+		if handChoice.attachment ~= nil and handChoice.mesh == nil then
+			handChoice.mesh, handChoice.socket = meshes[hand].mesh, meshes[hand].socket
+		end
+	end
+	local right, left = chosen[Handed.Right], chosen[Handed.Left]
+	return right.attachment, right.mesh, right.socket, left.attachment, left.mesh, left.socket, right.options, left.options
+end
+
+local function runGripUpdate()
+	if #gripUpdateCallbacks == 0 then return false end
+	local rightAttachment, rightMesh, rightSocketName, leftAttachment, leftMesh, leftSocketName, attachOptionsRight, attachOptionsLeft = getGripUpdateResults()
 
 	-- detach them first so switching left to right isnt affected
 	if rightAttachment == nil then
@@ -2864,8 +2921,16 @@ end
 --	allowChildHiddenInGameHandling = true,
 --	allowRenderInMainPassHandling = true
 --}
-function M.registerOnGripUpdateCallback(callback)
-	gripUpdateCallback = callback
+function M.registerOnGripUpdateCallback(callback, priority)
+	local entry = {callback = callback, priority = priority or 0}
+	local index = #gripUpdateCallbacks + 1
+	for i, other in ipairs(gripUpdateCallbacks) do
+		if entry.priority > other.priority then
+			index = i
+			break
+		end
+	end
+	table.insert(gripUpdateCallbacks, index, entry)
 	if not autoUpdateCallbackCreated then
 		autoUpdateCallbackCreated = true
 		uevrUtils.setInterval(gripUpdateTimeout, function()

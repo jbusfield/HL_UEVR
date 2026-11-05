@@ -649,6 +649,10 @@ local cameraComponent = {
 				self.component = uevrUtils.getObjectFromDescriptor(aimCamera)
 				if self.component ~= nil then
 					self.originalState = self.component.bUsePawnControlRotation
+					-- Copy the authored offset from the parent socket; aiming overwrites it every tick.
+					local location, rotation = self.component.RelativeLocation, self.component.RelativeRotation
+					self.originalRelativeLocation = uevrUtils.vector(location.X, location.Y, location.Z)
+					self.originalRelativeRotation = uevrUtils.rotator(rotation.Pitch, rotation.Yaw, rotation.Roll)
 				end
 			end
 		else
@@ -727,6 +731,9 @@ local cameraComponent = {
 					local location = uevrUtils.getComponentLocation(self.component.AttachParent)
 					self.component:K2_SetWorldRotation(rotation,false,reusable_hit_result,false)
 					self.component:K2_SetWorldLocation(location,false,reusable_hit_result,false)
+				elseif cameraResetAction == 3 and self.originalRelativeLocation ~= nil and self.originalRelativeRotation ~= nil then
+					M.print("Restoring camera component original relative transform")
+					self.component:K2_SetRelativeLocationAndRotation(self.originalRelativeLocation, self.originalRelativeRotation, false, reusable_hit_result, false)
 				else
 					M.print("Not resetting camera component world transform on reset")
 				end
@@ -737,6 +744,8 @@ local cameraComponent = {
 		end
 		self.component = nil
 		self.originalState = nil
+		self.originalRelativeLocation = nil
+		self.originalRelativeRotation = nil
 		self.currentControllerID = nil
 		self.originalParent = nil
 	end
@@ -1213,6 +1222,9 @@ function M.setDisabled(val)
 			uevrUtils.executeUEVRCallbacks("recenter_view")
 			if preventPawnSettingsResetOnDisable == false then
 				resetPawnSettings()
+			elseif getParameter("cameraResetAction") == 3 then
+				-- Restore-original is opt-in; actions 1 and 2 keep their previous behavior when pawn settings are kept.
+				cameraComponent:reset()
 			end
 			M.updateMeshRelativePosition(true)
 		elseif preventPawnSettingsResetOnDisable == false then
@@ -1998,6 +2010,9 @@ local function updateIsDisabled()
 			lastBodyYawUpdateTime = nil
 			if preventPawnSettingsResetOnDisable == false then
 				resetPawnSettings()
+			elseif getParameter("cameraResetAction") == 3 then
+				-- Restore-original is opt-in; actions 1 and 2 keep their previous behavior when pawn settings are kept.
+				cameraComponent:reset()
 			end
 			updateMeshRelativePosition(true)
 		end
@@ -2470,6 +2485,7 @@ end)
 
 --without this the right controller left/right stick movement does nothing
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
+	if user_index ~= 0 then return end
 	--local pawnRotationMode = getPawnRotationMode() -- getParameter("pawnRotationMode")
 	if not isDisabled then --and pawnRotationMode ~= M.PawnRotationMode.NONE then	
 		if rootComponent ~= nil and isRotationModeRotationDisabled() ~= true and status.stickTurnDisabled ~= true then --getParameter("pawnRotationModeDisableRotation") ~= true then

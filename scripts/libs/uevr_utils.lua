@@ -1840,6 +1840,9 @@ function M.initUEVR(UEVR, callbackFunc)
 	temp_transform = M.get_reuseable_struct_object("ScriptStruct /Script/CoreUObject.Transform")
 
 	uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
+		-- Only slot 0 carries the VR controllers. The game also polls slots 1-3 every frame, where everything reads released,
+		-- which breaks any callback that tracks presses across calls.
+		if user_index ~= 0 then return end
 		executeUEVRCallbacks("onPreInputGetState", retval, user_index, state)
 
 		if on_xinput_get_state ~= nil then

@@ -1118,6 +1118,7 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 end, 30)
 
 uevr.sdk.callbacks.on_xinput_get_state(function(retval, user_index, state)
+	if user_index ~= 0 then return end
 	if not seated then
 		if not holdStickAfterExit then return end
 		if math.abs(state.Gamepad.sThumbLY) < EXIT_STICK_RELEASE_Y then
