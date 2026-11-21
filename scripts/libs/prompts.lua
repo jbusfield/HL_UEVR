@@ -15,6 +15,28 @@ Usage
         replacement stops applying, when the override is disabled, and on level change and script reset. A prompt that is
         changed back by the game counts as showing its original again.
 
+    Typical use
+        Swapping a prompt's button is half of a control change. The other half makes the new button do what the old one did,
+        and prompts.lua does not do that half. Set both halves up together and gate them with the same check, so a prompt
+        never shows a button that does something else.
+        - A grip in place of the game's interact button (the prompt shows LB instead of A or X, and LB presses it): use
+          grip.registerInteract in libs/grip, which does both halves from one set of options and uses this file for the
+          prompt. Nothing below needs writing by hand for that case.
+        - Input, for other control changes: a libs/grip claim, a libs/remap entry, or the mod's own input callback.
+        - getPrompts: start from what the game says is current, usually the player's interaction target (a field on the
+          controller or on an interact component), and go from it to the widget that draws its button. Searching for prompt
+          widgets instead is easy to get wrong: games pool and reuse them, so a search can miss the one on screen. getPrompts
+          runs on every interval, so keep it to native property reads; avoid object scans (find_all_of, get_objects_matching),
+          find_uobject and plugin bridge calls there, or cache what they find and search again only when the cache goes
+          invalid. Return a prompt whether or not it should change right now, so getReplacement can put it back.
+        - getReplacement: return the replacement only for the button being remapped (compare original with the game's own
+          icon or key for it) and only while the input half applies; return nil otherwise, so other prompts and other input
+          devices keep the game's own.
+        Example (Hogwarts Legacy): the interaction target is the controller's CurrentInteractTarget, its prompt is the
+        target's CallOutComponent widget, getReplacement turns the Interact key (X) into the Item Menu key (LB), and the input
+        is libs/grabbable's interactButton = X, so a left grip on anything with a prompt presses X instead of opening the
+        Item Menu wheel.
+
     Available functions:
 
     prompts.new(options) -> Override
@@ -28,7 +50,8 @@ Usage
                 What the prompt should show instead of original (what the game had it show), or nil for the original.
             equals: function(a, b) -> boolean (optional) - default compares UObjects by address and other values with ==
             interval: ms (default 250) - how often the prompts are checked; a prompt can show the game's original for up
-                to one interval before it changes
+                to one interval before it changes. false: no timer, for a caller that calls update itself (as
+                grip.registerInteract does, to change the prompt in the same check that decides its input)
             enabled: boolean (default false)
 
     prompts.materialTexture(parameterName) -> get, set
@@ -37,7 +60,9 @@ Usage
         Accessors for an Image whose brush resource object (a texture or sprite) is the icon.
     prompts.loadAsset(path) -> UObject|nil
         The asset at a full path ("Texture2D /Game/UI/T_Key_RB.T_Key_RB"), loaded on first use and cached. Uses the
-        asset registry, never a failing full-name lookup (which can scan the object hierarchy and pause the game).
+        asset registry, never a failing full-name lookup (which can scan the object hierarchy and pause the game). The
+        cache is cleared on level change, and a cached asset is checked against its path about once a second, so one that
+        was unloaded (its address reused by another object) is loaded again.
 
     Override:setEnabled(value)
         Disabling restores every changed prompt and stops the checks.
@@ -119,7 +144,7 @@ function M.new(options)
 		enabled = options.enabled == true,
 		changed = {}, -- prompt address -> {prompt, original, replacement}
 	}, Override)
-	uevrUtils.setInterval(options.interval or 250, function() self:update() end)
+	if options.interval ~= false then uevrUtils.setInterval(options.interval or 250, function() self:update() end) end
 	uevrUtils.registerLevelChangeCallback(function() self:restore() end)
 	uevr.params.sdk.callbacks.on_script_reset(function() self:restore() end)
 	return self
@@ -154,14 +179,31 @@ function M.brushResource()
 	return get, set
 end
 
-local assets = {}
+-- A cached asset can be unloaded (e.g. on level change) and its address reused by an unrelated object, which still passes
+-- getValid. The cache is cleared on level change, and each cached asset's full name is checked against its path once per
+-- ASSET_CHECK_INTERVAL_MS (every other call returns it directly), so a mid-level unload is caught within that time.
+local ASSET_CHECK_INTERVAL_MS = 1000
+local assets = {} -- path -> {asset, needsCheck}
 function M.loadAsset(path)
-	local asset = uevrUtils.getValid(assets[path])
+	local entry = assets[path]
+	local asset = entry ~= nil and uevrUtils.getValid(entry.asset) or nil
+	if asset ~= nil and entry.needsCheck then
+		if asset:get_full_name() == path then entry.needsCheck = false else asset = nil end
+	end
 	if asset == nil then
 		asset = uevrUtils.getValid(uevrUtils.getLoadedAsset(path))
-		assets[path] = asset
+		if asset ~= nil and asset:get_full_name() ~= path then asset = nil end
+		assets[path] = asset ~= nil and {asset = asset, needsCheck = false} or nil
 	end
 	return asset
 end
+
+uevrUtils.setInterval(ASSET_CHECK_INTERVAL_MS, function()
+	for _, entry in pairs(assets) do entry.needsCheck = true end
+end)
+
+uevrUtils.registerLevelChangeCallback(function()
+	assets = {}
+end)
 
 return M

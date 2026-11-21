@@ -112,6 +112,25 @@ local parameterDefaults = {
 			triggerDistance = 25.0,
 			forwardDotThreshold = 0.8,
 		},
+		mouthEyesBoundary = -11.0,
+		eyesHeadBoundary = 7.0,
+		eyeZone = {
+			minForward = 0.0,
+			maxForward = 20.0,
+			maxSide = 8.0,
+		},
+		mouthZone = {
+			minForward = 0.0,
+			maxForward = 20.0,
+			maxSide = 8.0,
+			minUp = -24.0,
+		},
+		headZone = {
+			minForward = -15.0,
+			maxForward = 15.0,
+			maxSide = 12.0,
+			maxUp = 30.0,
+		},
 	},
 	componentGrab = {
 		maxDistance = 10.0,
@@ -164,6 +183,14 @@ local blockHelpLines = {
 	"Max Controller Tilt (deg) - How much the controller may tip up or down from horizontal (wrist / forearm pitch). Higher = allow a steeper forearm; lower = forearm must stay more level.",
 	"Palm Facing Away (0-1) - How strongly the palm must face away from you (toward the threat), not down or toward you. Higher = stricter \"shield facing out\"; lower = allow a lazier / more rotated wrist.",
 	"Release Slack (0-1) - How sticky the pose is when leaving it (hysteresis on all checks). Higher = stays active longer as you drift out of the ideal pose; lower = snaps off quickly.",
+}
+
+local faceZoneHelpLines = {
+	"Box zones measure the controller's offset from the headset in cm along the headset's own forward, side and up axes, so each zone keeps its size at any distance. The controller origin sits in the handle, usually a few cm below and behind the part that touches the face.",
+	"Height bands - Mouth runs from Mouth Min Up to the Mouth / Eyes Boundary, Eyes from that boundary to the Eyes / Head Boundary, and Head from that boundary to Head Max Up. Height is above (positive) or below (negative) the eye line. The bands cannot overlap: moving a boundary grows one zone and shrinks its neighbor.",
+	"Min / Max Forward (cm) - How far in front of the headset the controller may be (negative = behind it).",
+	"Max Side (cm) - How far to either side of the headset's center line the controller may be.",
+	"Test - Shows Active while a grip or trigger is pressed with the hand in that zone.",
 }
 
 -- Collapsed Help tree for a gesture section. Usage: expandArray(getGestureHelpWidgets, "block", blockHelpLines)
@@ -469,6 +496,51 @@ local function getConfigWidgets(m_paramManager)
 				floatWidget({"face", "ear", "triggerDistance"}, "Trigger Distance", 0.5, {0, 200}),
 				floatWidget({"face", "ear", "forwardDotThreshold"}, "Forward Dot Threshold", 0.01, {-1, 1}),
 			{ widgetType = "tree_pop" },
+			{
+				widgetType = "tree_node",
+				id = widgetPrefix .. "face_zone_tree",
+				initialOpen = true,
+				label = "Box Zones (Eye / Mouth / Head Zone)"
+			},
+				floatWidget({"face", "eyesHeadBoundary"}, "Eyes / Head Boundary (cm)", 0.5, {-50, 50}),
+				floatWidget({"face", "mouthEyesBoundary"}, "Mouth / Eyes Boundary (cm)", 0.5, {-50, 50}),
+				{
+					widgetType = "tree_node",
+					id = widgetPrefix .. "face_eye_zone_tree",
+					initialOpen = true,
+					label = "Eye Zone"
+				},
+				expandArray(getGestureTestWidgets, "face_eye_zone"),
+					floatWidget({"face", "eyeZone", "minForward"}, "Min Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "eyeZone", "maxForward"}, "Max Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "eyeZone", "maxSide"}, "Max Side (cm)", 0.5, {0, 50}),
+				{ widgetType = "tree_pop" },
+				{
+					widgetType = "tree_node",
+					id = widgetPrefix .. "face_mouth_zone_tree",
+					initialOpen = true,
+					label = "Mouth Zone"
+				},
+				expandArray(getGestureTestWidgets, "face_mouth_zone"),
+					floatWidget({"face", "mouthZone", "minForward"}, "Min Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "mouthZone", "maxForward"}, "Max Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "mouthZone", "maxSide"}, "Max Side (cm)", 0.5, {0, 50}),
+					floatWidget({"face", "mouthZone", "minUp"}, "Min Up (cm)", 0.5, {-80, 0}),
+				{ widgetType = "tree_pop" },
+				{
+					widgetType = "tree_node",
+					id = widgetPrefix .. "face_head_zone_tree",
+					initialOpen = true,
+					label = "Head Zone"
+				},
+				expandArray(getGestureTestWidgets, "face_head_zone"),
+					floatWidget({"face", "headZone", "minForward"}, "Min Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "headZone", "maxForward"}, "Max Forward (cm)", 0.5, {-50, 50}),
+					floatWidget({"face", "headZone", "maxSide"}, "Max Side (cm)", 0.5, {0, 50}),
+					floatWidget({"face", "headZone", "maxUp"}, "Max Up (cm)", 0.5, {0, 80}),
+				{ widgetType = "tree_pop" },
+				expandArray(getGestureHelpWidgets, "face_zone", faceZoneHelpLines),
+			{ widgetType = "tree_pop" },
 		{ widgetType = "tree_pop" },
 
 		{
@@ -519,6 +591,9 @@ local GESTURE_PUSH_TWO_HANDED = 22
 local GESTURE_FLICK = 23
 local GESTURE_FLICK_UP = 24
 local GESTURE_SWING = 25
+local GESTURE_EYE_ZONE_GRIP = 26
+local GESTURE_MOUTH_ZONE_GRIP = 28
+local GESTURE_HEAD_ZONE_GRIP = 30
 local MOMENTARY_ACTIVE_MS = 500
 
 local gestureTests = {}
@@ -745,6 +820,21 @@ registerGestureTest("face_ear", GESTURE_EARGRAB, {
 	momentary = false,
 	combineCallbacks = true,
 	callbacks = { "on_gesture_eargrab", "on_gesture_earscratch" },
+})
+registerGestureTest("face_eye_zone", GESTURE_EYE_ZONE_GRIP, {
+	momentary = false,
+	combineCallbacks = true,
+	callbacks = { "on_gesture_eye_zone_grip", "on_gesture_eye_zone_trigger" },
+})
+registerGestureTest("face_mouth_zone", GESTURE_MOUTH_ZONE_GRIP, {
+	momentary = false,
+	combineCallbacks = true,
+	callbacks = { "on_gesture_mouth_zone_grip", "on_gesture_mouth_zone_trigger" },
+})
+registerGestureTest("face_head_zone", GESTURE_HEAD_ZONE_GRIP, {
+	momentary = false,
+	combineCallbacks = true,
+	callbacks = { "on_gesture_head_zone_grip", "on_gesture_head_zone_trigger" },
 })
 
 local function setUIValue(pathOrKey, value)

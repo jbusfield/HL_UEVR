@@ -126,6 +126,26 @@ Wrist flick settings (quick wand/controller orientation snap — not arm transla
 	cooldownTime
 		How long after a flick before another can fire.
 		Higher = fewer rapid repeats; lower = can chain flicks sooner.
+
+Face box zone settings (EYE_ZONE_*, MOUTH_ZONE_*, HEAD_ZONE_* under face.eyeZone, face.mouthZone, face.headZone)
+	Each zone is a box measured in cm from the headset origin along the headset's own forward, side and up axes,
+	so it keeps its size at any distance. The older face gestures (EAT, EYESCRATCH, ...) use a cone that narrows
+	to a point at the headset, so a controller touching the headset can miss them by a few cm.
+	The controller origin sits in the handle, usually a few cm below and behind the part that touches the face.
+
+	minForward / maxForward
+		How far in front of the headset the controller may be (negative = behind it).
+
+	maxSide
+		How far to either side of the headset's center line the controller may be.
+
+	Height (cm above (positive) or below (negative) the eye line) splits the zones into bands that cannot overlap:
+		mouth  from mouthZone.minUp up to face.mouthEyesBoundary
+		eyes   from face.mouthEyesBoundary up to face.eyesHeadBoundary
+		head   from face.eyesHeadBoundary up to headZone.maxUp
+	Moving a boundary grows one zone and shrinks its neighbor by the same amount.
+
+	The grip and trigger gestures of the hand's zone each fire when their input is pressed (face.triggerThreshold).
 ]]
 
 local M = {}
@@ -158,6 +178,12 @@ M.Gesture =
 	FLICK = 23,
 	FLICK_UP = 24,
 	SWING = 25,
+	EYE_ZONE_GRIP = 26,
+	EYE_ZONE_TRIGGER = 27,
+	MOUTH_ZONE_GRIP = 28,
+	MOUTH_ZONE_TRIGGER = 29,
+	HEAD_ZONE_GRIP = 30,
+	HEAD_ZONE_TRIGGER = 31,
 }
 
 local parametersFileName = "gesture_parameters"
@@ -257,6 +283,28 @@ local parameters = {
 		ear = {
 			triggerDistance = 25.0,
 			forwardDotThreshold = 0.8,
+		},
+		-- Box zones in cm from the headset origin (see "Face box zone settings" above). Provisional defaults: the eye/mouth
+		-- boundary comes from one Valve Index sample (touching the headset between the eyes put the controller origin
+		-- 10 cm forward, 5 cm to the side and 6 cm below the eye line).
+		mouthEyesBoundary = -11.0,
+		eyesHeadBoundary = 7.0,
+		eyeZone = {
+			minForward = 0.0,
+			maxForward = 20.0,
+			maxSide = 8.0,
+		},
+		mouthZone = {
+			minForward = 0.0,
+			maxForward = 20.0,
+			maxSide = 8.0,
+			minUp = -24.0,
+		},
+		headZone = {
+			minForward = -15.0,
+			maxForward = 15.0,
+			maxSide = 12.0,
+			maxUp = 30.0,
 		},
 	},
 	componentGrab = {
@@ -1328,6 +1376,12 @@ local faceGestureCallbackNames = {
 	[M.Gesture.HEADSCRATCH] = "on_gesture_headscratch",
 	[M.Gesture.LIPSCRATCH] = "on_gesture_lipscratch",
 	[M.Gesture.EYESCRATCH] = "on_gesture_eyescratch",
+	[M.Gesture.EYE_ZONE_GRIP] = "on_gesture_eye_zone_grip",
+	[M.Gesture.EYE_ZONE_TRIGGER] = "on_gesture_eye_zone_trigger",
+	[M.Gesture.MOUTH_ZONE_GRIP] = "on_gesture_mouth_zone_grip",
+	[M.Gesture.MOUTH_ZONE_TRIGGER] = "on_gesture_mouth_zone_trigger",
+	[M.Gesture.HEAD_ZONE_GRIP] = "on_gesture_head_zone_grip",
+	[M.Gesture.HEAD_ZONE_TRIGGER] = "on_gesture_head_zone_trigger",
 }
 
 -- Continuous pose: arm raised in front, forearm across body, palm facing away.
@@ -1698,6 +1752,55 @@ local function detectFace(state, hand, continuous)
 	return gripMouth, gripEyes, gripHead, gripEar, triggerMouth, triggerEyes, triggerHead, triggerEar
 end
 
+local function inFaceZone(zone, forward, side)
+	return forward >= getParam({"face", zone, "minForward"}) and forward <= getParam({"face", zone, "maxForward"})
+		and side <= getParam({"face", zone, "maxSide"})
+end
+
+-- Box zones (EYE_ZONE_*, MOUTH_ZONE_*, HEAD_ZONE_*): the hand's offset from the headset in cm along the headset's forward,
+-- side and up axes. Height picks one band (mouth, eyes or head, split by the shared boundaries), then that zone's box decides.
+-- Its own per-hand press state, so calling this and detectFace in the same frame doesn't change either result.
+local zoneInputOn = {}
+local function detectFaceZones(state, hand, continuous)
+	local gripMouth, gripEyes, gripHead = false, false, false
+	local triggerMouth, triggerEyes, triggerHead = false, false, false
+
+	local triggerThreshold = getParam({"face", "triggerThreshold"})
+	local isGripped, isTriggerred = getHandGripTrigger(state, hand, triggerThreshold)
+
+	if (continuous == true or not zoneInputOn[hand]) and (isGripped or isTriggerred) then
+		zoneInputOn[hand] = true
+		local headLocation = controllers.getControllerLocation(2)
+		local handLocation = controllers.getControllerLocation(hand)
+		local headForward = controllers.getControllerDirection(2)
+		local headRight = controllers.getControllerRightVector(2)
+		local headUp = controllers.getControllerUpVector(2)
+		if headLocation ~= nil and handLocation ~= nil and headForward ~= nil and headRight ~= nil and headUp ~= nil then
+			local offset = subtract(handLocation, headLocation)
+			local forward = dot(offset, headForward)
+			local side = math.abs(dot(offset, headRight))
+			local up = dot(offset, headUp)
+			if up >= getParam({"face", "eyesHeadBoundary"}) then
+				if up <= getParam({"face", "headZone", "maxUp"}) and inFaceZone("headZone", forward, side) then
+					gripHead = isGripped
+					triggerHead = isTriggerred
+				end
+			elseif up >= getParam({"face", "mouthEyesBoundary"}) then
+				if inFaceZone("eyeZone", forward, side) then
+					gripEyes = isGripped
+					triggerEyes = isTriggerred
+				end
+			elseif up >= getParam({"face", "mouthZone", "minUp"}) and inFaceZone("mouthZone", forward, side) then
+				gripMouth = isGripped
+				triggerMouth = isTriggerred
+			end
+		end
+	elseif zoneInputOn[hand] and not (isGripped or isTriggerred) then
+		zoneInputOn[hand] = false
+	end
+	return gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead
+end
+
 function M.getGesture(id)
 	if id == M.Gesture.PUNCH then
 		 return hasPunchGesture, punchStrengthPercent
@@ -1814,6 +1917,24 @@ function M.detectGestureWithState(id, state, hand, continuous)
 	elseif id == M.Gesture.EARSCRATCH then
 		local gripMouth, gripEyes, gripHead, gripEar, triggerMouth, triggerEyes, triggerHead, triggerEar = detectFace(state, hand, continuous)
 		return triggerEar
+	elseif id == M.Gesture.EYE_ZONE_GRIP then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return gripEyes
+	elseif id == M.Gesture.EYE_ZONE_TRIGGER then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return triggerEyes
+	elseif id == M.Gesture.MOUTH_ZONE_GRIP then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return gripMouth
+	elseif id == M.Gesture.MOUTH_ZONE_TRIGGER then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return triggerMouth
+	elseif id == M.Gesture.HEAD_ZONE_GRIP then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return gripHead
+	elseif id == M.Gesture.HEAD_ZONE_TRIGGER then
+		local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, continuous)
+		return triggerHead
 	elseif id == M.Gesture.BLOCK then
 		return detectBlock(hand)
 	elseif id == M.Gesture.STOP then
@@ -1837,6 +1958,11 @@ end
 
 function M.getHeadGestures(state, hand, continuous)
 	return detectFace(state, hand, continuous)
+end
+
+-- Box zone version of getHeadGestures: gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead
+function M.getHeadZoneGestures(state, hand, continuous)
+	return detectFaceZones(state, hand, continuous)
 end
 
 function M.getBodyGestures(state, hand, continuous)
@@ -2013,6 +2139,14 @@ local faceTestGestureIds = {
 	[M.Gesture.LIPSCRATCH] = true,
 	[M.Gesture.EYESCRATCH] = true,
 }
+local zoneTestGestureIds = {
+	[M.Gesture.EYE_ZONE_GRIP] = true,
+	[M.Gesture.EYE_ZONE_TRIGGER] = true,
+	[M.Gesture.MOUTH_ZONE_GRIP] = true,
+	[M.Gesture.MOUTH_ZONE_TRIGGER] = true,
+	[M.Gesture.HEAD_ZONE_GRIP] = true,
+	[M.Gesture.HEAD_ZONE_TRIGGER] = true,
+}
 
 uevrUtils.registerUEVRCallback("on_gesture_test", function(gestureId)
 	if gestureId == nil or gestureId == false then
@@ -2037,6 +2171,10 @@ local function hasAutodetect(id, hand)
 		end
 		-- Testing any face id enables the whole face detector family.
 		if faceTestGestureIds[gestureTestId] and faceTestGestureIds[id] then
+			return true
+		end
+		-- Testing any face box zone id enables the whole box zone family.
+		if zoneTestGestureIds[gestureTestId] and zoneTestGestureIds[id] then
 			return true
 		end
 	end
@@ -2084,6 +2222,34 @@ local function updateFaceAutodetect(state, hand)
 	end
 end
 
+local function hasAnyZoneAutodetect(hand)
+	for id, _ in pairs(zoneTestGestureIds) do
+		if hasAutodetect(id, hand) then
+			return true
+		end
+	end
+	return false
+end
+
+local function updateZoneAutodetect(state, hand)
+	local gripMouth, gripEyes, gripHead, triggerMouth, triggerEyes, triggerHead = detectFaceZones(state, hand, true)
+	local results = {
+		[M.Gesture.EYE_ZONE_GRIP] = gripEyes == true,
+		[M.Gesture.EYE_ZONE_TRIGGER] = triggerEyes == true,
+		[M.Gesture.MOUTH_ZONE_GRIP] = gripMouth == true,
+		[M.Gesture.MOUTH_ZONE_TRIGGER] = triggerMouth == true,
+		[M.Gesture.HEAD_ZONE_GRIP] = gripHead == true,
+		[M.Gesture.HEAD_ZONE_TRIGGER] = triggerHead == true,
+	}
+	local prev = faceCallbackActive[hand]
+	for id, active in pairs(results) do
+		if active ~= (prev[id] == true) then
+			prev[id] = active
+			uevrUtils.executeUEVRCallbacks(faceGestureCallbackNames[id], active, hand)
+		end
+	end
+end
+
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	if hasAutodetect(M.Gesture.CHESTGRAB, Handed.Right) then
 		updateChestAutodetect(state, Handed.Right)
@@ -2096,6 +2262,12 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, user_index, state)
 	end
 	if hasAnyFaceAutodetect(Handed.Left) then
 		updateFaceAutodetect(state, Handed.Left)
+	end
+	if hasAnyZoneAutodetect(Handed.Right) then
+		updateZoneAutodetect(state, Handed.Right)
+	end
+	if hasAnyZoneAutodetect(Handed.Left) then
+		updateZoneAutodetect(state, Handed.Left)
 	end
 end)
 

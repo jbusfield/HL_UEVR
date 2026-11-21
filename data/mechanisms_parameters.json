@@ -1,0 +1,27 @@
+{
+    "_profileLabels": {
+        "a0feb38b-967b-442c-a033-0c67c99e6784": "Ladder"
+    },
+    "_profileState": {
+        "currentEditingProfile": "a0feb38b-967b-442c-a033-0c67c99e6784"
+    },
+    "a0feb38b-967b-442c-a033-0c67c99e6784": {
+        "animateSteps": true,
+        "class": "BlueprintGeneratedClass /Game/Gameplay/Blueprints/Universal/BP_Ladder.BP_Ladder_C",
+        "climbGripAnimation": "",
+        "rungKeepAlong": true,
+        "sideGrip": true,
+        "sideSnap": true,
+        "sideStart": 21.0,
+        "snapDistance": 10.0,
+        "snapHands": true,
+        "snapNear": true,
+        "type": "ladder",
+        "useGetOn": false,
+        "variations": {
+            "BlueprintGeneratedClass /Game/Gameplay/Blueprints/Universal/BP_Ladder.BP_Ladder_C": {
+                "useDefault": true
+            }
+        }
+    }
+}

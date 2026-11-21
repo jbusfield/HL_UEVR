@@ -37,9 +37,12 @@ local palette = require('helpers/palette')
 local skin = require('helpers/skin')
 local holster = require('helpers/holster')
 local ladder = require('helpers/ladder')
+local mechanisms = require('libs/mechanisms')
 
 local tutorial = require('libs/tutorial')
-local t = tutorial.new()   -- defaults to data/tutorial/ and data/tutorial/buttons/
+-- defaults to data/tutorial/ and data/tutorial/buttons/
+-- openKey is optional: a key that does the same as the left trigger eye scratch (nil for none)
+local t = tutorial.new({ openKey = "F4" })
 t:forceInteractionAtStartup(true)
 t:showOnce()               -- or t:show()
 
@@ -88,6 +91,7 @@ widgetcomponent.init()
 hands.setAutoCreateHands(false)
 ik.setAutoCreateArms(false)
 palette.init()
+mechanisms.init()
 
 uevrUtils.set_roomscale_active(true)
 attachments.setGunstockOffsetsEnabled(false)
@@ -99,8 +103,11 @@ if uevrUtils.getDeveloperMode() ~= nil then
 	isDeveloperMode = uevrUtils.getDeveloperMode() or false
 end
 
-
-local versionTxt = "v2.1.0"
+-- fix for grabbing notes
+-- fixed tutorial trigger detection and logic flow
+-- Added Vosk
+-- Better ladders
+local versionTxt = "v2.1.1"
 local title = "Hogwarts Legacy First Person Mod " .. versionTxt
 local wandAttachmentId = "BP_WandTool_C_Mesh"
 local wandOffset = attachments.getAttachmentOffsetByID(wandAttachmentId)
@@ -492,6 +499,14 @@ local configDefinition = {
 				},
 				{ widgetType = "begin_group", id = "use_voice_detection_group" },{ widgetType = "indent", width = 20 },
 					{
+						widgetType = "combo",
+						id = "voice_backend",
+						label = "Recognizer",
+						selections = {"WakeWord", "Vosk"},
+						initialValue = 2,
+						width = 150
+					},
+					{
 						widgetType = "slider_float",
 						id = "voice_min_confidence",
 						label = "Minimum Confidence",
@@ -768,6 +783,7 @@ local function dispatchVoiceSettings()
 		microphone_volume = configui.getValue("microphone_volume"),
 		check_level = configui.getValue("check_mic_level"),
 		min_confidence = configui.getValue("voice_min_confidence"),
+		backend = tonumber(configui.getValue("voice_backend")) == 2 and "vosk" or "wakeword",
 		override_voices = {
 			Descendo = { override = "Diffindo", confidence = 0.15 },
 			Confringo = { override = "Diffindo", confidence = 0.18 },
@@ -1605,6 +1621,10 @@ configui.onUpdate("microphone_volume", function(value)
 end)
 
 configui.onUpdate("voice_min_confidence", function(value)
+	dispatchVoiceSettings()
+end)
+
+configui.onUpdate("voice_backend", function(value)
 	dispatchVoiceSettings()
 end)
 

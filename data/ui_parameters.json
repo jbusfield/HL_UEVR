@@ -1416,6 +1416,9 @@
         },
         "WidgetBlueprintGeneratedClass /ModSupport/UI/Widgets/Misc/UI_BP_ModDetailsPipEndCaps.UI_BP_ModDetailsPipEndCaps_C": {
             "label": "UI_BP_ModDetailsPipEndCaps_C"
+        },
+        "WidgetBlueprintGeneratedClass /cfcore_ui/Widgets/Categories/UI_Sub-Category.UI_Sub-Category_C": {
+            "label": "UI_Sub-Category_C"
         }
     }
 }

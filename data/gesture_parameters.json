@@ -29,19 +29,34 @@
                 "forwardDotThreshold": 0.8,
                 "triggerDistance": 27.5
             },
+            "eyeZone": {
+                "maxForward": 22.0,
+                "maxSide": 11.0
+            },
             "eyes": {
                 "forwardDotThreshold": 0.85,
                 "triggerDistance": 22.0
             },
+            "eyesHeadBoundary": 3.5,
             "head": {
                 "forwardDotMaxThreshold": 0.65,
                 "forwardDotMinThreshold": 0.0,
                 "triggerDistance": 25.0
             },
+            "headZone": {
+                "maxSide": 12.0,
+                "maxUp": 15.0,
+                "minForward": -15.0
+            },
             "mouth": {
                 "forwardDotMaxThreshold": 0.8100000023841858,
                 "forwardDotMinThreshold": 0.3400000035762787,
                 "triggerDistance": 25.0
+            },
+            "mouthEyesBoundary": -8.5,
+            "mouthZone": {
+                "maxSide": 8.0,
+                "minUp": -18.0
             },
             "triggerThreshold": 128
         },

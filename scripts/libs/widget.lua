@@ -235,6 +235,11 @@ function M.loadTexture(imageName, path)
 	if imageName == nil then return nil end
 	if path == nil then path = "images/" end
 	local fileName = path .. imageName
+	-- KNOWN ISSUE: this cache can return the wrong image. Imported textures are not rooted, so one that no image
+	-- is showing can be garbage collected. A later import (another file) can then reuse its address, and
+	-- isTexture still passes because a valid Texture2D is there, so this file name returns the other file's
+	-- texture. Comparing the cached texture's full name (see isSameLiveObject) would reject it. tutorial.lua's
+	-- getTexture had the same issue.
 	if M.enableTextureCache then
 		local texture = Image.textureCache[fileName]
 		if isTexture(texture) then return texture end

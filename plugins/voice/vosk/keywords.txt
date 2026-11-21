@@ -1,0 +1,99 @@
+# Vosk grammar phrases: "english words @SpellName". Several lines per spell allowed.
+# Every word must exist in the model vocabulary; vosk_sim.py --vocab reports missing ones.
+accio @Accio
+ack see oh @Accio
+ack ee oh @Accio
+ack e oh @Accio
+ack he oh @Accio
+a key oh @Accio
+arrest oh momentum @ArrestoMomentum
+a rest oh momentum @ArrestoMomentum
+of other cadaver @AvadaKedavra
+ava the cadaver @AvadaKedavra
+bombard a @Bombarda
+bom bar the @Bombarda
+con fringe oh @Confringo
+con fringe go @Confringo
+crucial @Crucio
+crew see oh @Crucio
+the pulse oh @Depulso
+de pulse oh @Depulso
+descend oh @Descendo
+the send oh @Descendo
+to find oh @Diffindo
+the fin doe @Diffindo
+expel ear miss @Expelliarmus
+expel the arm us @Expelliarmus
+flip end oh @Flipendo
+flipping doe @Flipendo
+gracious @Glacius
+glacier us @Glacius
+imperious @Imperius
+in send ee oh @Incendio
+in sending oh @Incendio
+in send e oh @Incendio
+in send he oh @Incendio
+in cindy oh @Incendio
+in send yo @Incendio
+in send ear @Incendio
+in send oh @Incendio
+levy oh so @Levioso
+leave ee oh so @Levioso
+lou most @Lumos
+loom us @Lumos
+repair oh @Reparo
+rep are oh @Reparo
+revel ee oh @Revelio
+revel yo @Revelio
+wing guardian levy oh sa @Wingardium
+wing guard ian levy oh sa @Wingardium
+# added after run 1 (fitted to dev/vosk_recordings)
+wing guardian levy oh so @Wingardium
+wing guardian @Wingardium
+descend doe @Descendo
+expel ear arm us @Expelliarmus
+# 17 more commands (2026-11-21), not yet tuned on recordings
+aloha mora @Alohomora
+a low home or a @Alohomora
+fabric cast ay @Conjuration
+fab rick cast a @Conjuration
+fah brick ah stay @Conjuration
+fabric ah stay @Conjuration
+fa brick a stay @Conjuration
+obscure a @Disillusionment
+ob scoot a @Disillusionment
+navigate oh @Navigato
+navy got oh @Navigato
+navigate toe @Navigato
+navy got toe @Navigato
+nah vee gah toe @Navigato
+nah vee got toe @Navigato
+nutrition @Nutritio
+new trish ee oh @Nutritio
+oh pug no @Oppugno
+a pug no @Oppugno
+petrify cus totally @Petrificus
+petri fix us total is @Petrificus
+plaque a toe @Placato
+plack ah toe @Placato
+sanctuary um @Sanctuarium
+sanctuary am @Sanctuarium
+torment um @Tormentum
+torment them @Tormentum
+mute tat see oh @Transformation
+mew tah she oh @Transformation
+mew tah show @Transformation
+mew tasha oh @Transformation
+mutation @Transformation
+transform us @TransformationOverland
+transform is @TransformationOverland
+evan ess co @Vanishment
+even ness go @Vanishment
+via spec toe @Viaspecto
+via spectre oh @Viaspecto
+via spec go @Viaspecto
+up broom @UpBroom
+up graph horn @UpGraphorn
+up grab horn @UpGraphorn
+up hippo griff @UpHippogriff
+up hippo grip @UpHippogriff

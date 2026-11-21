@@ -393,6 +393,12 @@ Usage
 			uevrUtils.fadeCamera(1.0, true) - fades the camera to black over one second and then keeps it black
 			uevrUtils.fadeCamera(0.1, false, false, true) - unfades a camera that was previously locked to black
 
+	uevrUtils.fadeCameraManual(rate, (optional)hardLock, (optional)softLock, (optional)overrideHardLock, (optional)overrideSoftLock, (optional)alpha) - sets the players camera to black immediately
+		Uses SetManualCameraFade, which works while the game is paused (fadeCamera's animated fade does not advance while paused).
+		The fade holds until uevrUtils.stopFadeCamera() is called. rate is only used as the soft lock duration.
+		example:
+			uevrUtils.fadeCameraManual(0.1, true) - sets the camera to black and locks it
+
 	uevrUtils.set_2D_mode(state, (optional)delay_msec) - make UEVR switch in or out of 2D mode
 		example:
 			uevrUtils.set_2D_mode(true)
@@ -400,6 +406,17 @@ Usage
 	uevrUtils.set_cvar_int(cvar, value) or set_cvar_int(cvar, value) - sets an int cvar value
 		example:
 			uevrUtils.set_cvar_int("r.VolumetricFog", 0)
+
+	uevrUtils.enableDistanceFieldStereoFix(enabled, options) - opt-in fix for one eye showing wrong Lumen lighting,
+		distance field ambient occlusion or distance field shadows after streamed levels load or unload
+		while UEVR Native Stereo Fix is on. Off unless called. enabled defaults to true.
+		options (all optional):
+			rebuildFrames - game frames the forced rebuild is held for (default 3)
+			settleSeconds - seconds the loaded level count must stay unchanged before rebuilding (default 1)
+			pollSeconds - seconds between checks of the loaded level count (default 0.25)
+		example:
+			uevrUtils.enableDistanceFieldStereoFix(true)
+			uevrUtils.enableDistanceFieldStereoFix(true, { rebuildFrames = 4, settleSeconds = 0.5, pollSeconds = 0.1 })
 			
 	uevrUtils.PrintInstanceNames(class_to_search) - Print all instance names of a class to debug console
 	
@@ -413,9 +430,17 @@ Usage
 		example:
 			local fAssetData = uevrUtils.getAssetDataFromPath("StaticMesh /Game/Environment/Hogwarts/Meshes/Statues/SM_HW_Armor_Sword.SM_HW_Armor_Sword")
 			
-	uevrUtils.getLoadedAsset(pathStr) - get an object even if it's not already loaded into the system
+	uevrUtils.getLoadedAsset(pathStr, (optional)loadIfMissing) - get an object even if it's not already loaded into the system.
+		With loadIfMissing false, an object that is not loaded is not loaded here: nil is returned instead. Default true.
 		example:
 			local staticMesh = uevrUtils.getLoadedAsset("StaticMesh /Game/Environment/Hogwarts/Meshes/Statues/SM_HW_Armor_Sword.SM_HW_Armor_Sword")
+
+	uevrUtils.getClassIfLoaded(pathStr) - get a class only if the game has already loaded it, otherwise nil. Never loads the class and
+		never looks it up by name, so it is safe to call repeatedly (e.g. on a scan) for a Blueprint class that is only loaded near its
+		actors: a miss is one asset registry lookup. A class that was found is kept and returned while it still exists.
+		example:
+			local class = uevrUtils.getClassIfLoaded("BlueprintGeneratedClass /Game/Blueprint/Level/Gimmick/PushPlank/BP_PushPlank.BP_PushPlank_C")
+			local actors = class ~= nil and UEVR_UObjectHook.get_objects_by_class(class, false) or {}
 
 	uevrUtils.copyMaterials(fromComponent, toComponent) - Copy Materials from one component to another
 		example:
@@ -2419,9 +2444,13 @@ function M.set_component_relative_transform(component, position, rotation, scale
 	M.set_component_relative_scale(component, scale)
 end
 
-function M.getComponentRotation(component)
+-- fast (default false): skip the validity check; the caller guarantees `component` is a live component.
+function M.getComponentRotation(component, fast)
 	if uevrLib.extremeCompatibilityMode == false then
-		if M.getValid(component) ~= nil then
+		if fast == true then
+			return component:K2_GetComponentRotation()
+		end
+		if M.getValid(component) ~= nil and component.K2_GetComponentRotation ~= nil then
 			return component:K2_GetComponentRotation()
 		end
 	else
@@ -2433,8 +2462,12 @@ function M.getComponentRotation(component)
 	return nil
 end
 
-function M.getComponentLocation(component)
+-- fast (default false): skip the nil/method checks; the caller guarantees `component` is a live component.
+function M.getComponentLocation(component, fast)
 	if uevrLib.extremeCompatibilityMode == false then
+		if fast == true then
+			return component:K2_GetComponentLocation()
+		end
 		return component ~= nil and component.K2_GetComponentLocation ~= nil and component:K2_GetComponentLocation() or nil
 	else
 		if checkPluginExists() then
@@ -3515,12 +3548,57 @@ function M.fadeCamera(rate, hardLock, softLock, overrideHardLock, overrideSoftLo
 
 end
 
+-- Same locking as fadeCamera, but sets the fade amount directly with SetManualCameraFade.
+-- StartCameraFade's fade is advanced by the camera manager's update, which the engine skips
+-- while the game is paused, so it never shows; a manual fade is read every frame and does.
+-- The fade holds until stopFadeCamera. rate is only used as the soft lock duration.
+function M.fadeCameraManual(rate, hardLock, softLock, overrideHardLock, overrideSoftLock, alpha)
+	if rate == nil then rate = 0 end
+	if alpha == nil then alpha = 1.0 end
+
+	if hardLock == nil then hardLock = false end
+	if softLock == nil then softLock = false end
+	if overrideHardLock == nil then overrideHardLock = false end
+	if overrideSoftLock == nil then overrideSoftLock = false end
+
+	if overrideHardLock then
+		fadeHardLock = false
+	end
+	if overrideSoftLock then
+		fadeSoftLock = false
+	end
+
+	if fadeSoftLock or fadeHardLock then
+		return
+	end
+
+	fadeHardLock = hardLock
+	fadeSoftLock = softLock
+
+	local camMan = M.find_first_of("Class /Script/Engine.PlayerCameraManager")
+	if uevr ~= nil and camMan ~= nil and UEVR_UObjectHook.exists(camMan) then
+		--(InFadeAmount, Color, bInFadeAudio)
+		camMan:SetManualCameraFade(alpha, color_from_rgba(0.0, 0.0, 0.0, 1.0), false)
+
+		if fadeSoftLock then
+			delay(math.floor(rate * 1000), function()
+				fadeSoftLock = false
+			end)
+		end
+	end
+end
+
 function M.stopFadeCamera()
 	local camMan = M.find_first_of("Class /Script/Engine.PlayerCameraManager")
 	--print("Camera Manager was",camMan:get_full_name(),"\n")
 
 	if uevr ~= nil and camMan ~= nil and UEVR_UObjectHook.exists(camMan) then
 		--(FromAlpha, ToAlpha, Duration, Color, bShouldFadeAudio, bHoldWhenFinished)
+		-- StopCameraFade leaves the stored fade amount at the last fade's end value (1.0 = black
+		-- after fadeCamera). A level sequence fade track saves that value when it starts and
+		-- restores it as an active fade when it ends, leaving the screen black. A zero-length
+		-- 0 -> 0 fade first makes StopCameraFade leave the amount at 0.
+		camMan:StartCameraFade(0, 0, 0, color_from_rgba(0.0, 0.0, 0.0, 1.0), false, false)
 		camMan:StopCameraFade()
 		--camMan:SetManualCameraFade(1, color_from_rgba(0.0, 0.0, 0.0, 0.0), false)
 		--print("stopFadeCamera executed\n")
@@ -3684,20 +3762,21 @@ function M.getAssetDataFromPath(pathStr)
 		local arr2 = M.splitStr(arr[#arr], ".")
 		fAssetData.AssetName = M.fname_from_string(arr2[2])
 		local packagePath = table.concat(arr, "/", 1, #arr - 1)
-		fAssetData.PackagePath = "/" .. packagePath
+		fAssetData.PackagePath = M.fname_from_string("/" .. packagePath)
 		if arr2[1] ~= nil then
-			fAssetData.PackageName = "/" .. packagePath .. "/" .. arr2[1]
+			fAssetData.PackageName = M.fname_from_string("/" .. packagePath .. "/" .. arr2[1])
 		end
 	end
 	return fAssetData
 end
 
-function M.getLoadedAsset(pathStr)
+function M.getLoadedAsset(pathStr, loadIfMissing)
 	local fAssetData = M.getAssetDataFromPath(pathStr)
 	if fAssetData ~= nil then
 		local assetRegistryHelper = M.find_first_of("Class /Script/AssetRegistry.AssetRegistryHelpers",  true)
 		if assetRegistryHelper ~= nil then
 			if not assetRegistryHelper:IsAssetLoaded(fAssetData) then
+				if loadIfMissing == false then return nil end
 				local fSoftObjectPath = assetRegistryHelper:ToSoftObjectPath(fAssetData);
 				kismet_system_library:LoadAsset_Blocking(fSoftObjectPath)
 			end
@@ -3708,6 +3787,43 @@ function M.getLoadedAsset(pathStr)
 	end
 	return nil
 end
+
+-- Classes found by getClassIfLoaded, by path. A kept class is only returned while it still exists.
+local loadedClassCache = {}
+-- What a registry lookup needs is the same on every call for a path, so it is built once: the asset data per path, and the
+-- registry helper object. Only getClassIfLoaded uses these; getLoadedAsset builds its own on each call, as before.
+local classAssetDataCache = {}
+local classRegistryHelper = nil
+
+function M.getClassIfLoaded(pathStr)
+	if pathStr == nil or pathStr == "" then return nil end
+	local class = loadedClassCache[pathStr]
+	if class ~= nil then
+		if UEVR_UObjectHook.exists(class) then return class end
+		loadedClassCache[pathStr] = nil
+	end
+	local data = classAssetDataCache[pathStr]
+	if data == nil then
+		data = M.getAssetDataFromPath(pathStr)
+		classAssetDataCache[pathStr] = data
+	end
+	if data == nil then return nil end
+	if classRegistryHelper == nil or not UEVR_UObjectHook.exists(classRegistryHelper) then
+		classRegistryHelper = M.find_first_of("Class /Script/AssetRegistry.AssetRegistryHelpers", true)
+	end
+	-- Not loaded: nothing is loaded here.
+	if classRegistryHelper == nil or not classRegistryHelper:IsAssetLoaded(data) then return nil end
+	local asset = classRegistryHelper:GetAsset(data)
+	-- The registry returns a plain object; find_function, get_class_default_object and listing instances need its class view.
+	class = asset ~= nil and asset.as_class ~= nil and asset:as_class() or nil
+	loadedClassCache[pathStr] = class
+	return class
+end
+
+-- A class is loaded again as a new object after a level change.
+M.registerPreLevelChangeCallback(function()
+	loadedClassCache = {}
+end)
 
 function M.copyMaterials(fromComponent, toComponent, showDebug)
 	if fromComponent ~= nil and toComponent ~= nil then
@@ -4704,6 +4820,105 @@ function set_cvar_float(cvar, value)
 end
 function M.set_cvar_float(cvar, value)
 	set_cvar_float(cvar, value)
+end
+
+-------------------------------------------------------------------------------
+-- enableDistanceFieldStereoFix
+--
+-- Opt-in. With UEVR Native Stereo Fix on, the right eye is drawn as a separate render each frame.
+-- Unreal hands global distance field changes only to the first render of a frame, so when streamed
+-- levels load or unload, the right eye's distance field goes stale. Anything that reads it then
+-- differs between the eyes: Lumen software tracing (bounce light, soft shadowing), distance field
+-- ambient occlusion and distance field shadows.
+--
+-- The fix forces a full distance field rebuild for a few frames once the number of loaded levels has
+-- stopped changing. A forced rebuild is costly (about 12 ms per frame in Silent Hill f), so it is
+-- never left on. Found and tuned on Silent Hill f (UE 5.4); other games may need other values.
+-------------------------------------------------------------------------------
+local distanceFieldStereoFix = {
+	enabled = false,
+	registered = false,
+	rebuildFrames = 3,
+	settleSeconds = 1.0,
+	pollSeconds = 0.25,
+	pollElapsed = 0,
+	levelCount = nil,
+	settleRemaining = nil,
+	pulseFrames = nil,
+}
+
+-- Set through the console, not the variable's set_int: once a cvar has been set at console priority,
+-- set_int on it is ignored.
+local function setDistanceFieldForceFullUpdate(value)
+	uevr.api:execute_command("r.AOGlobalDistanceFieldForceFullUpdate " .. value)
+end
+
+local function updateDistanceFieldStereoFix(delta)
+	local fix = distanceFieldStereoFix
+
+	-- Always finish a rebuild that has started, even if the fix was disabled meanwhile.
+	if fix.pulseFrames ~= nil then
+		fix.pulseFrames = fix.pulseFrames - 1
+		if fix.pulseFrames <= 0 then
+			fix.pulseFrames = nil
+			setDistanceFieldForceFullUpdate(0)
+		end
+	end
+
+	if not fix.enabled then return end
+
+	fix.pollElapsed = fix.pollElapsed + (delta or 0)
+	if fix.pollElapsed < fix.pollSeconds then return end
+	local elapsed = fix.pollElapsed
+	fix.pollElapsed = 0
+
+	local levels = M.find_all_of("Class /Script/Engine.Level", false)
+	if levels == nil then return end
+	local count = #levels
+	if fix.levelCount == nil then
+		fix.levelCount = count
+	elseif count ~= fix.levelCount then
+		fix.levelCount = count
+		fix.settleRemaining = fix.settleSeconds
+	elseif fix.settleRemaining ~= nil then
+		fix.settleRemaining = fix.settleRemaining - elapsed
+		if fix.settleRemaining <= 0 then
+			fix.settleRemaining = nil
+			setDistanceFieldForceFullUpdate(1)
+			fix.pulseFrames = fix.rebuildFrames
+		end
+	end
+end
+
+function M.enableDistanceFieldStereoFix(enabled, options)
+	local fix = distanceFieldStereoFix
+	if enabled == nil then enabled = true end
+
+	if type(options) == "table" then
+		if type(options.rebuildFrames) == "number" and options.rebuildFrames >= 1 then
+			fix.rebuildFrames = math.floor(options.rebuildFrames)
+		end
+		if type(options.settleSeconds) == "number" and options.settleSeconds >= 0 then
+			fix.settleSeconds = options.settleSeconds
+		end
+		if type(options.pollSeconds) == "number" and options.pollSeconds > 0 then
+			fix.pollSeconds = options.pollSeconds
+		end
+	end
+
+	fix.enabled = enabled == true
+	fix.levelCount = nil
+	fix.settleRemaining = nil
+	fix.pollElapsed = 0
+
+	if fix.enabled and not fix.registered then
+		fix.registered = true
+		-- A script reset during a rebuild would otherwise leave the costly setting on.
+		setDistanceFieldForceFullUpdate(0)
+		M.registerPreEngineTickCallback(function(engine, delta)
+			updateDistanceFieldStereoFix(delta)
+		end)
+	end
 end
 
 -------------------------------------------------------------------------------

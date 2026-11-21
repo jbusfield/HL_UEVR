@@ -983,13 +983,18 @@ function M.getGraphornAccessoryWidgets()
 	return widgets
 end
 
-accessories.setTargetProvider(function(hand)
-	local broomMesh = getBroomAccessoryMesh(hand)
-	if broomMesh ~= nil then return broomMesh, BROOM_ACCESSORY_KEY end
-	local hippogriffMesh = getHippogriffAccessoryMesh(hand)
-	if hippogriffMesh ~= nil then return hippogriffMesh, HIPPOGRIFF_ACCESSORY_KEY end
-	local graphornMesh = getGraphornAccessoryMesh(hand)
-	if graphornMesh ~= nil then return graphornMesh, GRAPHORN_ACCESSORY_KEY end
+-- libs/accessories' target callback: a mounted hand is put on the mount's mesh. Nothing else targets hands while mounted.
+local MOUNT_TARGET_PRIORITY = accessories.TargetPriority.Normal
+local mountTargetAnswers = {}
+uevrUtils.registerUEVRCallback(accessories.TARGET_CALLBACK, function(hand)
+	local mesh, key = getBroomAccessoryMesh(hand), BROOM_ACCESSORY_KEY
+	if mesh == nil then mesh, key = getHippogriffAccessoryMesh(hand), HIPPOGRIFF_ACCESSORY_KEY end
+	if mesh == nil then mesh, key = getGraphornAccessoryMesh(hand), GRAPHORN_ACCESSORY_KEY end
+	if mesh == nil then return nil end
+	local answer = mountTargetAnswers[hand]
+	if answer == nil then answer = {}; mountTargetAnswers[hand] = answer end
+	answer.target, answer.key = mesh, key
+	return answer, MOUNT_TARGET_PRIORITY
 end)
 accessories.setSocketProvider(BROOM_ACCESSORY_KEY, function(callback)
 	local broomMesh = getBroomAccessoryMesh()

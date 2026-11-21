@@ -39,6 +39,146 @@ local function getAnimIDSuffix(animID)
 end
 
 
+------------------- Hand parameters -------------------
+-- This module is the only reader of the hands parameters file (hands_parameters.json by default). hands.lua and ik.lua take its
+-- profiles and animations from here, so hands and IK arms always use the same file and the same profile and animation.
+-- Other modules get the file's grip animation list through two events and never require this module:
+--   "on_hand_animation_ids_changed" (info)   sent when the list changes: the file is loaded, or another file or table is set.
+--   "get_hand_animation_ids" (out)           fills out.ids, out.labels and out.animations with the current list, for a module
+--                                            that starts after the list was sent. out is left unchanged when this module is
+--                                            not loaded; its lists are empty when there is no parameters file.
+-- info.ids and info.labels are paired lists sorted by label (only the configured grip animations, no Default or None entry).
+-- info.animations is the file's "attachments" table ({id = {label = ...}}), the form attachments.setAnimationIDs takes.
+-- All of them are copies.
+-- The file is read once and kept until Reset Scripts (level changes keep it), so an edit made to the file outside the game
+-- takes effect after Reset Scripts.
+local parametersFileName = "hands_parameters"
+local parameters = nil
+local parametersLoadTried = false
+local preferredProfileName = nil
+local preferredAnimationName = nil
+
+local function copyTable(source)
+	local result = {}
+	for key, value in pairs(source) do
+		result[key] = type(value) == "table" and copyTable(value) or value
+	end
+	return result
+end
+
+local function getAnimationIDInfo(params)
+	local info = {ids = {}, labels = {}, animations = {}}
+	local list = params ~= nil and params["attachments"] or nil
+	if type(list) ~= "table" then return info end
+	local entries = {}
+	for id, data in pairs(list) do
+		local label = type(data) == "table" and data["label"] or nil
+		table.insert(entries, {id = id, label = label ~= nil and tostring(label) or tostring(id)})
+		info.animations[id] = type(data) == "table" and copyTable(data) or data
+	end
+	table.sort(entries, function(a, b)
+		if a.label == b.label then return tostring(a.id) < tostring(b.id) end
+		return a.label < b.label
+	end)
+	for i, entry in ipairs(entries) do
+		info.ids[i] = entry.id
+		info.labels[i] = entry.label
+	end
+	return info
+end
+
+local function sendAnimationIDs()
+	uevrUtils.executeUEVRCallbacks("on_hand_animation_ids_changed", getAnimationIDInfo(parameters))
+end
+
+-- The parameters file's name, without .json.
+function M.getParametersFileName()
+	return parametersFileName
+end
+
+-- Uses another parameters file (name without .json) for hands and IK arms. The file is read now and the grip animation list is
+-- sent. The current file's name reads it now if it hasn't been read yet, and does nothing if it has.
+function M.setParametersFileName(fileName)
+	if fileName == nil or fileName == "" then return end
+	if fileName ~= parametersFileName then
+		parametersFileName = fileName
+		parameters = nil
+		parametersLoadTried = false
+	end
+	M.getParameters()
+end
+
+-- The parameters: the file's, read once, or the table given to setParameters. nil when the file is missing (it is not read again).
+function M.getParameters()
+	if parameters == nil and not parametersLoadTried then
+		parametersLoadTried = true
+		parameters = json.load_file(parametersFileName .. ".json")
+		if parameters == nil then
+			M.print("No hands parameters file " .. parametersFileName .. ".json", LogLevel.Info)
+		else
+			M.print("Loaded hands parameters from " .. parametersFileName .. ".json", LogLevel.Info)
+			sendAnimationIDs()
+		end
+	end
+	return parameters
+end
+
+-- Whether params is the table getParameters returns now (without reading the file).
+function M.isCurrentParameters(params)
+	return params ~= nil and params == parameters
+end
+
+-- Parameters given as a table (the hands config tool's, or a table passed to hands.createFromConfig). They are used in place of
+-- the file's until another file is set, and the grip animation list is sent again. Call it again after changing the table's
+-- "attachments" so the list is sent again.
+function M.setParameters(params)
+	if type(params) ~= "table" then return end
+	parameters = params
+	parametersLoadTried = true
+	sendAnimationIDs()
+end
+
+-- A parameters file read once without keeping it, or the kept parameters when fileName is the current file. nil when missing.
+function M.loadParametersFile(fileName)
+	if fileName == nil or fileName == parametersFileName then return M.getParameters() end
+	return json.load_file(fileName .. ".json")
+end
+
+-- Chooses which profile and animation of the parameters hands and IK arms use. A name that is nil or not in the parameters
+-- falls back to the first one found.
+function M.setActiveProfile(profileName, animationName)
+	preferredProfileName = profileName
+	preferredAnimationName = animationName
+end
+
+local function getActiveName(list, preferred)
+	if type(list) ~= "table" then return nil end
+	if preferred ~= nil and list[preferred] ~= nil then return preferred end
+	for key, _ in pairs(list) do
+		return key
+	end
+	return nil
+end
+
+-- The profile and animation names chosen in params (default: the current parameters), or nil when it has none.
+function M.getActiveProfileName(params)
+	if params == nil then params = M.getParameters() end
+	if params == nil then return nil end
+	return getActiveName(params["profiles"], preferredProfileName)
+end
+
+function M.getActiveAnimationName(params)
+	if params == nil then params = M.getParameters() end
+	if params == nil then return nil end
+	return getActiveName(params["animations"], preferredAnimationName)
+end
+
+uevrUtils.registerUEVRCallback("get_hand_animation_ids", function(out)
+	if type(out) ~= "table" then return end
+	local info = getAnimationIDInfo(M.getParameters())
+	out.ids, out.labels, out.animations = info.ids, info.labels, info.animations
+end)
+
 -- This needs to be called externally
 function M.createAnimationHandler(animID, component, handAnimations)
     if component == nil then

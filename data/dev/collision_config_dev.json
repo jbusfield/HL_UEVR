@@ -70,6 +70,7 @@
     "uevr_collision_collision_enabled": 4,
     "uevr_collision_collision_object_type": 3,
     "uevr_collision_detected_components": "",
+    "uevr_collision_drivesHand": false,
     "uevr_collision_extents": [
         10.0,
         10.0,
@@ -77,6 +78,8 @@
     ],
     "uevr_collision_generate_overlap_events": true,
     "uevr_collision_half_height": 17.299999237060547,
+    "uevr_collision_handPriority": 0,
+    "uevr_collision_ignorePawnMovement": false,
     "uevr_collision_object_finder_channel1": 1,
     "uevr_collision_object_finder_channel10": 1,
     "uevr_collision_object_finder_channel11": 1,
@@ -130,5 +133,7 @@
     ],
     "uevr_collision_shape": 3,
     "uevr_collision_show_overlapped_components": true,
+    "uevr_collision_slideAlongSurface": false,
+    "uevr_collision_snapDistance": 30.0,
     "uevr_collision_visible": false
 }

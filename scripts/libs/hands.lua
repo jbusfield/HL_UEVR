@@ -26,6 +26,12 @@ Usage
 			local configName = 'Main' -- the name you gave your config
 			local animationName = 'Shared' -- the name you gave your animation
 			hands.createFromConfig(paramsFile, configName, animationName)
+		The parameters (a file name or a table) become hands_animation's, which IK arms and the grip animation lists of
+		attachments, accessories and mechanisms also use. The file is read once; an edit made to it outside the game takes
+		effect after Reset Scripts.
+
+    hands.setAutoCreateFileName(fileName) - the parameters file (name without .json, default hands_parameters) for hands and IK arms
+    hands.setAutoCreateProfile(profileName, animationName) - the profile and animation hands and IK arms use (default: the first found)
 
     hands.setAutoHandleInput(val) - enables/disables automatic input handling for hand animations.
 		Automatic input handling is enabled by default. If you do not want automatic input handling then you will need 
@@ -145,6 +151,7 @@ local M = {}
 local autoCreateHands = true
 local autoCreateConfigName = nil
 local autoCreateAnimationName = nil
+-- The names requested with M.setAutoCreateProfile are kept by hands_animation, which IK arms also use.
 local wereHidden = nil
 
 
@@ -300,6 +307,15 @@ function M.resetAutoCreate()
 	autoCreateAnimationName = nil
 end
 
+-- Chooses which profile and animation of the parameters file auto-create uses. A name that is nil or
+-- not in the file falls back to the first one found. Takes effect the next time hands are auto-created. IK arms use the same
+-- choice (it is kept by hands_animation).
+function M.setAutoCreateProfile(profileName, animationName)
+	handsAnimation.setActiveProfile(profileName, animationName)
+	autoCreateConfigName = nil
+	autoCreateAnimationName = nil
+end
+
 -- if using multiple components like hands and gloves then include componentName or which one is picked will be random
 function M.getHandComponent(hand, componentName)
 	componentName = getComponentName(componentName)
@@ -393,8 +409,13 @@ function M.updateAnimationState(hand)
 end
 
 function M.createFromConfig(configuration, profileName, animationName)
+	-- hands_animation keeps the parameters: a file name becomes its parameters file and a table its parameters, so IK arms and
+	-- the grip animation list (attachments, accessories, mechanisms) follow what the hands were made from.
 	if type(configuration) == "string" then
-		configuration = json.load_file(configuration .. ".json")
+		handsAnimation.setParametersFileName(configuration)
+		configuration = handsAnimation.getParameters()
+	elseif type(configuration) == "table" and not handsAnimation.isCurrentParameters(configuration) then
+		handsAnimation.setParameters(configuration)
 	end
 	if configuration ~= nil and configuration["profiles"] ~= nil then
 		local profile = configuration["profiles"][profileName]
@@ -439,8 +460,7 @@ function M.createFromConfig(configuration, profileName, animationName)
 			M.create(components, profile, animations)
 
 			--if M.exists() then
-				-- TODO replace this with a global event
-				attachments.setAnimationIDs(configuration["attachments"])
+				-- The grip animation list reaches attachments through hands_animation's on_hand_animation_ids_changed event
 				--going to need to call fixMeshFOV on lazy poll
 				for name, handComponent in pairs(handComponents) do
 					--print(name, profileName, handComponent[0], handComponent[1])
@@ -1332,48 +1352,34 @@ uevrUtils.registerPreLevelChangeCallback(function(level)
 	status = {}
 end)
 
-local autoCreateFileName = "hands_parameters"
+-- The parameters file (name without .json, default hands_parameters) is hands_animation's, so IK arms use it too.
 function M.setAutoCreateFileName(fileName)
-	autoCreateFileName = fileName
+	handsAnimation.setParametersFileName(fileName)
+	autoCreateConfigName = nil
+	autoCreateAnimationName = nil
 end
 
 local function tryAutoCreateHands()
 	if autoCreateHands and not M.exists() then
-		--see if the defaults params file exists
-		local paramsFile = autoCreateFileName
-		--if we already found it once we dont ned to keep reading from json to see if it exists
-		if autoCreateConfigName ~= nil then
-			M.createFromConfig(paramsFile, autoCreateConfigName, autoCreateAnimationName)
-		else
-			local configuration = json.load_file(paramsFile .. ".json")
-			if configuration ~= nil then
-				--get the first profile and animation found
-				M.print("Loaded hands parameters from hands_parameters.json")
-				if configuration["profiles"] ~= nil then
-					for key, _ in pairs(configuration["profiles"]) do
-						M.print("Found profile: " .. key)
-						autoCreateConfigName = key
-						break
-					end
-				end
-				if configuration["animations"] ~= nil then
-					for key, _ in pairs(configuration["animations"]) do
-						M.print("Found animation: " .. key)
-						autoCreateAnimationName = key
-						break
-					end
-				end
-				if autoCreateConfigName ~= nil then
-					M.createFromConfig(paramsFile, autoCreateConfigName, autoCreateAnimationName)
-				else
-					M.print("Could not auto create hands because no profiles were found")
-					autoCreateHands = false --dont keep trying
-				end
-			else
-				M.print("Could not auto create hands")
-				autoCreateHands = false --dont keep trying
-			end
+		local configuration = handsAnimation.getParameters()
+		if configuration == nil then
+			M.print("Could not auto create hands")
+			autoCreateHands = false --dont keep trying
+			return
 		end
+		--if we already found the names once we dont need to look for them again
+		if autoCreateConfigName == nil then
+			--the profile and animation chosen with setAutoCreateProfile, else the first ones found
+			autoCreateConfigName = handsAnimation.getActiveProfileName(configuration)
+			autoCreateAnimationName = handsAnimation.getActiveAnimationName(configuration)
+			if autoCreateConfigName == nil then
+				M.print("Could not auto create hands because no profiles were found")
+				autoCreateHands = false --dont keep trying
+				return
+			end
+			M.print("Found profile: " .. tostring(autoCreateConfigName) .. ", animation: " .. tostring(autoCreateAnimationName))
+		end
+		M.createFromConfig(configuration, autoCreateConfigName, autoCreateAnimationName)
 	end
 end
 function M.regenerateHands()
@@ -1411,6 +1417,7 @@ local function restoreHandSnapshot(handed)
 				local socket = s.socket
 				local location = s.location
 				local rotation = s.rotation
+				if s.keepRotation then handObj:SetAbsolute(false, false, false) end
 				if parent ~= nil then
 					handObj:K2_AttachTo(parent, uevrUtils.fname_from_string(socket or ""), 0, false)
 					uevrUtils.set_component_relative_transform(handObj, location or {0,0,0}, rotation or {0,0,0}, {1,1,1})
@@ -1421,7 +1428,8 @@ local function restoreHandSnapshot(handed)
 	end
 end
 
-local function attachHandToTarget(handed, parentAttachment, socketName, attachType, loc, rot)
+-- keepRotation: the hand follows the target's location but keeps the world rotation it has once attached (a crank handle).
+local function attachHandToTarget(handed, parentAttachment, socketName, attachType, loc, rot, keepRotation)
 	for name, components in pairs(handComponents) do
 		local handObj = uevrUtils.getValid(components[handed])
 		if handObj ~= nil then
@@ -1431,6 +1439,9 @@ local function attachHandToTarget(handed, parentAttachment, socketName, attachTy
 				saveHandSnapshot(handed, statusKey)
 			end
 			if handObj.K2_AttachTo ~= nil then
+				-- An earlier attach's Keep Rotation is undone first, so the transform below is relative to the target again
+				local snapshot = accessoryStatus[statusKey]
+				if snapshot ~= nil and snapshot.keepRotation then handObj:SetAbsolute(false, false, false) end
 				local socketScale = {1, 1, 1}
 				if socketName ~= nil and socketName ~= "" then
 					local socketTranforn = parentAttachment:GetSocketTransform(uevrUtils.fname_from_string(socketName), 2)
@@ -1441,6 +1452,12 @@ local function attachHandToTarget(handed, parentAttachment, socketName, attachTy
 				-- Same order as the gunstock path: the hand's own rotation (mesh base + profile Offset), then the accessory marker
 				local offsetRotation = baseOffset ~= nil and uevrUtils.rotator(baseOffset) or nil
 				uevrUtils.set_component_relative_transform(handObj, finalLocation, mathLib.composeRotators(baseRotation, offsetRotation, uevrUtils.rotator(rot or {0,0,0})), socketScale)
+				if keepRotation == true then
+					local worldRotation = handObj:K2_GetComponentRotation()
+					handObj:SetAbsolute(false, true, false)
+					handObj:K2_SetWorldRotation(worldRotation, false, reusable_hit_result, false)
+				end
+				if snapshot ~= nil then snapshot.keepRotation = keepRotation == true end
 				--print("Attached hand to accessory with socket: ", handObj:K2_GetComponentScale().X)
 			end
 		end
@@ -1458,8 +1475,8 @@ uevrUtils.registerUEVRCallback("accessory_attach_components", function(handed, o
 	end
 end)
 
-uevrUtils.registerUEVRCallback("on_accessory_attach", function(handed, parentAttachment, socketName, attachType, loc, rot)
-	attachHandToTarget(handed, parentAttachment, socketName, attachType, loc, rot)
+uevrUtils.registerUEVRCallback("on_accessory_attach", function(handed, parentAttachment, socketName, attachType, loc, rot, keepRotation)
+	attachHandToTarget(handed, parentAttachment, socketName, attachType, loc, rot, keepRotation)
 end)
 uevrUtils.registerUEVRCallback("on_accessory_detach", function(handed)
 	restoreHandSnapshot(handed)

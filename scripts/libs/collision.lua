@@ -41,6 +41,11 @@ local parameters = {
     visible = false,
     generate_overlap_events = true,
     attachTo = 2, -- 1 = left hand, 2 = right hand, 3 = head
+    drivesHand = false, -- the hand goes where this collider is (getHandLocation)
+    handPriority = 0, -- with several on one hand, the highest drives it
+    snapDistance = 30.0, -- cm: a hand collider held back further than this jumps back to the controller
+    slideAlongSurface = false, -- a blocked hand collider slides along what stopped it instead of sticking where it touched
+    ignorePawnMovement = false, -- true: the pawn moving doesn't carry the collider; only its sweep moves it
 }
 
 COLLISION_SHAPES = {
@@ -103,6 +108,11 @@ local function validateProfileData(profileData)
     if profileData.attachTo == nil then profileData.attachTo = parameters.attachTo end
     if profileData.channels == nil then profileData.channels = uevrUtils.deepCopyTable(parameters.channels) end
     if profileData.shape == nil then profileData.shape = parameters.shape end
+    if profileData.drivesHand == nil then profileData.drivesHand = parameters.drivesHand end
+    if profileData.handPriority == nil then profileData.handPriority = parameters.handPriority end
+    if profileData.snapDistance == nil then profileData.snapDistance = parameters.snapDistance end
+    if profileData.slideAlongSurface == nil then profileData.slideAlongSurface = parameters.slideAlongSurface end
+    if profileData.ignorePawnMovement == nil then profileData.ignorePawnMovement = parameters.ignorePawnMovement end
 end
 
 local function setColliderProperties(collider, id)
@@ -133,6 +143,10 @@ local function setColliderProperties(collider, id)
             end
             collider.bGenerateOverlapEvents = profileData.generate_overlap_events
         end
+        -- Ignore Pawn Movement: the collider stays attached to the pawn (its sweep still ignores the pawn), but its transform is
+        -- world space, so the pawn moving doesn't carry it through things; only its sweep to the controller moves it.
+        local absolute = profileData.ignorePawnMovement == true
+        collider:SetAbsolute(absolute, absolute, absolute)
         collider:SetHiddenInGame(not profileData.visible)
         --collider:SetMassOverrideInKg(uevrUtils.fname_from_string(""), 50, true)
         --uevrUtils.set_component_relative_transform(collider, profileData.position, profileData.rotation)
@@ -140,6 +154,10 @@ local function setColliderProperties(collider, id)
         status.colliders[id].position = uevrUtils.vector(profileData.position)
         status.colliders[id].rotation = uevrUtils.rotator(profileData.rotation)
         status.colliders[id].handed = profileData.attachTo - 1
+        status.colliders[id].drivesHand = profileData.drivesHand == true
+        status.colliders[id].handPriority = tonumber(profileData.handPriority) or 0
+        status.colliders[id].snapDistance = tonumber(profileData.snapDistance) or parameters.snapDistance
+        status.colliders[id].slideAlongSurface = profileData.slideAlongSurface == true
     end
 end
 
@@ -299,6 +317,29 @@ function M.getLocation(id)
     return nil
 end
 
+-- Where a hand's collider is, for whatever places that hand (libs/ik asks through "get_hand_target_location"): the first
+-- collider attached to the hand (Handed.Left / Handed.Right) that isn't disabled. nil: the hand has none.
+function M.getHandLocation(hand)
+    if status.colliders == nil then return nil end
+    local bestLoc, bestPriority = nil, nil
+    for _, data in pairs(status.colliders) do
+        if data.handed == hand and data.drivesHand == true then
+            local collider = uevrUtils.getValid(data.collider)
+            if collider ~= nil and (bestPriority == nil or data.handPriority > bestPriority) then
+                -- The hand is the profile's Position away from the collider: on the controller while nothing blocks the collider,
+                -- held back with it when something does.
+                local at = collider:K2_GetComponentLocation()
+                bestLoc = uevrUtils.vector(at.X - (data.offsetX or 0), at.Y - (data.offsetY or 0), at.Z - (data.offsetZ or 0))
+                bestPriority = data.handPriority
+            end
+        end
+    end
+    return bestLoc, bestPriority
+end
+uevrUtils.registerUEVRCallback("get_hand_target_location", function(hand)
+    return M.getHandLocation(hand)
+end)
+
 local contactCallbacks = {}
 
 function M.registerContactCallback(callback)
@@ -339,9 +380,16 @@ local function updateColliders(delta)
                     -- Treat the collider as a child of the controller: data.position and
                     -- data.rotation are local offsets in the controller's space.
                     local loc, rot = mathLib.childWorldTransform(locations[data.handed], rotations[data.handed], data.position, data.rotation)
+                    -- How far the profile's Position puts the collider from the controller this tick, so the hand it drives stays that
+                    -- far from wherever the collider ends up (getHandLocation).
+                    local controllerLoc = locations[data.handed]
+                    if loc ~= nil and controllerLoc ~= nil then
+                        data.offsetX, data.offsetY, data.offsetZ = loc.X - controllerLoc.X, loc.Y - controllerLoc.Y, loc.Z - controllerLoc.Z
+                    end
 
+                    -- Hand velocity is only for the contact callbacks; with none registered it isn't tracked.
                     local handVelocity = nil
-                    if loc ~= nil then
+                    if #contactCallbacks > 0 and loc ~= nil then
                         if delta ~= nil and delta > 0 and data.lastHandLoc ~= nil then
                             handVelocity = uevrUtils.vector(
                                 (loc.X - data.lastHandLoc.X) / delta,
@@ -350,13 +398,40 @@ local function updateColliders(delta)
                             )
                         end
                         data.lastHandLoc = { X = loc.X, Y = loc.Y, Z = loc.Z }
+                    else
+                        data.lastHandLoc = nil
                     end
 
-                    if rot then collider:K2_SetWorldRotation(rot, false, reusable_hit_result, false) end
-                    if loc then
-                        collider:K2_SetWorldLocation(loc, true, reusable_hit_result, false)
+                    if loc == nil then
+                        if rot then collider:K2_SetWorldRotation(rot, false, reusable_hit_result, false) end
+                    else
+                        -- One move for rotation and location: each move updates the transform and overlaps, and the sweep
+                        -- only tests the location change.
+                        if rot then
+                            collider:K2_SetWorldLocationAndRotation(loc, rot, true, reusable_hit_result, false)
+                        else
+                            collider:K2_SetWorldLocation(loc, true, reusable_hit_result, false)
+                        end
                         if #contactCallbacks > 0 and reusable_hit_result ~= nil and reusable_hit_result.bBlockingHit then
                             notifyContactCallbacks(id, handVelocity, reusable_hit_result, collider, data.handed)
+                        end
+                        -- A hand collider stopped by something: held back further than its Snap Distance (caught behind
+                        -- something), it jumps back to its target without sweeping, so the hand comes back to the controller.
+                        -- Otherwise, with Slide Along Surface on, it slides along the surface with the rest of its move (the part
+                        -- not into the surface), so the hand follows the controller along it instead of sticking where it touched.
+                        if data.drivesHand == true and reusable_hit_result ~= nil and reusable_hit_result.bBlockingHit then
+                            local reached = collider:K2_GetComponentLocation()
+                            local rx, ry, rz = loc.X - reached.X, loc.Y - reached.Y, loc.Z - reached.Z
+                            if rx * rx + ry * ry + rz * rz > data.snapDistance * data.snapDistance then
+                                collider:K2_SetWorldLocation(loc, false, reusable_hit_result, false)
+                            elseif data.slideAlongSurface == true then
+                                local normal = reusable_hit_result.Normal
+                                local into = rx * normal.X + ry * normal.Y + rz * normal.Z
+                                if into < 0 then
+                                    collider:K2_SetWorldLocation(uevrUtils.vector(reached.X + rx - into * normal.X,
+                                        reached.Y + ry - into * normal.Y, reached.Z + rz - into * normal.Z), true, reusable_hit_result, false)
+                                end
+                            end
                         end
                     end
                 end
@@ -367,7 +442,7 @@ end
 
 
 local function checkCollisionEvent(id)
-    if status.colliders == nil or status.colliders[id] == nil or status.colliders[id].isDisabled == true then return end
+    if status.colliders == nil or status.colliders[id] == nil then return end
 
     local foundComponents = {}
     --print("Calling checkCollisionEvents for Collider", id)
@@ -580,12 +655,16 @@ function M.getCollisionComponentsByLabel(label)
     return checkCollisionEvent(M.getProfileIDByLabel(label))
 end
 
+-- Switches a profile's collider off (val true) or on (false) from code, as unticking or ticking its Active box does, without
+-- saving it (as input.setDisabled does). Off, the profile has no collider at all. The panel's Active box shows the change.
 function M.disableCollision(id, val)
-    local colliderData = status.colliders[id]
-    if colliderData ~= nil then
-         colliderData.isDisabled = val
-    end
- end
+    local profileData = (id ~= nil and id ~= "") and paramManager:get(id) or nil
+    if profileData == nil then return end
+    -- Written into the profile in place: paramManager:set would also clear a panel change still waiting to be saved.
+    profileData.active = val ~= true
+    refreshActiveColliders()
+    if collisionConfigDev ~= nil then collisionConfigDev.setActiveValue(id, profileData.active) end
+end
  
  function M.disableCollisionByLabel(label, val)
      return M.disableCollision(M.getProfileIDByLabel(label), val)
@@ -659,5 +738,17 @@ end)
 uevr.params.sdk.callbacks.on_script_reset(function()
 	M.reset()
 end)
+
+setColliderProperties = uevrUtils.profiler:wrap("COLLISION: setColliderProperties", setColliderProperties)
+createCollider = uevrUtils.profiler:wrap("COLLISION: createCollider", createCollider)
+refreshActiveColliders = uevrUtils.profiler:wrap("COLLISION: refreshActiveColliders", refreshActiveColliders)
+updateColliders = uevrUtils.profiler:wrap("COLLISION: updateColliders", updateColliders)
+checkCollisionEvent = uevrUtils.profiler:wrap("COLLISION: checkCollisionEvent", checkCollisionEvent)
+checkCollisionEvents = uevrUtils.profiler:wrap("COLLISION: checkCollisionEvents", checkCollisionEvents)
+M.destroy = uevrUtils.profiler:wrap("COLLISION: destroy", M.destroy)
+M.getLocation = uevrUtils.profiler:wrap("COLLISION: getLocation", M.getLocation)
+M.getHandLocation = uevrUtils.profiler:wrap("COLLISION: getHandLocation", M.getHandLocation)
+M.disableCollision = uevrUtils.profiler:wrap("COLLISION: disableCollision", M.disableCollision)
+M.setCollisionResponseToChannel = uevrUtils.profiler:wrap("COLLISION: setCollisionResponseToChannel", M.setCollisionResponseToChannel)
 
 return M

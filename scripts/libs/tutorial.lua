@@ -12,14 +12,18 @@ Usage
 	Actions run on the next engine tick.
 
 	Open gesture
-		By default a left trigger pull near the eyes (the eye scratch gesture from libs/gestures) opens any
-		tutorial at any time, at the saved step (see rememberPage) or step 1. It is detected before every other
-		input handler, and that trigger pull is hidden from the game and other scripts until it is released.
-		Set options.openGesture = false to disable it.
+		By default a left trigger pull in front of the eyes (the EYE_ZONE_TRIGGER gesture from libs/gestures) opens any
+		tutorial at any time, at the saved step (see rememberPage) or step 1. Done while the intro is showing, it
+		goes to that step. It is detected before every other input handler, and that trigger pull is hidden from
+		the game and other scripts until it is released. Set options.openGesture = false to disable it.
 		libs/gestures does not need gestures.init(); without it the gesture uses its default settings.
 		tutorial:forceInteractionAtStartup(true) makes the intro wait for the open gesture: it shows
-		interactionPrompt in place of the navigation bar and no button does anything until the gesture is done.
-		Doing the gesture, in the intro or to open the tutorial, is remembered so the intro never waits again.
+		interactionPrompt in place of the navigation bar and no button does anything until the gesture is done,
+		which goes to the first step. Doing the gesture, in the intro or to open the tutorial, is remembered so
+		the intro never waits again.
+		options.openKey names an optional keyboard or mouse key (a register_key_bind key name such as "F1") that does
+		the same as the gesture, including ending a waiting intro. It works with openGesture = false too. It
+		replaces any other register_key_bind callback on that key.
 
 	Files are relative to the UEVR profile's data folder:
 		<path>intro.png              - optional page shown before the steps
@@ -98,9 +102,11 @@ Usage
 		checkedIcon            - hideAtStartup icon while set. Default "status_success.png"
 		uncheckedIcon          - hideAtStartup icon while not set. Default nil, the button icon
 		openGesture            - name in gestures.Gesture of the gesture that opens the tutorial, or false for none.
-		                         Default "EYESCRATCH"
+		                         Default "EYE_ZONE_TRIGGER"
 		openGestureHand        - hand that does it. Default Handed.Left
-		openGesturePage        - page it opens when no step is saved. Default 1, skipping the intro
+		openGesturePage        - page it opens, or goes to from the intro, when no step is saved. Default 1
+		openKey                - register_key_bind key name, for example "F1", that does the same as the open
+		                         gesture. Default nil, no key
 		interactionPrompt      - text the waiting intro shows. Default "Try the gesture now"
 		interactionColor       - its color. Default "#4ADE80FF"
 		rememberPage           - saves the current step in tutorial_state.json. The open gesture and Start continue
@@ -232,7 +238,7 @@ local DEFAULT_OPTIONS = {
 	padding = 24,
 	showPageCounter = true,
 	checkedIcon = "status_success.png",
-	openGesture = "EYESCRATCH",
+	openGesture = "EYE_ZONE_TRIGGER",
 	openGestureHand = Handed.Left,
 	openGesturePage = 1,
 	interactionPrompt = "Try the gesture now",
@@ -258,6 +264,7 @@ local pendingAction = nil
 local pendingGesture = nil  -- tutorial whose open gesture was done, handled on the next engine tick
 local gestureHand = nil     -- hand whose trigger stays hidden until released after the gesture
 local gestureTutorials = {} -- tutorials with an open gesture
+local keyTutorials = {}     -- [key name] = tutorials with that open key
 local gestures = nil        -- libs/gestures, loaded on first use
 local stateData = nil -- tutorial_state.json: { [id] = { completed, interactionDone, page } }
 -- uevr_utils reports the first level after a script reset as a level change, and widgets made before it are
@@ -333,12 +340,16 @@ local function scanFiles(path)
 	return count, hasIntro, stepFiles
 end
 
--- Imported textures are not rooted, so ones that are not on screen can be garbage collected and imported again
+-- Imported textures are not rooted, so ones that are not on screen can be garbage collected and imported again.
+-- getValid still passes when a later import (another page) reuses a collected texture's address, so the cache
+-- keeps each texture's full name and imports the file again when it no longer matches
 local function getTexture(cache, fileName, path)
-	local texture = cache[fileName]
-	if uevrUtils.getValid(texture) == nil or texture.Blueprint_GetSizeX == nil then
+	local entry = cache[fileName]
+	---@type any
+	local texture = entry ~= nil and entry.texture or nil
+	if entry == nil or uevrUtils.getValid(texture) == nil or texture.Blueprint_GetSizeX == nil or texture:get_full_name() ~= entry.fullName then
 		texture = widgetModule.loadTexture(fileName, path)
-		cache[fileName] = texture
+		cache[fileName] = texture ~= nil and { texture = texture, fullName = texture:get_full_name() } or nil
 	end
 	return texture
 end
@@ -381,6 +392,27 @@ local function newLabel(options)
 	return label
 end
 
+-- The open key does what the open gesture does, handled on the next engine tick
+local function onOpenKey(list)
+	if pendingGesture ~= nil then return end
+	for _, tutorial in ipairs(list) do
+		if tutorial.host == nil or tutorial.page == 0 then
+			pendingGesture = tutorial
+			return
+		end
+	end
+end
+
+local function registerOpenKey(self, key)
+	local list = keyTutorials[key]
+	if list == nil then
+		list = {}
+		keyTutorials[key] = list
+		register_key_bind(key, function() onOpenKey(list) end)
+	end
+	table.insert(list, self)
+end
+
 function M.new(options)
 	options = options or {}
 	local self = setmetatable({}, Tutorial)
@@ -412,11 +444,17 @@ function M.new(options)
 	if o.showPageCounter then
 		self.counter = newLabel(o)
 	end
-	if o.openGesture then
+	local hasOpenKey = type(o.openKey) == "string" and o.openKey ~= ""
+	if o.openGesture or hasOpenKey then
 		self.prompt = newLabel(o)
 		self.prompt:setColor(o.interactionColor)
 		self.prompt:setText(o.interactionPrompt)
+	end
+	if o.openGesture then
 		table.insert(gestureTutorials, self)
+	end
+	if hasOpenKey then
+		registerOpenKey(self, o.openKey)
 	end
 	return self
 end
@@ -947,7 +985,7 @@ local function captureGesture(retval, userIndex, state)
 	end
 	if pendingGesture ~= nil then return end
 	for _, tutorial in ipairs(gestureTutorials) do
-		if tutorial.host == nil or tutorial:isAwaitingInteraction() then
+		if tutorial.host == nil or tutorial.page == 0 then
 			if gestures == nil then gestures = require('libs/gestures') end
 			local id = gestures.Gesture[tutorial.options.openGesture]
 			local hand = tutorial.options.openGestureHand
@@ -976,12 +1014,9 @@ local function runPendingAction()
 	if pendingGesture ~= nil then
 		local tutorial = pendingGesture
 		pendingGesture = nil
-		if tutorial.host == nil then
-			tutorial:completeInteraction()
-			tutorial:show(resumePage(tutorial, tutorial.options.openGesturePage))
-		else
-			tutorial:completeInteraction()
-		end
+		setStateField(tutorial, "interactionDone", true)
+		local page = resumePage(tutorial, tutorial.options.openGesturePage)
+		if tutorial.host == nil then tutorial:show(page) else tutorial:goTo(page) end
 	end
 	if pendingTutorial == nil then return end
 	local tutorial, action = pendingTutorial, pendingAction

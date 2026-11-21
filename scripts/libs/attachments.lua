@@ -135,6 +135,8 @@ Usage
                 grip_pistol = {label = "Pistol Grip"},
                 grip_rifle = {label = "Rifle Grip"}
             })
+        With hands or IK arms loaded the list is set automatically from the hands parameters file (hands_animation's
+        on_hand_animation_ids_changed event), which replaces a list set here.
 	attachments.getCurrentGrippedAttachment(gripHand) - gets the attachment currently gripped by the specified hand
 		example:
 			local currentAttachment = attachments.getCurrentGrippedAttachment(Handed.Right)
@@ -316,6 +318,7 @@ function M.addAttachmentOffsetsToConfigUI(configDefinition, m_attachmentOffsets)
 		--local useSightsPositionOffset = m_attachmentOffsets[i]["use_sights_position_offset"] or false
 		local sightsPositionOffset = m_attachmentOffsets[i]["sights_position_offset"] or {0,0,0}
 		local useLaser = m_attachmentOffsets[i]["use_laser"] or false
+		local leftHandMirror = m_attachmentOffsets[i]["left_hand_mirror"] or 1
 
 		local selectedIndex = 1
 		for j = 1, #animationIDs do
@@ -346,6 +349,12 @@ function M.addAttachmentOffsetsToConfigUI(configDefinition, m_attachmentOffsets)
 						id = widgetPrefix .. name .. "_scale", label = "Scale",
 						widgetType = "drag_float3", speed = .1, range = {-10, 10}, initialValue = scale
 					}
+		)
+		table.insert(configDefinition[1]["layout"],
+			{
+				id = widgetPrefix .. name .. "_left_hand_mirror", label = "Left Hand Mirror",
+				widgetType = "combo", selections = {"None", "Symmetric X", "Symmetric Y", "Symmetric Z"}, initialValue = leftHandMirror
+			}
 		)
 		table.insert(configDefinition[1]["layout"],
 			{
@@ -536,6 +545,9 @@ function M.addAttachmentOffsetsToConfigUI(configDefinition, m_attachmentOffsets)
 		configui.onUpdate(widgetPrefix .. name .. "_weight", function(value)
 			M.updateAttachmentWeight(value, id)
 		end)
+		configui.onUpdate(widgetPrefix .. name .. "_left_hand_mirror", function(value)
+			M.updateAttachmentLeftHandMirror(id, value)
+		end)
 		-- configui.onCreateOrUpdate(widgetPrefix .. name .. "_use_sights_position_offset", function(value)
 		-- 	M.updateAttachmentUseSightsPositionOffset(id, value)
 		-- 	configui.setHidden(widgetPrefix .. name .. "_sights_position_offset", not value)
@@ -623,6 +635,36 @@ function M.addAttachmentOffsetsToConfigUI(configDefinition, m_attachmentOffsets)
 				widgetType = "checkbox",
 				id = "uevr_attachments_left_hand_flip_z",
 				label = "Flip Z",
+				initialValue = false
+			}
+		)
+		table.insert(configDefinition[1]["layout"],
+			{
+				widgetType = "checkbox",
+				id = "uevr_attachments_left_hand_mirror_rot_x",
+				label = "Flip Pitch",
+				initialValue = false
+			}
+		)
+		table.insert(configDefinition[1]["layout"],
+			{ widgetType = "same_line" }
+		)
+		table.insert(configDefinition[1]["layout"],
+			{
+				widgetType = "checkbox",
+				id = "uevr_attachments_left_hand_mirror_rot_y",
+				label = "Flip Yaw",
+				initialValue = false
+			}
+		)
+		table.insert(configDefinition[1]["layout"],
+			{ widgetType = "same_line" }
+		)
+		table.insert(configDefinition[1]["layout"],
+			{
+				widgetType = "checkbox",
+				id = "uevr_attachments_left_hand_mirror_rot_z",
+				label = "Flip Roll",
 				initialValue = false
 			}
 		)
@@ -759,11 +801,12 @@ function M.showDeveloperConfiguration(m_defaultLocation, m_defaultRotation, m_de
 	configui.setValue("use_uevr_attachments_strip_parent_name_numeric_suffix", parameters["stripParentNameNumericSuffix"] or false, true)
 	configui.setValue("uevr_attachment_base_rotation", parameters["baseOffsets"].rotation or {0,0,0}, true)
 
-	--Other modules may update this later but let's set it here using the default hands params file so we have defaults
-	local handConfigurationFileName = "hands_parameters"
-	local handsConfiguration = json.load_file(handConfigurationFileName .. ".json")
-	if handsConfiguration ~= nil then
-		M.setAnimationIDs(handsConfiguration["attachments"])
+	--The hands parameters file's grip animations, asked from hands_animation (it answers when loaded). Later changes arrive
+	--through on_hand_animation_ids_changed.
+	local handAnimations = {}
+	uevrUtils.executeUEVRCallbacks("get_hand_animation_ids", handAnimations)
+	if handAnimations.animations ~= nil then
+		M.setAnimationIDs(handAnimations.animations)
 	end
 
 
@@ -1536,6 +1579,15 @@ function M.updateAttachmentIsTwoHanded(id, isTwoHanded)
 	updateAttachmentProperty(id, "two_handed", isTwoHanded)
 end
 
+function M.updateAttachmentLeftHandMirror(id, value)
+	updateAttachmentProperty(id, "left_hand_mirror", value)
+	local attachmentData = M.getCurrentGrippedAttachmentData(Handed.Left)
+	if attachmentData ~= nil and uevrUtils.getValid(attachmentData.attachment) ~= nil and M.getAttachmentIDFromAttachment(attachmentData.attachment) == id then
+		local loc, rot, scale = M.getAttachmentOffset(attachmentData.attachment)
+		M.updateAttachmentTransform(loc, rot, scale, id, Handed.Left)
+	end
+end
+
 function M.updateAttachmentIsMelee(id, isMelee)
 	updateAttachmentProperty(id, "melee", isMelee)
 	local offset = getAttachmentOffsetByID(id)
@@ -1697,7 +1749,17 @@ function M.updateAttachmentTransform(pos, rot, scale, id, gripHand)
 					--local finalRot3 = kismet_math_library:ComposeRotators(kismet_math_library:ComposeRotators(offsetRot, gunstockRot), baseRot ) --uevrUtils.rotator(rot)
 
 					if parameters["use_left_hand_offsets"] == true and gripHand == Handed.Left then
+						local lho = parameters["leftHandOffsets"]
+						if lho["mirror_rot_x"] then finalRot.Pitch, finalRot.Yaw = -finalRot.Pitch, -finalRot.Yaw end
+						if lho["mirror_rot_y"] then finalRot.Yaw, finalRot.Roll = -finalRot.Yaw, -finalRot.Roll end
+						if lho["mirror_rot_z"] then finalRot.Pitch, finalRot.Roll = -finalRot.Pitch, -finalRot.Roll end
 						finalRot = kismet_math_library:ComposeRotators(uevrUtils.rotator(parameters["leftHandOffsets"]["rotation"][1],parameters["leftHandOffsets"]["rotation"][2],parameters["leftHandOffsets"]["rotation"][3]), finalRot)
+						local mirror = (getAttachmentOffsetByID(id) or {})["left_hand_mirror"]
+						if mirror == 3 then
+							finalRot = kismet_math_library:ComposeRotators(uevrUtils.rotator(0, 180, 0), finalRot)
+						elseif mirror == 4 then
+							finalRot = kismet_math_library:ComposeRotators(uevrUtils.rotator(180, 0, 0), finalRot)
+						end
 					end
 
 					if offsetRot ~= nil then uevrUtils.set_component_relative_rotation(attachment, finalRot) end
@@ -1707,7 +1769,8 @@ function M.updateAttachmentTransform(pos, rot, scale, id, gripHand)
 				if scale ~= nil then
 					if parameters["use_left_hand_offsets"] == true and gripHand == Handed.Left then
 						--uevrUtils.set_component_relative_scale(attachment, {-scale.X, -scale.Y, -scale.Z})
-						uevrUtils.set_component_relative_scale(attachment, {scale.X * parameters["leftHandOffsets"]["scale"][1], scale.Y * parameters["leftHandOffsets"]["scale"][2], scale.Z * parameters["leftHandOffsets"]["scale"][3]})
+						local mirror = (getAttachmentOffsetByID(id) or {})["left_hand_mirror"]
+						uevrUtils.set_component_relative_scale(attachment, {scale.X * parameters["leftHandOffsets"]["scale"][1] * ((mirror or 1) > 1 and -1 or 1), scale.Y * parameters["leftHandOffsets"]["scale"][2], scale.Z * parameters["leftHandOffsets"]["scale"][3]})
 					else
 						uevrUtils.set_component_relative_scale(attachment, scale)
 					end
@@ -2668,10 +2731,15 @@ function M.setAnimationIDs(animationIDList)
 			end
 		end
 	end
-	-- Always forward so accessory combos refresh even when attachment IDs are unchanged
-	-- (e.g. widgets created after the first call, or early-return path).
-	accessoriesConfig.setAnimationIDs(animationIDList)
+	-- Accessory combos get the list themselves, from hands_animation's events (accessories_config_dev)
 end
+
+-- The hands parameters file's grip animations, sent by hands_animation whenever they change (it is never required here).
+uevrUtils.registerUEVRCallback("on_hand_animation_ids_changed", function(info)
+	if type(info) == "table" and info.animations ~= nil then
+		M.setAnimationIDs(info.animations)
+	end
+end)
 
 configui.onUpdate("use_uevr_attachments_strip_parent_name_numeric_suffix", function(value)
 	M.setStripParentNameNumericSuffix(value)
@@ -2717,7 +2785,7 @@ configui.onCreate("uevr_attachments_use_left_hand_offsets", function(value)
 	configui.hideWidget("uevr_attachments_use_left_hand_offsets_group", not value)
 end)
 
-configui.onUpdate("uevr_attachments_left_hand_location", function(value)
+configui.onUpdate("uevr_attachments_left_hand_position", function(value)
 	parameters["leftHandOffsets"]["location"] = {value.X, value.Y, value.Z}
 	isParametersDirty = true
 	updateLeftHandOffsets()
@@ -2752,6 +2820,14 @@ configui.onUpdate("uevr_attachments_left_hand_flip_z", function(value)
 	isParametersDirty = true
 	updateLeftHandOffsets()
 end)
+
+for _, axis in ipairs({"x", "y", "z"}) do
+	configui.onUpdate("uevr_attachments_left_hand_mirror_rot_" .. axis, function(value)
+		parameters["leftHandOffsets"]["mirror_rot_" .. axis] = value
+		isParametersDirty = true
+		updateLeftHandOffsets()
+	end)
+end
 
 local autoUpdateCallbackCreated = false
 -- Registered grip update callbacks, highest priority first (equal priorities in registration order).

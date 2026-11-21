@@ -564,6 +564,21 @@ local function getConfigWidgets()
 	},
 	{
 		widgetType = "tree_node",
+		id = widgetPrefix .. "advanced_tree",
+		initialOpen = false,
+		label = "Advanced"
+	},
+		{
+			widgetType = "checkbox",
+			id = widgetPrefix .. "use_manual_fade_on_pause",
+			label = "Use Manual Fade on Pause",
+			initialValue = false
+		},
+	{
+		widgetType = "tree_pop"
+	},
+	{
+		widgetType = "tree_node",
 		id = widgetPrefix .. "help_tree",
 		initialOpen = true,
 		label = "Help"
@@ -771,6 +786,10 @@ end)
 
 configui.onUpdate(widgetPrefix .. "use_camera_component_is_cine", function(value)
 	updateCutsceneOptions()
+end)
+
+configui.onUpdate(widgetPrefix .. "use_manual_fade_on_pause", function(value)
+	updateSetting({"advanced_options", "useManualFadeOnPause"}, value)
 end)
 
 configui.onUpdate(widgetPrefix .. "knownViewportWidgetList", function(value)

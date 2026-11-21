@@ -29,6 +29,11 @@ local parameterDefaults = {
     generate_overlap_events = true,
     attachTo = 2, -- 1 = left hand, 2 = right hand, 3 = head
     collision_detection_type = 1,
+    drivesHand = false,
+    handPriority = 0,
+    snapDistance = 30.0,
+    slideAlongSurface = false,
+    ignorePawnMovement = false,
 }
 
 local currentLogLevel = LogLevel.Error
@@ -143,6 +148,37 @@ local function getConfigWidgets(m_paramManager)
 				initialValue = parameterDefaults["attachTo"] or 2,
 			},
             {
+                widgetType = "checkbox",
+                id = widgetPrefix .. "drivesHand",
+                label = "Drives Hand",
+                initialValue = parameterDefaults["drivesHand"] or false
+            },
+            -- Shown only while Drives Hand is ticked (updateUIState).
+            { widgetType = "begin_group", id = widgetPrefix .. "drives_hand_group", isHidden = true }, { widgetType = "indent", width = 10 },
+                {
+                    widgetType = "drag_int",
+                    id = widgetPrefix .. "handPriority",
+                    label = "Hand Priority",
+                    speed = 1,
+                    range = {0, 100},
+                    initialValue = parameterDefaults.handPriority
+                },
+                {
+                    widgetType = "drag_float",
+                    id = widgetPrefix .. "snapDistance",
+                    label = "Snap Distance",
+                    speed = 0.5,
+                    range = {1, 200},
+                    initialValue = parameterDefaults.snapDistance
+                },
+                {
+                    widgetType = "checkbox",
+                    id = widgetPrefix .. "slideAlongSurface",
+                    label = "Slide Along Surface",
+                    initialValue = parameterDefaults["slideAlongSurface"] or false
+                },
+            { widgetType = "unindent", width = 10 }, { widgetType = "end_group", },
+            {
                 widgetType = "drag_float3",
                 id = widgetPrefix .. "position",
                 label = "Position",
@@ -157,6 +193,12 @@ local function getConfigWidgets(m_paramManager)
                 speed = 0.1,
                 range = {-100, 100},
                 initialValue = parameterDefaults.rotation,
+            },
+            {
+                widgetType = "checkbox",
+                id = widgetPrefix .. "ignorePawnMovement",
+                label = "Ignore Pawn Movement",
+                initialValue = parameterDefaults["ignorePawnMovement"] or false
             },
             -- {
             --     widgetType = "drag_float3",
@@ -452,6 +494,8 @@ local function updateUIState(key)
         configui.hideWidget(widgetPrefix .. "half_height", not isCapsule)
         configui.hideWidget(widgetPrefix .. "extents", not isBox)
         configui.hideWidget(widgetPrefix .. "radius", isBox)
+    elseif key == "drivesHand" then
+        configui.hideWidget(widgetPrefix .. "drives_hand_group", configui.getValue(widgetPrefix .. key) ~= true)
     end
 end
 
@@ -580,6 +624,13 @@ end
 
 function M.setCollisionComponentNames(componentNames)
     configui.setValue(widgetPrefix .. "detected_components", table.concat(componentNames, "\n"), true)
+end
+
+-- collision.disableCollision changed a profile's Active from code: the Active box shows it while that profile is the one shown.
+function M.setActiveValue(id, value)
+    if paramManager ~= nil and id == paramManager:getActiveProfile() then
+        configui.setValue(widgetPrefix .. "active", value, true)
+    end
 end
 
 local function checkInteraction()

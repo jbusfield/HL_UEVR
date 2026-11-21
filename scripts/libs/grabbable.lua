@@ -37,6 +37,9 @@ Usage
             hand: Handed (default Handed.Left)
             gripButton: XINPUT button (default the hand's shoulder button)
             isGrabbable: function(actor) -> boolean (required)
+            getMesh: function(actor) -> component|nil (optional)
+                The item's static mesh component, for items that keep it somewhere other than their root or a Mesh property
+                (e.g. on a child actor). When set it is the only place looked; an item it gives no static mesh for is not grabbed.
             canClaim: function(state) -> boolean (optional)
                 Return false to leave a starting grip to something else (e.g. head gestures).
             getInteractTarget: function(state) -> actor|nil (optional)
@@ -126,6 +129,10 @@ Usage
                 in it (e.g. a weapon). The callbacks get the hand as an extra last argument: isGrabbable(actor, hand),
                 canClaim(state, hand), getInteractTarget(state, hand), isCollectGesture(state, hand), collectCallback(actor, hand),
                 setPhysics(actor, mesh, velocity, hand).
+            isHandFree: function(hand, attachment) -> boolean (optional, with hands) - asked when the game's grip callback has
+                something in a hand; true lets that hand grab anyway (e.g. a weapon that is part of the body, with nothing to see).
+                The game's grip callback then has to give the hand up while it holds an item (getHeldMesh(hand) is set from the
+                start of the grab), or the held copy can't be attached there. Without it, a hand with something in it never grabs.
             names: {[Handed] = string} (optional, with hands) - each hand's grip claim name. Default name .. "_left"/"_right"
             handoffDistance: cm (default 12, with hands; 0 or false disables) - a grip that starts with an empty, free hand this
                 close to the item the other hand holds moves it to that hand (no flight; the hold, throw and collect go with it)
@@ -152,6 +159,11 @@ Usage
         True while an item is in the hand, and for the rest of a grip press that grabbed, collected or dropped one.
     Grabbable:reset()
         Also runs on level change and script reset.
+
+    Events
+        While a hand has an item (flying or held, whether or not its grip is down), it is marked busy through libs/grip:
+            uevrUtils.executeUEVRCallbacks(grip.HAND_BUSY_EVENT, hand, name, busy)
+        fired when that changes, so other grip systems (e.g. grip.registerInteract's prompt) know the hand's next press is the item's.
 ]]
 
 local uevrUtils = require("libs/uevr_utils")
@@ -355,7 +367,13 @@ local function refreshMirroring(component)
 	component:SetVisibility(true, true)
 end
 
-local function getItemMesh(actor)
+local function getItemMesh(self, actor)
+	-- A game that keeps the mesh elsewhere (e.g. Silent Hill f, on a child actor) says where with options.getMesh.
+	if self.getMesh ~= nil then
+		local mesh = uevrUtils.getValid(self.getMesh(actor))
+		if mesh ~= nil and mesh.StaticMesh ~= nil then return mesh end
+		return nil
+	end
 	local root = uevrUtils.getValid(actor, {"RootComponent"})
 	if root ~= nil and root.StaticMesh ~= nil then return root end
 	local mesh = uevrUtils.getValid(actor, {"Mesh"})
@@ -513,7 +531,7 @@ end
 -- The copy is made and attached to the hand, hidden, when the grab starts, so the real item can fly to the copy's transform
 -- (including its attachment config scale) and be swapped for it on arrival.
 local function startFlight(self, actor, flightTime)
-	local mesh = getItemMesh(actor)
+	local mesh = getItemMesh(self, actor)
 	if mesh == nil then return end
 	-- An item caught while still falling stops falling, and its own size is the one it was easing back to. Any hand may have
 	-- dropped or thrown it, so every grabbable's falling items are checked.
@@ -735,7 +753,7 @@ local function findTouchTarget(self)
 	for _, actor in ipairs(result and result.OutActors or {}) do
 		if canGrab(self, actor) then
 			-- The item's mesh, which a game's physics can carry away from the actor's own location.
-			local mesh = getItemMesh(actor)
+			local mesh = getItemMesh(self, actor)
 			local at = mesh ~= nil and mesh:K2_GetComponentLocation() or actor:K2_GetActorLocation()
 			local dx, dy, dz = at.X - hand.X, at.Y - hand.Y, at.Z - hand.Z
 			local distance = dx * dx + dy * dy + dz * dz
@@ -838,6 +856,14 @@ local function onTick(self, delta)
 	else
 		updatePointing(self)
 	end
+	-- A hand with an item (flying or held, grip down or not, as with toggleGrip) uses its next press for the item. Said through
+	-- libs/grip's event when it changes, here where every way of taking and losing an item ends up, so nothing else offers that
+	-- hand's grip meanwhile (e.g. grip.registerInteract leaves the game's own button on its prompt).
+	local busy = self.flight ~= nil or self.held ~= nil
+	if busy ~= (self.busyReported == true) then
+		self.busyReported = busy
+		uevrUtils.executeUEVRCallbacks(grip.HAND_BUSY_EVENT, self.hand, self.name, busy)
+	end
 end
 
 -- Profiling (uevrUtils.profiler; does nothing until profiling is toggled on): the per-frame and per-grab work.
@@ -852,6 +878,13 @@ clearHeld = uevrUtils.profiler:wrap("Grabbable: release", clearHeld)
 
 local MultiGrabbable = {}
 MultiGrabbable.__index = MultiGrabbable
+
+-- A hand the game's grip callback has nothing in, or something the game's isHandFree option says doesn't count.
+local function isHandFree(multi, hand)
+	local attachment = attachments.getCurrentGrippedAttachment(hand)
+	if attachment == nil then return true end
+	return multi.isHandFree ~= nil and multi.isHandFree(hand, attachment) == true
+end
 
 local function isOtherHandsItem(multi, hand, actor)
 	for otherHand, other in pairs(multi.byHand) do
@@ -878,7 +911,7 @@ end
 -- One grabbable per hand (the single-hand code, unchanged), with the game's callbacks given the hand, the other hand's item
 -- excluded, and a hand the game's grip callback has something in left alone.
 local function newMultiHand(options)
-	local multi = setmetatable({byHand = {}, list = {}, isGrabbable = options.isGrabbable}, MultiGrabbable)
+	local multi = setmetatable({byHand = {}, list = {}, isGrabbable = options.isGrabbable, isHandFree = options.isHandFree}, MultiGrabbable)
 	local handoffDistance = options.handoffDistance == false and 0 or default(options.handoffDistance, 15)
 	local names = options.names or {}
 	local baseName = options.name or "grabbable"
@@ -893,7 +926,7 @@ local function newMultiHand(options)
 			return options.isGrabbable ~= nil and options.isGrabbable(actor, hand) == true and not isOtherHandsItem(multi, hand, actor)
 		end
 		handOptions.canClaim = function(state)
-			if attachments.getCurrentGrippedAttachment(hand) ~= nil then return false end
+			if not isHandFree(multi, hand) then return false end
 			return options.canClaim == nil or options.canClaim(state, hand) ~= false
 		end
 		-- Hand to hand: a grip that starts with this (empty, free) hand near the item the other hand holds takes it.
@@ -971,7 +1004,7 @@ end
 function MultiGrabbable:canGrab(actor, hand)
 	local instance = self.byHand[hand]
 	if instance == nil or actor == nil or not instance:isEnabled() or instance:isHolding() then return false end
-	if attachments.getCurrentGrippedAttachment(hand) ~= nil then return false end
+	if not isHandFree(self, hand) then return false end
 	return self.isGrabbable ~= nil and self.isGrabbable(actor, hand) == true and not isOtherHandsItem(self, hand, actor)
 end
 
@@ -988,6 +1021,7 @@ function M.new(options)
 		hand = hand,
 		gripButton = default(options.gripButton, hand == Handed.Right and XINPUT_GAMEPAD_RIGHT_SHOULDER or XINPUT_GAMEPAD_LEFT_SHOULDER),
 		isGrabbable = options.isGrabbable or function() return false end,
+		getMesh = options.getMesh,
 		canClaim = options.canClaim,
 		getInteractTarget = options.getInteractTarget,
 		interactButton = options.interactButton,

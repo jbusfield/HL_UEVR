@@ -287,13 +287,17 @@ Usage
 		example:
 			input.preventPawnSettingsResetOnDisable(true)
 
-	input.setCurrentProfile(profileID) - sets the active input parameter profile by id and resets runtime
+	input.setCurrentProfile(profileID, (optional)options) - sets the active input parameter profile by id and resets runtime
+		options.transitionTime (seconds, opt-in): ease the VR view from the old profile's position and
+		rotation to the new one's instead of jumping. The body mesh still switches immediately.
 		example:
 			input.setCurrentProfile("055655c3-5c27-40fb-afa2-af6169aa5397")
+			input.setCurrentProfile("055655c3-5c27-40fb-afa2-af6169aa5397", {transitionTime = 0.3})
 
-	input.setCurrentProfileByLabel(profileLabel) - sets the active profile by display label
+	input.setCurrentProfileByLabel(profileLabel, (optional)options) - sets the active profile by display label
 		example:
 			input.setCurrentProfileByLabel("Default")
+			input.setCurrentProfileByLabel("Default", {transitionTime = 0.3})
 
 	input.getConfigurationWidgets((optional)options) - returns config UI widgets from input_config
 		(non-dev overlay integration). Initializes the config module on first call.
@@ -2313,6 +2317,80 @@ local function getVRCameraOffsets()
 end
 getVRCameraOffsets = uevrUtils.profiler:wrap("INPUT: getVRCameraOffsets", getVRCameraOffsets)
 
+-- Opt-in view transition across a profile switch (setCurrentProfile with options.transitionTime).
+-- Runs only while activeTransition is set. The switch itself is deferred to the first stereo view, where
+-- the old profile's final view is captured and eased toward the new profile's live view.
+---@type table?
+local activeTransition = nil
+
+local function beginTransition(duration, switchProfile)
+	-- The view callback is skipped while disabled, so a deferred switch would wait for re-enable
+	if isDisabled then switchProfile() return end
+	-- A switch during a blend keeps that blend running until the capture starts from its output
+	activeTransition = activeTransition or {}
+	activeTransition.pendingDuration = duration
+	activeTransition.switchProfile = switchProfile
+end
+
+local function updateTransition(position, rotation)
+	local transition = activeTransition
+	---@cast transition table
+	local out = transition.out
+	if out ~= nil and transition.tick == stereoTick then
+		-- Every view in a tick gets the same pose; per-view blending puts the eyes out of alignment
+		position.x, position.y, position.z = out.x, out.y, out.z
+		rotation.Pitch, rotation.Yaw, rotation.Roll = out.pitch, out.yaw, out.roll
+		return
+	end
+	local root = uevrUtils.getValid(rootComponent)
+	local rootLocation = root ~= nil and uevrUtils.getComponentLocation(root, true) or nil
+	if rootLocation == nil or (transition.root ~= nil and transition.root ~= root) then
+		-- Level or pawn change: drop the blend, but never drop a requested switch
+		activeTransition = nil
+		if transition.switchProfile ~= nil then transition.switchProfile() end
+		return
+	end
+
+	if transition.startTime ~= nil then
+		local t = (os.clock() - transition.startTime) / transition.duration
+		if t >= 1 then
+			transition.startTime = nil
+			if transition.switchProfile == nil then activeTransition = nil return end
+		else
+			t = math.max(t, 0)
+			local weight = 1 - t * t * (3 - 2 * t) -- smoothstep; reaches the live view exactly at the end
+			local o = transition.offset
+			position.x = position.x + (rootLocation.X + o.x - position.x) * weight
+			position.y = position.y + (rootLocation.Y + o.y - position.y) * weight
+			position.z = position.z + (rootLocation.Z + o.z - position.z) * weight
+			rotation.Pitch = rotation.Pitch + uevrUtils.clampAngle180(o.pitch - rotation.Pitch) * weight
+			rotation.Yaw = rotation.Yaw + uevrUtils.clampAngle180(o.yaw - rotation.Yaw) * weight
+			rotation.Roll = rotation.Roll + uevrUtils.clampAngle180(o.roll - rotation.Roll) * weight
+		end
+	end
+
+	if transition.switchProfile ~= nil then
+		-- Position follows the root's movement; rotation and the XY offset stay in world space because
+		-- the switch's reset re-derives body yaw, which can turn the root without turning the view
+		transition.offset = {
+			x = position.x - rootLocation.X, y = position.y - rootLocation.Y, z = position.z - rootLocation.Z,
+			pitch = rotation.Pitch, yaw = rotation.Yaw, roll = rotation.Roll,
+		}
+		transition.root = root
+		transition.duration = transition.pendingDuration
+		transition.startTime = os.clock()
+		local switchProfile = transition.switchProfile
+		transition.switchProfile = nil
+		switchProfile()
+	end
+
+	out = out or {}
+	out.x, out.y, out.z = position.x, position.y, position.z
+	out.pitch, out.yaw, out.roll = rotation.Pitch, rotation.Yaw, rotation.Roll
+	transition.out, transition.tick = out, stereoTick
+end
+updateTransition = uevrUtils.profiler:wrap("INPUT: updateTransition", updateTransition)
+
 -- Native stereo may use views 0/1 or 1/2; firstStereoViewIndex selects the first.
 local prevRotation = {X=0, Y=0, Z=0}
 -- getVRCameraOffsets result for the current tick, reused by later views while the root is unchanged
@@ -2386,6 +2464,7 @@ uevr.params.sdk.callbacks.on_early_calculate_stereo_view_offset(function(device,
 			if yaw ~= nil then rotation.Yaw = yaw end
 			if roll ~= nil then rotation.Roll = roll end
 		end
+		if activeTransition ~= nil then updateTransition(position, rotation) end
 
 		-- local pawnRotationMode = getPawnRotationMode() -- getParameter("pawnRotationMode")
 		-- if pawnRotationMode ~= M.PawnRotationMode.NONE then
@@ -2598,18 +2677,22 @@ uevrUtils.registerUEVRCallback("attachment_grip_rotation_change", function(leftR
 	M.setWeaponRotation(leftRotation, rightRotation)
 end)
 
-function M.setCurrentProfile(profileID)
+function M.setCurrentProfile(profileID, options)
+	if options ~= nil and (tonumber(options.transitionTime) or 0) > 0 then
+		beginTransition(tonumber(options.transitionTime), function() M.setCurrentProfile(profileID) end)
+		return
+	end
 	paramManager:setActiveProfile(profileID)
 	--if the profile changes, reset the camera component to ensure its using the correct settings
 	reset()
 	--resetPawnSettings()
 end
 
-function M.setCurrentProfileByLabel(profileLabel)
+function M.setCurrentProfileByLabel(profileLabel, options)
 	local profileIDs, profileNames = paramManager:getProfiles()
 	for i, name in ipairs(profileNames) do
 		if name == profileLabel then
-			M.setCurrentProfile(profileIDs[i])
+			M.setCurrentProfile(profileIDs[i], options)
 			return
 		end
 	end

@@ -19,10 +19,12 @@ local parameterDefaults = {
     rotation = {0, 0, 0},
     activation_hand = 1,
     activation_distance = 0.0,
+    offhand_aim = false,
     start_time = 0.0,
     end_time = 0.0,
     grip_animation = "",
 	grip_priority = 1,
+	keep_rotation = false,
 }
 
 local currentLogLevel = LogLevel.Error
@@ -519,11 +521,17 @@ function M.getConfigWidgets(id, prefix, width)
                     width = width
                 },
                 {
+                    widgetType = "checkbox",
+                    id = prefix .. "accessory_item_keep_rotation",
+                    label = "Lock Rotation",
+                    initialValue = false
+                },
+                {
                     widgetType = "drag_float3",
                     id = prefix .. "accessory_item_location",
                     label = "Position",
                     speed = 0.1,
-                    range = {-100, 100},
+                    range = {-1000, 1000},
                     initialValue = parameterDefaults["location"],
                     isHidden = false,
                     width = width - 80
@@ -600,6 +608,12 @@ function M.getConfigWidgets(id, prefix, width)
                     isHidden = true,
                     width = width
 				},
+                {
+                    widgetType = "checkbox",
+                    id = prefix .. "accessory_item_offhand_aim",
+                    label = "Off Hand Aim",
+                    initialValue = false
+                },
                 { widgetType = "unindent", width = 10 },
                 { widgetType = "indent", width = 140 },
                 {
@@ -707,10 +721,12 @@ local function setUIForMarker(attachmentID, prefix, accessoryID, markerIndex)
     configui.setValue(prefix .. "accessory_item_label", getAccessoryField(attachmentID, accessoryID, "label") or "", true)
     configui.setValue(prefix .. "accessory_item_socket_name", getMarkerField(attachmentID, accessoryID, markerIndex, "socket_name") or "", true)
     configui.setValue(prefix .. "accessory_item_attach_type", (getMarkerField(attachmentID, accessoryID, markerIndex, "attach_type") or 0) + 1, true)
+    configui.setValue(prefix .. "accessory_item_keep_rotation", getMarkerField(attachmentID, accessoryID, markerIndex, "keep_rotation") == true, true)
     configui.setValue(prefix .. "accessory_item_location", getMarkerField(attachmentID, accessoryID, markerIndex, "location") or {0.0, 0.0, 0.0}, true)
     configui.setValue(prefix .. "accessory_item_rotation", getMarkerField(attachmentID, accessoryID, markerIndex, "rotation") or {0.0, 0.0, 0.0}, true)
     configui.setValue(prefix .. "accessory_item_activation_hand", getMarkerField(attachmentID, accessoryID, markerIndex, "activation_hand") or 1, true)
     configui.setValue(prefix .. "accessory_item_activation_distance", getMarkerField(attachmentID, accessoryID, markerIndex, "activation_distance") or 0.0, true)
+    configui.setValue(prefix .. "accessory_item_offhand_aim", getMarkerField(attachmentID, accessoryID, markerIndex, "offhand_aim") == true, true)
     local activationHand = getMarkerField(attachmentID, accessoryID, markerIndex, "activation_hand") or 1
     configui.setHidden(prefix .. "accessory_item_activation_distance", activationHand == 1 or activationHand == 8 or activationHand == 9 or activationHand == 10)
     configui.setValue(prefix .. "accessory_start_time", getMarkerField(attachmentID, accessoryID, markerIndex, "start_time") or 0.0, true)
@@ -1143,6 +1159,14 @@ function M.createConfigCallbacks(id, prefix)
         pokeIfPreviewingThisAccessory()
 	end)
 
+    -- Keep Rotation: the hand follows the socket's location but keeps the rotation it had when it took hold (a crank handle).
+    configui.onUpdate(prefix .. "accessory_item_keep_rotation", function(value)
+        local accessoryID = getAccessoryID(id, prefix)
+        local markerIndex = getSelectedMarkerIndex(prefix)
+        if accessoryID ~= nil then saveMarkerField(id, accessoryID, markerIndex, "keep_rotation", value == true, true) end
+        pokeIfPreviewingThisAccessory()
+	end)
+
     configui.onUpdate(prefix .. "accessory_item_location", function(value)
         local accessoryID = getAccessoryID(id, prefix)
         local markerIndex = getSelectedMarkerIndex(prefix)
@@ -1232,6 +1256,12 @@ function M.createConfigCallbacks(id, prefix)
         local accessoryID = getAccessoryID(id, prefix)
         local markerIndex = getSelectedMarkerIndex(prefix)
         if accessoryID ~= nil then saveMarkerField(id, accessoryID, markerIndex, "end_time", value, true) end
+    end)
+
+    configui.onUpdate(prefix .. "accessory_item_offhand_aim", function(value)
+        local accessoryID = getAccessoryID(id, prefix)
+        local markerIndex = getSelectedMarkerIndex(prefix)
+        if accessoryID ~= nil then saveMarkerField(id, accessoryID, markerIndex, "offhand_aim", value == true, true) end
     end)
 
     configui.onUpdate(prefix .. "accessory_item_activation_distance", function(value)
@@ -1556,7 +1586,7 @@ local function getAnimationIDsArray(animationIDList)
 	return ids
 end
 
---called from hands to set available grip animations
+--sets the available grip animations ({id = {label = ...}}). The hands parameters file's are set from hands_animation's events below.
 function M.setAnimationIDs(animationIDList)
 	if animationIDList ~= nil then
 		animationLabels = getAnimationLabelsArray(animationIDList)
@@ -1565,7 +1595,20 @@ function M.setAnimationIDs(animationIDList)
     updateGripAnimationUI()
 end
 
+-- The hands parameters file's grip animations, sent by hands_animation whenever they change (it is never required here).
+uevrUtils.registerUEVRCallback("on_hand_animation_ids_changed", function(info)
+	if type(info) == "table" and info.animations ~= nil then
+		M.setAnimationIDs(info.animations)
+	end
+end)
+
 function M.init(isDeveloperMode, logLevel, caller)
+	--The grip animations sent before this module was set up, asked from hands_animation (it answers when loaded)
+	local handAnimations = {}
+	uevrUtils.executeUEVRCallbacks("get_hand_animation_ids", handAnimations)
+	if handAnimations.animations ~= nil then
+		M.setAnimationIDs(handAnimations.animations)
+	end
     paramManager:load()
     -- migrate any legacy flat accessories into marker-based format
     local accessoriesList = paramManager:get("accessories") or {}
@@ -1605,6 +1648,20 @@ function M.getAccessoryParamsForAttachment(attachmentID, accessoryID)
     end
     local list = paramManager:get({"accessories", attachmentID})
     return list and list[accessoryID] or nil
+end
+
+-- Copies every accessory saved under one attachment ID to another, each with a new ID (accessories are looked up by ID across
+-- all attachments, so a copy must not reuse its original's). Accessories already under the target are kept. Returns the number
+-- copied.
+function M.copyAccessories(fromAttachmentID, toAttachmentID)
+    if fromAttachmentID == nil or toAttachmentID == nil or fromAttachmentID == toAttachmentID then return 0 end
+    local count = 0
+    for _, accessoryParams in pairs(paramManager:get({"accessories", fromAttachmentID}) or {}) do
+        local accessoryID = uevrUtils.guid()
+        paramManager:set({"accessories", toAttachmentID, accessoryID}, uevrUtils.deepCopyTable(accessoryParams), true)
+        count = count + 1
+    end
+    return count
 end
 
 

@@ -52,7 +52,10 @@ Usage
 		Returns the rig instance, or nil if creation failed.
 		options:
 			rigId - profile/rig id to use (defaults to active profile)
-			animationsFile - hands_parameters file name for grip animations (e.g. "hands_parameters")
+			animationsFile - hands parameters for grip animations: a file name (e.g. "hands_parameters") or its table.
+				Without it the rig uses hands_animation's parameters: hands_parameters by default, or the file set with
+				handsAnimation.setParametersFileName. The profile and animation used are the ones set with
+				handsAnimation.setActiveProfile, else the first found. hands.lua is not needed for any of this.
 			tickPhase - "pre" (default) or "post" engine tick
 			tickPriority - optional tick callback priority
 			Enhanced Stabilization is read from the rig profile, not from ik.new options.
@@ -90,6 +93,13 @@ Usage
     ik.setPawn(pawnObject) - sets the pawn used for root/capsule coupling instead of the global pawn
         example:
             ik.setPawn(myPawn)
+
+    ik.setMeshLocationOverride(location) - replaces the active profile's mesh location offset ("Location")
+		on all rigs at runtime without changing or saving the profile. Rigs created while it is set use it too.
+		Pass nil to go back to the profile value. Profile edits made while it is set are saved but not shown.
+        example:
+            ik.setMeshLocationOverride({-10, 0, -51.6}) -- e.g. while seated in a vehicle
+            ik.setMeshLocationOverride(nil)
 
     ik.setRootBoneRotation(rotator) - sets the root bone rotation on the most recently created rig
         example:
@@ -305,6 +315,15 @@ end
 local pawnObject = nil
 function M.setPawn(newPawnObject)
 	pawnObject = newPawnObject
+end
+
+-- Runtime-only replacement for the profile's mesh_location_offset (see Rig:applyMeshLocationOffset). Never saved.
+local meshLocationOverride = nil
+function M.setMeshLocationOverride(location)
+	meshLocationOverride = location ~= nil and uevrUtils.vector(location) or nil
+	for _, rig in ipairs(_rigInstances) do
+		rig:applyMeshLocationOffset()
+	end
 end
 
 local function getPawn()
@@ -533,9 +552,8 @@ function M.new(options)
 
     }, Rig)
 
-	if options.animationsFile ~= nil then
-		self:setAnimationsFromHandsParametersFile(options.animationsFile)
-	end
+	-- Without animationsFile the rig uses hands_animation's parameters (no grip animations when there is no parameters file)
+	self:setAnimationsFromHandsParametersFile(options.animationsFile or handsAnimation.getParameters())
 
 	if not self:create() then -- auto-create component
 		return nil
@@ -594,10 +612,9 @@ local function getTargetLocationAndRotation(hand, controller)
 				rot = kismet_math_library:ComposeRotators(gunstockRotation, rot)
 			end
 
-			-- local collisionLoc = collision.getLocation(hand == Handed.Right and "right_hand" or "left_hand")
-			-- if collisionLoc ~= nil then
-			-- 	loc = collisionLoc
-			-- end
+			-- A hand collider (libs/collision, Drives Hand): the hand goes where it is, turned as the controller.
+			local colliderLoc = uevrUtils.executeUEVRCallbacksWithPriorityResult("get_hand_target_location", hand)
+			if colliderLoc ~= nil then loc = colliderLoc end
 		end
     else
         local handStatus = accessoryStatus[hand]
@@ -606,8 +623,14 @@ local function getTargetLocationAndRotation(hand, controller)
             -- Keep the existing socket path; only fall back to the component
             -- transform for a blank socket name when socket getters are absent.
             if target.GetSocketLocation ~= nil and target.GetSocketRotation ~= nil then
-                loc = target:GetSocketLocation(uevrUtils.fname_from_string(handStatus.socketName or ""))
-                rot = target:GetSocketRotation(uevrUtils.fname_from_string(handStatus.socketName or ""))
+                -- handStatus is replaced on every on_accessory_attach, so these caches follow its lifetime
+                local socketFName = handStatus.socketFName
+                if socketFName == nil then
+                    socketFName = uevrUtils.fname_from_string(handStatus.socketName or "")
+                    handStatus.socketFName = socketFName
+                end
+                loc = target:GetSocketLocation(socketFName)
+                rot = target:GetSocketRotation(socketFName)
             elseif (handStatus.socketName == nil or handStatus.socketName == "")
                 and target.K2_GetComponentLocation ~= nil and target.K2_GetComponentRotation ~= nil then
                 loc = target:K2_GetComponentLocation()
@@ -619,11 +642,21 @@ local function getTargetLocationAndRotation(hand, controller)
                 --print("Socket",loc.X, loc.Y, loc.Z)
 				--print("Controller",controller:K2_GetComponentLocation().X, controller:K2_GetComponentLocation().Y, controller:K2_GetComponentLocation().Z)
 				if handStatus.loc ~= nil and handStatus.rot ~= nil then
-                    local offsetPos = uevrUtils.vector(handStatus.loc) or uevrUtils.vector(0,0,0)
-                    local offsetRot = uevrUtils.rotator(handStatus.rot) or uevrUtils.rotator(0,0,0)
+                    local offsetPos = handStatus.offsetPos
+                    local offsetRot = handStatus.offsetRot
+                    if offsetPos == nil or offsetRot == nil then
+                        offsetPos = uevrUtils.vector(handStatus.loc) or uevrUtils.vector(0,0,0)
+                        offsetRot = uevrUtils.rotator(handStatus.rot) or uevrUtils.rotator(0,0,0)
+                        handStatus.offsetPos, handStatus.offsetRot = offsetPos, offsetRot
+                    end
 
 					loc = loc + mathLib.vectorRotate(offsetPos, rot)
                     rot = kismet_math_library:ComposeRotators(offsetRot, rot)
+                end
+                -- Keep Rotation: the rotation the hand had when it took hold, kept while the target turns (a crank handle)
+                if handStatus.keepRotation then
+                    if handStatus.heldRot == nil then handStatus.heldRot = rot end
+                    rot = handStatus.heldRot
                 end
             end
         end
@@ -1196,7 +1229,8 @@ function Rig:initializeRigState()
 
 --	if meshTemplates ~= nil then
 		--local capsuleHeight = rootComponent.CapsuleHalfHeight or 0 --should be used here but the tick handles it so whatever
-		self.meshLocationOffset = getParameter({self.rigId, "mesh_location_offset"}) and uevrUtils.vector(getParameter({self.rigId, "mesh_location_offset"})) or uevrUtils.vector(0,0,0)
+		self.profileMeshLocationOffset = getParameter({self.rigId, "mesh_location_offset"}) and uevrUtils.vector(getParameter({self.rigId, "mesh_location_offset"})) or uevrUtils.vector(0,0,0)
+		self.meshLocationOffset = meshLocationOverride or self.profileMeshLocationOffset
 		self.meshRotationOffset = getParameter({self.rigId, "mesh_rotation_offset"}) and uevrUtils.rotator(getParameter({self.rigId, "mesh_rotation_offset"})) or uevrUtils.rotator(0,0,0)
 		self.meshScaleOffset = getParameter({self.rigId, "mesh_scale_offset"}) and uevrUtils.vector(getParameter({self.rigId, "mesh_scale_offset"})) or uevrUtils.vector(1,1,1)
 		for _, meshTemplate in pairs(self.meshTemplates) do
@@ -1277,6 +1311,17 @@ function Rig:initializeRigState()
 	return true
 end
 
+-- self.meshLocationOffset is the offset in effect: the runtime override (M.setMeshLocationOverride) when set,
+-- otherwise the profile value. The tick and the enhanced-rotation re-pin read it every frame.
+function Rig:applyMeshLocationOffset()
+	self.meshLocationOffset = meshLocationOverride or self.profileMeshLocationOffset or uevrUtils.vector(0,0,0)
+	for _, mesh in pairs(self.meshList or {}) do
+		if uevrUtils.getValid(mesh) ~= nil then
+			mesh.RelativeLocation = self.meshLocationOffset
+		end
+	end
+end
+
 function Rig:updateBonesVisibility()
 	local hideBody = getParameter({self.rigId, "hide_body"})
 	local shoulderWidthScale = getParameter({self.rigId, "shoulder_width_scale"}) or 1.0
@@ -1322,26 +1367,30 @@ function Rig:animateFromMesh()
 	end
 	local didAnimate = false
 	for _, mesh in pairs(self.meshList or {}) do
-		local success, response = pcall(function()
-			mesh:CopyPoseFromSkeletalComponent(self.animationMesh)
-			didAnimate = true
-			self.wasAnimating = true
-		end)
-		if success == false then
-			M.print("Rig:animateFromMesh:" .. response, LogLevel.Error)
-		end
+		if uevrUtils.getValid(mesh) ~= nil then
+			local success, response = pcall(function()
+				mesh:CopyPoseFromSkeletalComponent(self.animationMesh)
+				didAnimate = true
+				self.wasAnimating = true
+			end)
+			if success == false then
+				M.print("Rig:animateFromMesh:" .. response, LogLevel.Error)
+			end
 
-		-- In some games the animation moves the skeleton by an offset (probably so they are more visible in the 2D screen)
-		-- but we dont want this offset in VR so we correct it here
-		if self.animationRotationOffset ~= nil and  self.animationRotationOffset.Pitch ~= 0 or self.animationRotationOffset.Yaw ~= 0 or self.animationRotationOffset.Roll ~= 0 or self.animationLocationOffset.X ~= 0 or self.animationLocationOffset.Y ~= 0 or self.animationLocationOffset.Z ~= 0 then
-			local rootName = uevrUtils.fname_from_string(self.rootBone)
-			--adding rotators would normally be bad but since its just an offset determined by UI it works here
-			local rot = mesh:GetBoneRotationByName(rootName, EBoneSpaces.ComponentSpace) + self.animationRotationOffset
-			--local loc = activeParams.mesh:GetBoneLocationByName(rootName, EBoneSpaces.ComponentSpace) + activeParams.animationLocationOffset -- this doesnt work, the get returns world space
-			-- base location of root should be 0,0,0 in component space so this should work as an offset
-			local loc = self.animationLocationOffset
-			mesh:SetBoneRotationByName(rootName, rot, EBoneSpaces.ComponentSpace)
-			mesh:SetBoneLocationByName(rootName, loc, EBoneSpaces.ComponentSpace)
+			-- In some games the animation moves the skeleton by an offset (probably so they are more visible in the 2D screen)
+			-- but we dont want this offset in VR so we correct it here
+			if self.animationRotationOffset ~= nil and  self.animationRotationOffset.Pitch ~= 0 or self.animationRotationOffset.Yaw ~= 0 or self.animationRotationOffset.Roll ~= 0 or self.animationLocationOffset.X ~= 0 or self.animationLocationOffset.Y ~= 0 or self.animationLocationOffset.Z ~= 0 then
+				local rootName = uevrUtils.fname_from_string(self.rootBone)
+				--adding rotators would normally be bad but since its just an offset determined by UI it works here
+				--if mesh.GetBoneRotationByName ~= nil then
+					local rot = mesh:GetBoneRotationByName(rootName, EBoneSpaces.ComponentSpace) + self.animationRotationOffset
+					--local loc = activeParams.mesh:GetBoneLocationByName(rootName, EBoneSpaces.ComponentSpace) + activeParams.animationLocationOffset -- this doesnt work, the get returns world space
+					-- base location of root should be 0,0,0 in component space so this should work as an offset
+					local loc = self.animationLocationOffset
+					mesh:SetBoneRotationByName(rootName, rot, EBoneSpaces.ComponentSpace)
+					mesh:SetBoneLocationByName(rootName, loc, EBoneSpaces.ComponentSpace)
+				--end
+			end
 		end
 	end
 
@@ -1467,28 +1516,25 @@ end
 function Rig:setAnimationsFromHandsParametersFile(animFile)
 	if animFile == nil then return end
 	if type(animFile) == "string" then
-		animFile = json.load_file(animFile .. ".json")
+		-- hands_animation reads the file (its kept parameters when this is its parameters file)
+		animFile = handsAnimation.loadParametersFile(animFile)
 	end
-	if animFile == nil then return end
+	if type(animFile) ~= "table" then return end
 
-	-- We only use the first animation found here. There is currently no support for multiple animation defintions
+	-- One animation and one profile are used: the ones hands_animation chooses (handsAnimation.setActiveProfile, else the
+	-- first found), so IK arms and hands use the same ones. There is currently no support for multiple definitions.
 	self.animationDefinition = nil
-	if animFile["animations"] ~= nil then
-		for key, value in pairs(animFile["animations"]) do
-			M.print("Found animation: " .. key)
-			self.animationDefinition = value
-			break
-		end
+	local animationName = handsAnimation.getActiveAnimationName(animFile)
+	if animationName ~= nil then
+		M.print("Found animation: " .. tostring(animationName))
+		self.animationDefinition = animFile["animations"][animationName]
 	end
 
-	-- We only use the first profile found here. There is currently no support for multiple profile defintions
 	self.animationProfile = nil
-	if animFile["profiles"] ~= nil then
-		for key, profile in pairs(animFile["profiles"]) do
-			M.print("Found profile: " .. key)
-			self.animationProfile = profile
-			break
-		end
+	local profileName = handsAnimation.getActiveProfileName(animFile)
+	if profileName ~= nil then
+		M.print("Found profile: " .. tostring(profileName))
+		self.animationProfile = animFile["profiles"][profileName]
 	end
 end
 
@@ -1698,13 +1744,8 @@ function Rig:setRigParameter(paramName, value)
 	end
 
     if paramName == "mesh_location_offset" then
-		local offset = value and uevrUtils.vector(value) or uevrUtils.vector(0,0,0)
-		self.meshLocationOffset = offset
-        if self.meshList ~= nil then --update live
-			for _, mesh in pairs(self.meshList) do
-				mesh.RelativeLocation = offset
-			end
-        end
+		self.profileMeshLocationOffset = value and uevrUtils.vector(value) or uevrUtils.vector(0,0,0)
+		self:applyMeshLocationOffset() --update live (keeps an active override in place)
 		return
 	end
 
@@ -2824,6 +2865,9 @@ local function getTargetLocationAndQuatFast(hand, controller)
 		local gx, gy, gz, gw = quatFromRotator(gunstockRotation.Pitch, gunstockRotation.Yaw, gunstockRotation.Roll)
 		qx, qy, qz, qw = quatMultiply(qx, qy, qz, qw, gx, gy, gz, gw)
 	end
+	-- A hand collider (libs/collision, Drives Hand): the hand goes where it is, turned as the controller.
+	local colliderLoc = uevrUtils.executeUEVRCallbacksWithPriorityResult("get_hand_target_location", hand)
+	if colliderLoc ~= nil then location = colliderLoc end
 	return location, qx, qy, qz, qw
 end
 getTargetLocationAndQuatFast = uevrUtils.profiler:wrap("IK: getTargetLocationAndQuatFast", getTargetLocationAndQuatFast)
@@ -4241,7 +4285,7 @@ function Rig:setActive(solverId, value)
 
 			M.print("Final bones " .. active.endBone .. ", " .. active.jointBone .. ", " .. active.startBone .. " for solverId " .. tostring(solverId), LogLevel.Info)
 
-            mesh.RelativeLocation = rigParams["mesh_location_offset"] and uevrUtils.vector(rigParams["mesh_location_offset"]) or uevrUtils.vector(0,0,0)
+            mesh.RelativeLocation = self.meshLocationOffset or uevrUtils.vector(0,0,0) --profile value, or the runtime override
             if self.enhancedStabilization then
                 self:updateEnhancedMeshRotation(mesh, uevrUtils.getValid(getPawn(), {"RootComponent"}), false)
             else
@@ -4357,12 +4401,11 @@ end
 
 local function tryAutoCreateArms()
 	if autoCreateArms and not M.exists()then
-		--see if the defaults params file exists
-		local paramsFile = "hands_parameters"
 		local mesh = paramManager:getFromActiveProfile("mesh")
 		if mesh ~= nil and mesh ~= "" then
-			if M.new({ animationsFile = paramsFile }) ~= nil then
-				M.print("Auto-created IK arms with params from " .. paramsFile)
+			--the hands parameters file's grip animations, from hands_animation (nil when there is no file: no grip animations)
+			if M.new() ~= nil then
+				M.print("Auto-created IK arms with params from " .. handsAnimation.getParametersFileName())
 			end
 		end
 	end
@@ -4384,7 +4427,7 @@ uevrUtils.registerUEVRCallback("accessory_attach_components", function(handed, o
 	end
 end)
 
-uevrUtils.registerUEVRCallback("on_accessory_attach", function(handed, parentAttachment, socketName, attachType, loc, rot)
+uevrUtils.registerUEVRCallback("on_accessory_attach", function(handed, parentAttachment, socketName, attachType, loc, rot, keepRotation)
 	accessoryStatus = accessoryStatus or {}
     accessoryStatus[handed] = {
         parentAttachment = parentAttachment,
@@ -4392,6 +4435,7 @@ uevrUtils.registerUEVRCallback("on_accessory_attach", function(handed, parentAtt
         attachType = attachType,
         loc = loc,
         rot = rot,
+        keepRotation = keepRotation == true,
     }
 end)
 

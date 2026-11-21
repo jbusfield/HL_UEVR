@@ -786,6 +786,27 @@ function M.quatMultiply_Components(ax, ay, az, aw, bx, by, bz, bw)
 		(aw * bw) - (ax * bx) - (ay * by) - (az * bz)
 end
 
+-- Shortest-arc rotation that turns unit vector a onto unit vector b. For opposite vectors it is a half
+-- turn about an axis perpendicular to a. Returns x, y, z, w (unit length), or nil for a degenerate input.
+function M.quatFromUnitVectors_Components(ax, ay, az, bx, by, bz)
+	local w = 1.0 + (ax * bx) + (ay * by) + (az * bz)
+	local x, y, z = (ay * bz) - (az * by), (az * bx) - (ax * bz), (ax * by) - (ay * bx)
+	if w < 1e-6 then
+		local rx, ry, rz = 1.0, 0.0, 0.0
+		if math.abs(ax) > 0.9 then rx, ry, rz = 0.0, 1.0, 0.0 end
+		x, y, z = (ay * rz) - (az * ry), (az * rx) - (ax * rz), (ax * ry) - (ay * rx)
+		w = 0.0
+	end
+	local norm = math.sqrt((x * x) + (y * y) + (z * z) + (w * w))
+	if norm < 1e-9 then return nil end
+	return x / norm, y / norm, z / norm, w / norm
+end
+
+-- |dot| of two quaternions: 1 when they are the same orientation (q and -q are the same rotation).
+function M.quatAbsDot_Components(ax, ay, az, aw, bx, by, bz, bw)
+	return math.abs((ax * bx) + (ay * by) + (az * bz) + (aw * bw))
+end
+
 function M.vectorRotate_Components(qx, qy, qz, qw, vx, vy, vz)
 	local tx = 2 * ((qy * vz) - (qz * vy))
 	local ty = 2 * ((qz * vx) - (qx * vz))
@@ -880,6 +901,17 @@ function M.computeSwingTwistAroundAxis_Components(ax, ay, az, aw, bx, by, bz, bw
 	if swingLen2 < 1e-12 then return twistDeg end
 	local invSwingLen = 1.0 / math.sqrt(swingLen2)
 	return twistDeg, sx * invSwingLen, sy * invSwingLen, sz * invSwingLen, sw * invSwingLen
+end
+
+-- Twist in degrees, in [-180, 180), of the rotation from quaternion a to quaternion b about the unit axis n,
+-- where n is in the same space as a and b (for example both are tracking-space poses and n is a tracking-space
+-- direction). The relative rotation is taken in that space, b * conjugate(a); computeSwingTwistAroundAxis_Components
+-- instead uses conjugate(a) * b, the rotation in a's own frame. Returns nil for a zero axis.
+function M.computeParentSpaceTwistDegAroundAxis_Components(ax, ay, az, aw, bx, by, bz, bw, nx, ny, nz)
+	if ((nx * nx) + (ny * ny) + (nz * nz)) < 1e-8 then return nil end
+	local rx, ry, rz, rw = M.quatMultiply_Components(bx, by, bz, bw, -ax, -ay, -az, aw)
+	local dot = (rx * nx) + (ry * ny) + (rz * nz)
+	return M.normalizeDeg180(math.deg(2.0 * math.atan(dot, rw)))
 end
 
 -- Mirrors kismet MakeRotFromXZ (FRotationMatrix::MakeFromXZ followed by FMatrix::Rotator).

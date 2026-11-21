@@ -1,0 +1,347 @@
+{
+    "3b363951-91bd-436d-8595-1c4cdf365ef3": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            280.0,
+            160.0
+        ],
+        "exposure": 0,
+        "transforms": {
+            "Left Hand": {
+                "location": [
+                    -1.1001,
+                    4.1999,
+                    -3.2001
+                ],
+                "rotation": [
+                    -156.4,
+                    -90.6,
+                    -165.9
+                ],
+                "scale": [
+                    0.1,
+                    0.0189,
+                    0.0189
+                ]
+            },
+            "Right Hand": {
+                "location": [
+                    2.7999,
+                    1.5,
+                    2.7
+                ],
+                "rotation": [
+                    -23.5,
+                    81.5999,
+                    0.0
+                ],
+                "scale": [
+                    0.1,
+                    0.032,
+                    0.032
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/BroomFlight/UI_BP_BroomHUD.UI_BP_BroomHUD_C",
+        "widgetName": ""
+    },
+    "3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            64.0,
+            64.0
+        ],
+        "exposure": 0,
+        "transforms": {
+            "Left Hand": {
+                "location": [
+                    -5.0,
+                    -0.4001,
+                    -1.0
+                ],
+                "rotation": [
+                    11.3,
+                    -90.0,
+                    61.5
+                ],
+                "scale": [
+                    0.1,
+                    0.037,
+                    0.037
+                ]
+            },
+            "Right Hand": {
+                "location": [
+                    5.8,
+                    1.0,
+                    0.5
+                ],
+                "rotation": [
+                    0.0,
+                    75.6999,
+                    0.0
+                ],
+                "scale": [
+                    0.1,
+                    0.037,
+                    0.037
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": false,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/UI_BP_NoDismount.UI_BP_NoDismount_C",
+        "widgetName": ""
+    },
+    "98ab8991-47a8-4c80-a3cc-31ab419a6ce4": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            126.0,
+            123.0
+        ],
+        "exposure": 0,
+        "transforms": {
+            "Left Hand": {
+                "location": [
+                    -1.6001,
+                    5.0999,
+                    -0.9
+                ],
+                "rotation": [
+                    -180.0,
+                    -90.0,
+                    90.0
+                ],
+                "scale": [
+                    0.1,
+                    0.0299,
+                    0.0299
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/QuickAction/UI_BP_QuickItemHUD.UI_BP_QuickItemHUD_C",
+        "widgetName": ""
+    },
+    "_profileLabels": {
+        "3b363951-91bd-436d-8595-1c4cdf365ef3": "Mounts",
+        "3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890": "DismountIcon",
+        "98ab8991-47a8-4c80-a3cc-31ab419a6ce4": "WheelItem",
+        "bd9be329-16f8-4052-991b-11e99150f38c": "Mission",
+        "default": "Minimap",
+        "f405ba27-169b-484e-b7ac-10a31020164e": "HealthBar",
+        "fe110750-d193-45a5-b5de-e661422d4a6f": "Spells"
+    },
+    "_profileState": {
+        "currentEditingProfile": "3b363951-91bd-436d-8595-1c4cdf365ef3"
+    },
+    "bd9be329-16f8-4052-991b-11e99150f38c": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            701.0,
+            850.0
+        ],
+        "exposure": 0,
+        "transforms": {
+            "Left Hand": {
+                "location": [
+                    -1.3,
+                    0.0,
+                    0.8
+                ],
+                "rotation": [
+                    164.1999,
+                    90.0,
+                    -90.0
+                ],
+                "scale": [
+                    0.1,
+                    0.0359,
+                    0.0359
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/Mission/UI_BP_MissionBanner_New.UI_BP_MissionBanner_New_C",
+        "widgetName": ""
+    },
+    "default": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            300.0,
+            300.0
+        ],
+        "exposure": 0.0,
+        "location": [
+            -3.0,
+            -8.3001,
+            0.0
+        ],
+        "removeFromViewport": true,
+        "rotation": [
+            0.8,
+            -90.0,
+            90.0
+        ],
+        "scale": [
+            0.0329,
+            0.0329,
+            0.0329
+        ],
+        "transforms": {
+            "Left Controller": {
+                "location": [
+                    -0.6001,
+                    -1.9,
+                    -0.1001
+                ],
+                "rotation": [
+                    -165.0,
+                    -90.0,
+                    90.0
+                ],
+                "scale": [
+                    0.0289,
+                    0.0289,
+                    0.0289
+                ]
+            },
+            "Left Hand": {
+                "location": [
+                    -0.4001,
+                    -0.3001,
+                    -0.5
+                ],
+                "rotation": [
+                    16.5,
+                    -90.0,
+                    90.0
+                ],
+                "scale": [
+                    0.025,
+                    0.025,
+                    0.025
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/MiniMap/UI_BP_MiniMap.UI_BP_MiniMap_C"
+    },
+    "f405ba27-169b-484e-b7ac-10a31020164e": {
+        "attachTo": "Left Hand",
+        "drawSize": [
+            522.0,
+            125.0
+        ],
+        "exposure": 0,
+        "transforms": {
+            "Left Hand": {
+                "location": [
+                    0.6999,
+                    4.4,
+                    -3.4001
+                ],
+                "rotation": [
+                    -34.2001,
+                    89.4,
+                    4.5999
+                ],
+                "scale": [
+                    0.1,
+                    0.0189,
+                    0.0199
+                ]
+            },
+            "Right Controller": {
+                "location": [
+                    -6.9001,
+                    6.0999,
+                    3.7999
+                ],
+                "rotation": [
+                    51.5999,
+                    102.0,
+                    -146.2
+                ],
+                "scale": [
+                    0.1,
+                    0.016,
+                    0.016
+                ]
+            },
+            "Right Hand": {
+                "location": [
+                    -0.6001,
+                    -4.9001,
+                    -2.0
+                ],
+                "rotation": [
+                    0.0,
+                    -90.0,
+                    -90.0
+                ],
+                "scale": [
+                    0.1,
+                    0.023,
+                    0.023
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/UI_BP_PhoenixHUDWidget.UI_BP_PhoenixHUDWidget_C",
+        "widgetName": "MeterSettingsElements"
+    },
+    "fe110750-d193-45a5-b5de-e661422d4a6f": {
+        "attachTo": "Right Hand",
+        "drawSize": [
+            456.0,
+            300.0
+        ],
+        "exposure": 0,
+        "location": [
+            -1.6001,
+            8.8999,
+            1.3999
+        ],
+        "removeFromViewport": false,
+        "rotation": [
+            6.6999,
+            88.9,
+            -71.0
+        ],
+        "scale": [
+            0.1,
+            0.1,
+            0.1
+        ],
+        "transforms": {
+            "Right Hand": {
+                "location": [
+                    0.2,
+                    2.7,
+                    4.4
+                ],
+                "rotation": [
+                    -12.6001,
+                    82.9,
+                    34.0999
+                ],
+                "scale": [
+                    0.074,
+                    0.043,
+                    0.0419
+                ]
+            }
+        },
+        "twoSided": true,
+        "useExposure": true,
+        "widgetClass": "WidgetBlueprintGeneratedClass /Game/UI/HUD/ActionBar/UI_BP_ActionDiamondRing.UI_BP_ActionDiamondRing_C",
+        "widgetName": ""
+    }
+}

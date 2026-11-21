@@ -12,12 +12,14 @@
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_accessory_item_rotation": [
         0.0,
         0.0,
@@ -37,6 +39,7 @@
     "uevr_attachments_Actor_SM_Loot_Pouch_C_is_melee": false,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_is_scoped": false,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Loot_Pouch_C_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Loot_Pouch_C_melee_rotation_offset": [
         0.0,
         0.0,
@@ -107,12 +110,14 @@
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_accessory_item_rotation": [
         0.0,
         0.0,
@@ -132,6 +137,7 @@
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_melee": false,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_scoped": false,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_DugbogTongue_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Potion_DugbogTongue_melee_rotation_offset": [
         0.0,
         0.0,
@@ -202,12 +208,14 @@
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_accessory_item_rotation": [
         0.0,
         0.0,
@@ -227,6 +235,7 @@
     "uevr_attachments_Actor_SM_Potion_SpiderFang_is_melee": false,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_is_scoped": false,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_SpiderFang_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Potion_SpiderFang_melee_rotation_offset": [
         0.0,
         0.0,
@@ -297,12 +306,14 @@
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_accessory_item_rotation": [
         0.0,
         0.0,
@@ -322,6 +333,7 @@
     "uevr_attachments_Actor_SM_Potion_TrollMucus_is_melee": false,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_is_scoped": false,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_TrollMucus_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Potion_TrollMucus_melee_rotation_offset": [
         0.0,
         0.0,
@@ -392,12 +404,14 @@
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_accessory_item_rotation": [
         0.0,
         0.0,
@@ -417,6 +431,7 @@
     "uevr_attachments_Actor_SM_Potion_WolfPelt_is_melee": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_is_scoped": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Potion_WolfPelt_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_melee_rotation_offset": [
         0.0,
         0.0,
@@ -479,6 +494,104 @@
     "uevr_attachments_Actor_SM_Potion_WolfPelt_strip_child_suffix_length": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_use_laser": false,
     "uevr_attachments_Actor_SM_Potion_WolfPelt_weight": 0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_end_time": 0.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_existing_guid": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_activation_distance": 0.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_activation_hand": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_attach_type": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_grip_animation": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_grip_priority": "1",
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_keep_rotation": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_label": "",
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_location": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_offhand_aim": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_socket_list": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_socket_name": "",
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_test_left_hand": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_item_test_right_hand": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_marker_picker": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_picker": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_accessory_start_time": 0.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_any_child": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_any_parent": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_delete_accessory_override": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_grip_animation": 3,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_is_melee": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_is_scoped": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_is_two_handed": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_left_hand_mirror": 1,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_melee_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_position": [
+        -14.300000190734863,
+        0.699999988079071,
+        10.699999809265137
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_rotation": [
+        85.5,
+        -46.79999923706055,
+        37.599998474121094
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_brightness": 2.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_deactivate_distance": 50.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_hide_ocular_lens_on_disable": true,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_max_fov": 20.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_min_fov": 2.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_objective_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_objective_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_ocular_lens_location": [
+        0.0,
+        0.0,
+        20.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_ocular_lens_rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_ocular_lens_scale": 1.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_show_debug": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_zoom_exponential": 0.5,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_scope_zoom_speed": 1.0,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_sights_position_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_sights_rotation_offset": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_strip_child_suffix_length": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_use_laser": false,
+    "uevr_attachments_Actor_SM_QuestItem_Generic_Note_weight": 0,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_end_time": 0.0,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_existing_guid": 1,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_activation_distance": 0.0,
@@ -487,12 +600,14 @@
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_grip_animation": 1,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_grip_priority": "1",
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_id": "",
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_keep_rotation": false,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_label": "",
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_offhand_aim": false,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_accessory_item_rotation": [
         0.0,
         0.0,
@@ -512,6 +627,7 @@
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_melee": false,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_scoped": false,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_is_two_handed": false,
+    "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_left_hand_mirror": 1,
     "uevr_attachments_Actor_SM_Sanc_Skull_Dwiz_01A_Loot_melee_rotation_offset": [
         0.0,
         0.0,
@@ -582,12 +698,14 @@
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_grip_animation": 1,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_grip_priority": "1",
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_id": "",
+    "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_keep_rotation": false,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_label": "",
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_offhand_aim": false,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_accessory_item_rotation": [
         0.0,
         0.0,
@@ -607,6 +725,7 @@
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_is_melee": false,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_is_scoped": false,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_is_two_handed": false,
+    "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_left_hand_mirror": 1,
     "uevr_attachments_BP_FeedTool_CreatureFeed_C_SK_Feedcan_Graphorn_melee_rotation_offset": [
         0.0,
         0.0,
@@ -677,12 +796,14 @@
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_grip_animation": 1,
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_grip_priority": "1",
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_id": "",
+    "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_keep_rotation": false,
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_label": "",
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_offhand_aim": false,
     "uevr_attachments_BP_WandTool_C_Mesh_accessory_item_rotation": [
         0.0,
         0.0,
@@ -702,6 +823,7 @@
     "uevr_attachments_BP_WandTool_C_Mesh_is_melee": false,
     "uevr_attachments_BP_WandTool_C_Mesh_is_scoped": false,
     "uevr_attachments_BP_WandTool_C_Mesh_is_two_handed": false,
+    "uevr_attachments_BP_WandTool_C_Mesh_left_hand_mirror": 1,
     "uevr_attachments_BP_WandTool_C_Mesh_melee_rotation_offset": [
         0.0,
         0.0,
@@ -772,12 +894,14 @@
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_grip_animation": 1,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_grip_priority": "1",
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_id": "",
+    "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_keep_rotation": false,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_label": "",
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_offhand_aim": false,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_accessory_item_rotation": [
         0.0,
         0.0,
@@ -797,6 +921,7 @@
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_is_melee": false,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_is_scoped": false,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_is_two_handed": false,
+    "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_left_hand_mirror": 1,
     "uevr_attachments_SkeletalMeshActor_SK_ChompingCabbage_LOD0_melee_rotation_offset": [
         0.0,
         0.0,
@@ -867,12 +992,14 @@
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_grip_animation": 1,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_grip_priority": "1",
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_id": "",
+    "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_keep_rotation": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_label": "",
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_offhand_aim": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_accessory_item_rotation": [
         0.0,
         0.0,
@@ -892,6 +1019,7 @@
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_melee": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_scoped": false,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_is_two_handed": false,
+    "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_left_hand_mirror": 1,
     "uevr_attachments_SkeletalMeshActor_SK_MandrakePlant_melee_rotation_offset": [
         0.0,
         0.0,
@@ -962,12 +1090,14 @@
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -987,6 +1117,7 @@
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Edurus_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1057,12 +1188,14 @@
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1082,6 +1215,7 @@
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Felix_Felicis_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1152,12 +1286,14 @@
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1177,6 +1313,7 @@
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Focus_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1247,12 +1384,14 @@
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1272,6 +1411,7 @@
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Health_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Health_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1342,12 +1482,14 @@
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1367,6 +1509,7 @@
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Invisibility_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1437,12 +1580,14 @@
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1462,6 +1607,7 @@
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Maxima_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1532,12 +1678,14 @@
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1557,6 +1705,7 @@
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Potion_Wiggenweld_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1627,12 +1776,14 @@
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1652,6 +1803,7 @@
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_Thunderbrew_Bottle_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1722,12 +1874,14 @@
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_grip_animation": 1,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_grip_priority": "1",
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_id": "",
+    "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_keep_rotation": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_label": "",
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_location": [
         0.0,
         0.0,
         0.0
     ],
+    "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_offhand_aim": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_accessory_item_rotation": [
         0.0,
         0.0,
@@ -1747,6 +1901,7 @@
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_melee": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_scoped": false,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_is_two_handed": false,
+    "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_left_hand_mirror": 1,
     "uevr_attachments_StaticMeshActor_SM_VenomousTentacula_Stage4_melee_rotation_offset": [
         0.0,
         0.0,
@@ -1812,6 +1967,9 @@
     "uevr_attachments_left_hand_flip_x": true,
     "uevr_attachments_left_hand_flip_y": true,
     "uevr_attachments_left_hand_flip_z": true,
+    "uevr_attachments_left_hand_mirror_rot_x": false,
+    "uevr_attachments_left_hand_mirror_rot_y": false,
+    "uevr_attachments_left_hand_mirror_rot_z": false,
     "uevr_attachments_left_hand_position": [
         0.0,
         0.0,

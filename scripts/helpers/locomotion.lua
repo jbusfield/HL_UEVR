@@ -239,6 +239,8 @@ local function configureAmbulatoryFP(currentPawn, abilityName)
 	-- Let the game own body yaw on the ladder; input mirrors those turns into the view.
 	local onLadder = isAbilityActive(abilityName, "ABL_ClimbLadder_")
 	input.setBodyYawWritesSuppressed(onLadder)
+	-- The right stick doesn't turn the body on the ladder.
+	input.setStickTurnDisabled(onLadder, "ladder")
 
 	-- The head-under-HMD mesh offset would displace the capsule from motion-adjust targets (beside the ladder
 	-- at floor height after MountTop). Only look the ability up in the table when it changes.

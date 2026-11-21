@@ -6,6 +6,7 @@ local controllers = require("libs/controllers")
 local animation = require("libs/animation")
 local pawnModule = require("libs/pawn")
 local hands = require("libs/hands")
+local handsAnimation = require("libs/hands_animation")
 hands.setLogLevel(LogLevel.Debug)
 animation.setLogLevel(LogLevel.Debug)
 
@@ -27,7 +28,7 @@ local defaultAnimationRotators = {}
 local copyRotators = {}
 local copyFingerRotators = {}
 local isConfigurationDirty = false
-local handConfigurationFileName = "hands_parameters"
+-- The parameters file is hands_animation's (handsAnimation.getParametersFileName(), default hands_parameters)
 local animationPositions = {}
 local configuration = {}
 local profileNames = {}
@@ -1421,8 +1422,199 @@ local function getAttachmentExtension(typeIndex, prepend)
 	return attachmentExt
 end
 
+------------------- Finger bones per configuration -------------------
+-- The finger bone pickers are saved with the configuration being edited, in hands_parameters.json as
+-- profiles[profile][mesh]["FingerBones"][pickerID] = bone name. Configurations of one mesh that use different bones
+-- (a second arm on the same skeleton) then each keep their own picks. Only this tool reads that field.
+local FINGER_WORDS = {"thumb", "index", "middle", "ring", "pinky"}
+local isFillingFingerBonePickers = false -- true while the pickers are filled from code, which must not be saved as a pick
+local handBoneSetCache = {}
+
+local function getSelectedMeshDefinition()
+	local profiles = configuration ~= nil and configuration["profiles"] or nil
+	local profile = profiles ~= nil and profiles[selectedProfileName] or nil
+	return profile ~= nil and profile[selectedMeshName] or nil
+end
+
+-- Bone name -> true for every bone below the hand's cutoff bone in the selected configuration.
+-- Returns nil when the cutoff bone isn't set or the component can't be read.
+local function getHandBoneSet(hand, component)
+	local definition = getSelectedMeshDefinition()
+	if definition == nil then return nil end
+	local handDefinition = definition[hand == Handed.Left and "Left" or "Right"]
+	local cutoffName = handDefinition ~= nil and handDefinition["Name"] or nil
+	if cutoffName == nil or cutoffName == "" then return nil end
+	local key = table.concat({selectedProfileName, selectedMeshName, tostring(definition["Mesh"]), tostring(hand), cutoffName}, "|")
+	local boneSet = handBoneSetCache[key]
+	if boneSet == nil then
+		if uevrUtils.getValid(component) == nil or component.BoneIsChildOf == nil then return nil end
+		local names = animation.getDescendantBones(component, cutoffName, false)
+		if #names == 0 then return nil end
+		boneSet = {}
+		for _, name in ipairs(names) do boneSet[name] = true end
+		handBoneSetCache[key] = boneSet
+	end
+	return boneSet
+end
+
+local function getBoneNumber(boneName)
+	return tonumber(string.match(boneName, "%d+"))
+end
+
+-- Guesses each hand's finger bones from the bones below its cutoff bone: the knuckle is the bone named for the finger and
+-- numbered 1 that has a child numbered 2 (which skips helper bones), and joints 2 and 3 are its child and grandchild.
+-- Returns pickerID -> bone name for the bones it found.
+local function guessFingerBonePicks(component)
+	local picks = {}
+	if uevrUtils.getValid(component) == nil or component.GetParentBone == nil then return picks end
+	for hand = Handed.Left, Handed.Right do
+		local handBoneSet = getHandBoneSet(hand, component)
+		if handBoneSet ~= nil then
+			for fingerIndex, fingerWord in ipairs(FINGER_WORDS) do
+				-- this finger's bones in skeleton order, each with its parent
+				local candidates = {}
+				for _, name in ipairs(bones["names"] or {}) do
+					if handBoneSet[name] and string.find(string.lower(name), fingerWord, 1, true) ~= nil then
+						local parentFName = component:GetParentBone(uevrUtils.fname_from_string(name))
+						candidates[#candidates + 1] = {name = name, parent = parentFName ~= nil and parentFName:to_string() or ""}
+					end
+				end
+				local function findChild(parentName, number)
+					local firstChild = nil
+					for _, candidate in ipairs(candidates) do
+						if candidate.parent == parentName then
+							if getBoneNumber(candidate.name) == number then return candidate.name, true end
+							firstChild = firstChild or candidate.name
+						end
+					end
+					return firstChild, false
+				end
+
+				local chain = {}
+				for _, candidate in ipairs(candidates) do
+					if getBoneNumber(candidate.name) == 1 then
+						local _, numbered = findChild(candidate.name, 2)
+						if numbered then
+							chain[1] = candidate.name
+							break
+						end
+						chain[1] = chain[1] or candidate.name
+					end
+				end
+				for joint = 2, 3 do
+					if chain[joint - 1] == nil then break end
+					chain[joint] = findChild(chain[joint - 1], joint)
+				end
+				for joint = 1, 3 do
+					picks[handBones[joint][hand * 5 + fingerIndex]] = chain[joint]
+				end
+			end
+		end
+	end
+	return picks
+end
+
+-- Fills the pickers for the selected configuration. Each picker takes, in order: the bone saved with the configuration,
+-- the last picked bone when it belongs to this configuration's hand, the guessed bone, then the last picked bone anyway.
+local function fillFingerBonePickers(component)
+	isFillingFingerBonePickers = true
+	handBoneSetCache = {}
+	local boneNames = bones["names"] or {}
+	local boneIndexByName = {}
+	for i, name in ipairs(boneNames) do
+		if boneIndexByName[name] == nil then boneIndexByName[name] = i end
+	end
+	local definition = getSelectedMeshDefinition()
+	local saved = definition ~= nil and type(definition["FingerBones"]) == "table" and definition["FingerBones"] or {}
+	local guessed = guessFingerBonePicks(component)
+	local handBoneSets = {[Handed.Left] = getHandBoneSet(Handed.Left, component), [Handed.Right] = getHandBoneSet(Handed.Right, component)}
+	for j = 1, 3 do
+		for index, pickerID in ipairs(handBones[j]) do
+			configui.setSelections(pickerID, boneNames)
+			local handBoneSet = handBoneSets[index > 5 and Handed.Right or Handed.Left]
+			local lastPicked = configui.getValue(pickerID .. "_name")
+			if lastPicked == "" then lastPicked = nil end
+			local boneName = saved[pickerID]
+			if boneName == nil or boneIndexByName[boneName] == nil then
+				boneName = (lastPicked ~= nil and (handBoneSet == nil or handBoneSet[lastPicked])) and lastPicked or nil
+			end
+			if boneName == nil or boneIndexByName[boneName] == nil then boneName = guessed[pickerID] end
+			if boneName == nil or boneIndexByName[boneName] == nil then boneName = lastPicked end
+			local boneIndex = boneName ~= nil and boneIndexByName[boneName] or nil
+			if boneIndex ~= nil then
+				configui.setValue(pickerID, boneIndex)
+				configui.setValue(pickerID .. "_name", boneName)
+			else
+				configui.setValue(pickerID .. "_name", boneNames[configui.getValue(pickerID)] or "")
+			end
+		end
+	end
+	isFillingFingerBonePickers = false
+end
+
+-- Saves every picker's bone with the selected configuration. Called when the user changes a picker.
+local function saveFingerBonePicks()
+	local definition = getSelectedMeshDefinition()
+	if definition == nil then return end
+	local fingerBones = definition["FingerBones"]
+	if type(fingerBones) ~= "table" then
+		fingerBones = {}
+		definition["FingerBones"] = fingerBones
+	end
+	for j = 1, 3 do
+		for _, pickerID in ipairs(handBones[j]) do
+			local boneName = configui.getValue(pickerID .. "_name")
+			-- the first entry of the list is the picker's "not set" value
+			if configui.getValue(pickerID) ~= 1 and boneName ~= nil and boneName ~= "" and fingerBones[pickerID] ~= boneName then
+				fingerBones[pickerID] = boneName
+				isConfigurationDirty = true
+			end
+		end
+	end
+end
+
+-- True when the pose has no angles for one of the bones the pickers assign to this hand and animation type.
+local function poseLacksPickedBones(hand, typeIndex, pose)
+	if type(pose) ~= "table" then return true end
+	for _, boneIndex in ipairs(getRelevantBonesForAnimationType(hand, typeIndex) or {}) do
+		local boneName = (bones["names"] or {})[boneIndex]
+		if boneName ~= nil and pose[boneName] == nil then return true end
+	end
+	return false
+end
+
+-- Stores the hand's current angles for the picked bones in animationPositions[typeStr][stateStr].
+-- A pose can hold bones of several configurations (each arm of a skeleton has its own finger bones), so only this
+-- configuration's hand is replaced: bones below its cutoff bone that are no longer picked are dropped, and bones outside it
+-- are kept. With onlyMissing, bones that already have angles are left as they are.
+local function storeHandPose(typeStr, stateStr, hand, component, typeIndex, onlyMissing)
+	local captured = animation.getBoneTransformsByIndexList(component, getRelevantBonesForAnimationType(hand, typeIndex), true, false, false)
+	local existing = animationPositions[typeStr][stateStr]
+	if type(existing) ~= "table" then
+		animationPositions[typeStr][stateStr] = captured
+		return
+	end
+	if onlyMissing == true then
+		for boneName, angles in pairs(captured) do
+			if existing[boneName] == nil then existing[boneName] = angles end
+		end
+		return
+	end
+	local handBoneSet = getHandBoneSet(hand, component)
+	if handBoneSet == nil then
+		-- this hand's bones can't be told apart from another configuration's, so replace the pose as before
+		animationPositions[typeStr][stateStr] = captured
+		return
+	end
+	for boneName in pairs(existing) do
+		if handBoneSet[boneName] and captured[boneName] == nil then existing[boneName] = nil end
+	end
+	for boneName, angles in pairs(captured) do existing[boneName] = angles end
+end
+------------------- End finger bones per configuration -------------------
+
 --update the structure that holds all current rotators for each hand state (what hand_animations.lua does)
-local function updateAnimationsDefinition(handIndex, typeIndex, stateIndex)
+local function updateAnimationsDefinition(handIndex, typeIndex, stateIndex, onlyMissing)
 	if handIndex == nil then handIndex = configui.getValue("animation_hand") end
 	if typeIndex == nil then typeIndex = configui.getValue("animation_type") end
 	if stateIndex == nil then stateIndex = configui.getValue("animation_state") end
@@ -1436,7 +1628,7 @@ local function updateAnimationsDefinition(handIndex, typeIndex, stateIndex)
 		if component ~= nil then
 			if animationPositions[typeStr] == nil then animationPositions[typeStr] = {} end
 			--animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransforms(component, getRelevantBonesForAnimationType(Handed.Left, typeIndex) , true, false, false)
-			animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransformsByIndexList(component, getRelevantBonesForAnimationType(Handed.Left, typeIndex) , true, false, false)
+			storeHandPose(typeStr, stateText[stateIndex], Handed.Left, component, typeIndex, onlyMissing)
 			--animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransforms(component, uevrUtils.getArrayRange(knuckleBoneList, 1, 5) , true, false, false)
 		end
 	end
@@ -1447,7 +1639,7 @@ local function updateAnimationsDefinition(handIndex, typeIndex, stateIndex)
 		if component ~= nil then
 			if animationPositions[typeStr] == nil then animationPositions[typeStr] = {} end
 			--animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransforms(component, getRelevantBonesForAnimationType(Handed.Right, typeIndex) , true, false, false)
-			animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransformsByIndexList(component, getRelevantBonesForAnimationType(Handed.Right, typeIndex) , true, false, false)
+			storeHandPose(typeStr, stateText[stateIndex], Handed.Right, component, typeIndex, onlyMissing)
 			--animationPositions[typeStr][stateText[stateIndex]] = animation.getBoneTransforms(component, uevrUtils.getArrayRange(knuckleBoneList, 6, 10) , true, false, false)
 --json.dump_file("debug.json", animationPositions[typeStr][stateText[stateIndex]], 4)
 		end
@@ -1847,9 +2039,14 @@ local function createDefaultAnimations()
 			local handStr = handIndex == 1 and "left" or "right"
 			if component ~= nil and animationPositions[handStr .. "_" .. typeText[typeIndex]] == nil or animationPositions[handStr .. "_" .. typeText[typeIndex]]["on"] == nil then
 				updateAnimationsDefinition(handIndex, typeIndex, 1)
+			elseif component ~= nil and poseLacksPickedBones(handIndex - 1, typeIndex, animationPositions[handStr .. "_" .. typeText[typeIndex]]["on"]) then
+				-- the pose exists but was made for another configuration's bones: add defaults for this one's only
+				updateAnimationsDefinition(handIndex, typeIndex, 1, true)
 			end
 			if component ~= nil and animationPositions[handStr .. "_" .. typeText[typeIndex]] == nil or animationPositions[handStr .. "_" .. typeText[typeIndex]]["off"] == nil then
 				updateAnimationsDefinition(handIndex, typeIndex, 2)
+			elseif component ~= nil and poseLacksPickedBones(handIndex - 1, typeIndex, animationPositions[handStr .. "_" .. typeText[typeIndex]]["off"]) then
+				updateAnimationsDefinition(handIndex, typeIndex, 2, true)
 			end
 		end
 	end
@@ -2228,6 +2425,8 @@ for j = 1, 3 do
 	for _, boneID in ipairs(handBones[j]) do
 		configui.onUpdate(boneID, function(value)
 			configui.setValue(boneID .. "_name", bones["names"][value] or "")
+			-- a pick made by the user belongs to the configuration being edited
+			if not isFillingFingerBonePickers then saveFingerBonePicks() end
 		end)
 	end
 end
@@ -2414,6 +2613,7 @@ configui.onUpdate("add_attachment_button", function(value)
 			isConfigurationDirty = true
 			configui.setValue("new_attachment_name", "")
 			updateAttachmentListUI()
+			handsAnimation.setParameters(configuration) --sends the grip animation list again, with the new attachment
 		end
 	end
 end)
@@ -3095,25 +3295,13 @@ print("Current Step",currentStep)
 		-- for _, knuckleName in ipairs(knuckles["names"]) do
 		-- 	configui.setSelections(knuckleName, bones["names"])
 		-- end
-		for j = 1, 3 do
-			for _, knuckleName in ipairs(handBones[j]) do
-				configui.setSelections(knuckleName, bones["names"])
-				local boneName = configui.getValue(knuckleName .. "_name")
-				if boneName ~= nil and boneName ~= "" then
-					for i, name in ipairs(bones["names"]) do
-						if name == boneName then
-							configui.setValue(knuckleName, i)
-							break
-						end
-					end
-				else
-					configui.setValue(knuckleName .. "_name", bones["names"][configui.getValue(knuckleName)] or "")
-				end
-			end
-		end
+		fillFingerBonePickers(getMeshComponent())
+		-- the pattern scans only fill pickers that are still unset, and filling one is not a pick by the user
+		isFillingFingerBonePickers = true
 		scanForKnuckleBonesUsingPattern("(ff)_(ii)_(h)")
 		scanForKnuckleBonesUsingPattern("(Hh)Hand(Ff)(i)_JNT")
 		scanForKnuckleBonesUsingPattern("(Hh)Hand(Ff)(i)")
+		isFillingFingerBonePickers = false
 
 		configui.setValue("animation_finger_bones_advanced_checkbox", false)
 	end
@@ -3146,10 +3334,12 @@ end
 
 local function loadConfiguration()
 --print("Loading configuration")
-	configuration = json.load_file(handConfigurationFileName .. ".json")
+	-- hands_animation reads the file. The tool edits that same table, so hands, IK arms and tests use what it shows.
+	configuration = handsAnimation.getParameters()
 
 	if configuration == nil then
 		configuration = {}
+		handsAnimation.setParameters(configuration)
 	else
 		print("Hands configuration found")
 	end
@@ -3157,8 +3347,8 @@ local function loadConfiguration()
 end
 
 local function saveConfiguration()
---print("Saving configuration", handConfigurationFileName)
-	json.dump_file(handConfigurationFileName .. ".json", configuration, 4)
+--print("Saving configuration", handsAnimation.getParametersFileName())
+	json.dump_file(handsAnimation.getParametersFileName() .. ".json", configuration, 4)
 end
 
 local function initHandsCreator()

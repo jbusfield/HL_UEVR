@@ -52,6 +52,7 @@
     "uevr_ui_screen2DWhenInGameStatePriority": "0",
     "uevr_ui_use_active_camera_is_cine": true,
     "uevr_ui_use_camera_component_is_cine": false,
+    "uevr_ui_use_manual_fade_on_pause": false,
     "uevr_ui_use_target_is_cine": true,
     "uevr_ui_widget_alignment_2d": [
         0.0,

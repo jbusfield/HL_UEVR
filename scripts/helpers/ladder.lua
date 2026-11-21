@@ -1,252 +1,284 @@
--- Ladders: grab the ladder with either grip and pull to climb. While the game's ladder Idle ability runs, the holding
--- hand's real-world height change moves the pawn the opposite way along the ladder, so the hand stays on its rung.
--- Mounting and dismounting stay with the game: the stick still climbs, and pulling past either end of the ladder
--- presses the stick toward it so the game plays its own dismount. Enabled from the config UI.
+-- Ladders: grab a rung with either grip and pull to climb. The climbing itself is libs/mechanisms' Ladder type (a mechanism of type
+-- Ladder made in the Mechanisms Dev Config, with Use Get On off), with helpers/interactions as its game adapter; this module tells it
+-- which ladder the player is climbing and the ladder facts it needs (M.mechanismFacts). Mounting and dismounting stay with the game:
+-- the stick still climbs, and pulling past either end of the ladder presses the stick toward it so the game plays its own dismount.
+-- Enabled from the config UI.
 --
--- Verified live on the player's ladders: a location write during ABL_ClimbLadder_Idle holds, and the game's
--- Up/Down/DismountTop steps start from wherever the pawn is, so the stick keeps working after hand climbing.
+-- Verified live on the player's ladders: a location write during ABL_ClimbLadder_Idle holds, and the game's Up/Down/DismountTop steps
+-- start from wherever the pawn is, so the stick keeps working after hand climbing.
 local uevrUtils = require('libs/uevr_utils')
-local controllers = require('libs/controllers')
 local locomotion = require('helpers/locomotion')
 local grip = require('libs/grip')
+local mechanisms = require('libs/mechanisms')
+local plugin = require('libs/core/plugin')
 local GRIP_PRIORITY = require('helpers/grip_priority')
 
 local M = {}
 
-----------------------------------------------------------------------------------------------------------------------
--- Climbing: game-agnostic hand-over-hand vertical climbing. Tracks which hands hold on and turns the most recent
--- grab's tracking-space height change into a body height change. Knows nothing about ladders or this game, so it can
--- move to libs/climbing.lua.
-local Climbing = {}
-Climbing.__index = Climbing
-
-function Climbing.new(unitsPerMeter)
-	return setmetatable({
-		unitsPerMeter = unitsPerMeter or 100,
-		heights = {}, -- tracking-space height (meters) of each holding hand when last read
-		order = {}, -- holding hands, most recent grab last
-		pos = Vector3f.new(0, 0, 0),
-		rot = Quaternionf.new(0, 0, 0, 0),
-	}, Climbing)
-end
-
--- Tracking-space height of a controller in meters, unaffected by pawn movement. nil while tracking is lost, which
--- reports the identity pose at the origin.
-function Climbing:readHandHeight(hand)
-	local index = uevrUtils.getControllerIndex(hand)
-	if index == nil then return nil end
-	uevr.params.vr.get_pose(index, self.pos, self.rot)
-	local p = self.pos
-	if p.X * p.X + p.Y * p.Y + p.Z * p.Z < 1e-8 then return nil end
-	return p.Y
-end
-
-function Climbing:grab(hand)
-	local height = self:readHandHeight(hand)
-	if height == nil then return false end
-	self:release(hand)
-	self.heights[hand] = height
-	table.insert(self.order, hand)
-	return true
-end
-
-function Climbing:release(hand)
-	self.heights[hand] = nil
-	for i = #self.order, 1, -1 do
-		if self.order[i] == hand then table.remove(self.order, i) end
-	end
-end
-
-function Climbing:getActiveHand()
-	return self.order[#self.order]
-end
-
-function Climbing:reset()
-	self.heights = {}
-	self.order = {}
-end
-
--- Body height change (world units, up positive) since the last call, from the most recent grab still holding.
--- Every holding hand is re-anchored, so letting go with one hand never makes the body jump.
-function Climbing:consumeBodyDelta()
-	local active = self.order[#self.order]
-	local delta = 0
-	for _, hand in ipairs(self.order) do
-		local height = self:readHandHeight(hand)
-		if height ~= nil then
-			if hand == active then delta = (self.heights[hand] - height) * self.unitsPerMeter end
-			self.heights[hand] = height
-		end
-	end
-	return delta
-end
-
-----------------------------------------------------------------------------------------------------------------------
--- Hogwarts Legacy ladders.
-
 local enabled = true
 
--- Pawn (capsule centre) heights the ladder Idle ability rests between, measured on the player's ladders: bottomZ + 150
--- after MountBottom and topZ - 100 for the last stop before DismountTop. Hand climbing stays inside this range.
+-- Pawn (capsule centre) heights the ladder Idle ability rests between, measured on the player's ladders: bottomZ + 150 after
+-- MountBottom and topZ - 100 for the last stop before DismountTop. Hand climbing stays inside this range.
 local LOWEST_IDLE_ABOVE_BOTTOM = 150
 local HIGHEST_IDLE_BELOW_TOP = 100
--- A grip grabs the ladder when the hand is within REACH_DEPTH of the rung plane (the climbing pawn hangs 42 back),
--- within REACH_HALF_WIDTH of its centre line, and no more than REACH_ABOVE_TOP above its top.
-local REACH_DEPTH = 30
-local REACH_HALF_WIDTH = 45
-local REACH_ABOVE_TOP = 40
--- Pulling this far past either end presses the stick toward it until the game starts a dismount, or for at most
--- DISMOUNT_STICK_SECONDS.
-local DISMOUNT_OVERSHOOT = 15
-local DISMOUNT_STICK_SECONDS = 1.5
-local STICK_FULL = 32767
 
-local climber = Climbing.new()
-local status = { overshoot = 0 }
--- Grips that grabbed the ladder stay hidden from the game and other modules until released, even after a dismount.
-local claimedGrips = {}
-
-local function releaseLadder()
-	climber:reset()
-	status = { overshoot = 0 }
-end
-
+-- Disabled, the player is never climbing a ladder for libs/mechanisms, so it lets go.
 function M.setEnabled(value)
 	enabled = value == true
-	if not enabled then releaseLadder() end
 end
 
-local function worldScale()
-	return tonumber(string.match(uevr.params.vr:get_mod_value("VR_WorldScale") or "", "[%-%d%.]+")) or 1
-end
-
--- Caches the ladder the pawn is on. Its origin is the bottom of the rung axis; its forward faces away from the pawn.
-local function beginLadder(currentPawn)
-	local ladder = uevrUtils.getValid(currentPawn.LadderActor)
-	if ladder == nil or ladder.GetLadderBottomZ == nil then return false end
-	local origin = ladder:K2_GetActorLocation()
-	local forward = ladder:GetActorForwardVector()
-	status.ladder = ladder
-	status.originX, status.originY = origin.X, origin.Y
-	status.forwardX, status.forwardY = forward.X, forward.Y
-	status.bottomZ, status.topZ = ladder:GetLadderBottomZ(), ladder:GetLadderTopZ()
-	status.lowZ = status.bottomZ + LOWEST_IDLE_ABOVE_BOTTOM
-	status.highZ = status.topZ - HIGHEST_IDLE_BELOW_TOP
-	status.rungPitch = ladder:GetMeshHeight()
-	climber.unitsPerMeter = 100 * worldScale()
-	return true
-end
-
-local function isInReach(hand)
-	local loc = controllers.getControllerLocation(hand)
-	if loc == nil then return false end
-	local dx, dy = loc.X - status.originX, loc.Y - status.originY
-	-- The pawn is on the ladder's back side: depth is how far the hand is behind the rung plane.
-	local depth = -(dx * status.forwardX + dy * status.forwardY)
-	local side = dx * -status.forwardY + dy * status.forwardX
-	return depth <= REACH_DEPTH and math.abs(side) <= REACH_HALF_WIDTH
-		and loc.Z >= status.bottomZ and loc.Z <= status.topZ + REACH_ABOVE_TOP
-end
-
-local function updateRungHaptics(z, hand)
-	if status.rungPitch == nil or status.rungPitch <= 0 then return end
-	local rung = math.floor((z - status.bottomZ) / status.rungPitch)
-	if status.rung ~= nil and rung ~= status.rung then
-		uevrUtils.triggerHapticVibration(hand, 0, 0.02, 1000, 0.15)
-	end
-	status.rung = rung
-end
-
--- Moves the pawn by the holding hand's height change. Runs after locomotion's pre-engine tick (registered when that
--- module loaded), so the ability name is this frame's.
-uevr.sdk.callbacks.on_pre_engine_tick(function(engine, delta)
-	if not enabled then return end
+-- The ladder ability now running, or nil when not on a ladder (or ladder climbing is disabled).
+local function getClimbAbility()
+	if not enabled then return nil end
 	local ability = locomotion.getActiveAbilityName()
-	if ability == nil or string.find(ability, "ABL_ClimbLadder_", 1, true) == nil then
-		if status.ladder ~= nil then releaseLadder() end
-		return
-	end
-	local currentPawn = uevrUtils.getValid(pawn)
-	if currentPawn == nil then return end
-	if status.ladder == nil and not beginLadder(currentPawn) then return end
-
-	if status.dismountStick ~= nil and (string.find(ability, "Dismount", 1, true) ~= nil
-		or os.clock() - status.dismountStickTime > DISMOUNT_STICK_SECONDS) then
-		status.dismountStick = nil
-		climber:reset()
-	end
-
-	status.idle = string.find(ability, "ABL_ClimbLadder_Idle", 1, true) ~= nil
-	local bodyDelta = climber:consumeBodyDelta()
-	local hand = climber:getActiveHand()
-	if not status.idle or hand == nil or status.dismountStick ~= nil then
-		status.overshoot = 0
-		return
-	end
-	if bodyDelta == 0 then return end
-
-	local loc = currentPawn:K2_GetActorLocation()
-	-- Never push the pawn further outside the range than the game put it.
-	local low, high = math.min(status.lowZ, loc.Z), math.max(status.highZ, loc.Z)
-	-- Motion past an end accumulates in overshoot and has to be undone before the pawn moves back.
-	local wanted = loc.Z + status.overshoot + bodyDelta
-	local z = math.max(low, math.min(high, wanted))
-	status.overshoot = wanted - z
-	if math.abs(status.overshoot) >= DISMOUNT_OVERSHOOT then
-		status.dismountStick = status.overshoot > 0 and STICK_FULL or -STICK_FULL
-		status.dismountStickTime = os.clock()
-		status.overshoot = 0
-	end
-	if z ~= loc.Z then
-		loc.Z = z
-		currentPawn:K2_SetActorLocation(loc, false, reusable_hit_result, true)
-		updateRungHaptics(z, hand)
-	end
-end)
-
--- Grip arbitration (libs/grip): a grip that starts with the ladder in reach belongs to the ladder, above everything else. It is
--- hidden from the game and from the input callbacks after grip.lua (gestures, palette, grab), so a grip that grabs the ladder never also
--- spawns a gadget or fires a gesture, and it stays hidden until released, even after a dismount.
-grip.registerClaim("ladder", function(hand, state, press)
-	if enabled and status.ladder ~= nil and isInReach(hand) then return GRIP_PRIORITY.LADDER end
-	return nil
-end, {hide = grip.Hide.Systems})
-
--- The ladder takes hold when it wins a press. If the grab fails it yields, and the press goes to whatever else claimed it, as if the
--- ladder never had.
-grip.registerOwnerChangeCallback(function(hand, newOwner, oldOwner)
-	if newOwner == "ladder" then
-		if climber:grab(hand) then
-			claimedGrips[hand] = true
-			uevrUtils.triggerHapticVibration(hand, 0, 0.04, 1000, 0.4)
-		else
-			grip.yield(hand, "ladder")
-		end
-	elseif oldOwner == "ladder" and claimedGrips[hand] then
-		claimedGrips[hand] = nil
-		climber:release(hand)
-	end
-end)
-
--- While holding on in Idle the hands climb, so the stick cannot start Up/Down under them. A pull past an end presses
--- the stick instead.
-uevrUtils.registerOnPostInputGetStateCallback(function(retval, userIndex, state)
-	if userIndex ~= 0 or status.ladder == nil then return end
-	if status.dismountStick ~= nil then
-		state.Gamepad.sThumbLX = 0
-		state.Gamepad.sThumbLY = status.dismountStick
-	elseif status.idle and climber:getActiveHand() ~= nil then
-		state.Gamepad.sThumbLY = 0
-	end
-end)
-
-local function reset()
-	releaseLadder()
-	claimedGrips = {}
-	-- A grip still held from climbing is no longer the ladder's (it was only hidden while claimed).
-	for _, hand in ipairs({Handed.Left, Handed.Right}) do grip.yield(hand, "ladder") end
+	if ability == nil or string.find(ability, "ABL_ClimbLadder_", 1, true) == nil then return nil end
+	return ability
 end
-uevr.params.sdk.callbacks.on_script_reset(reset)
-uevrUtils.registerLevelChangeCallback(reset)
+
+-- The ladder the player is climbing, or nil.
+function M.getCurrentLadder()
+	if getClimbAbility() == nil then return nil end
+	local ladder = uevrUtils.getValid(pawn, {"LadderActor"})
+	if ladder == nil or ladder.GetLadderBottomZ == nil then return nil end
+	return ladder
+end
+
+-- The player is climbing this ladder. Asked for each ladder while the library scans, and on every tick while it climbs.
+function M.isClimbing(actor)
+	local ladder = M.getCurrentLadder()
+	return ladder ~= nil and actor ~= nil and ladder:get_address() == actor:get_address()
+end
+
+-- Animated steps (libs/mechanisms' animateSteps): the game's own step plays as the hands pull. Measured live on BP_Ladder3
+-- (2026-11-19): a step is the Able ability ABL_ClimbLadder_Up_C or _Down_C (no montage), about 46.3 cm at a steady ~107 cm/s.
+-- The game moves the body two ways during it: the animation's root motion, and the ability's ablMotionAdjustTask, which pulls a
+-- location written during the step back to where the step has got. libs/mechanisms writes the body to the hands on every tick of
+-- a held step, so the two fought and the body jittered. With the anim instance's root motion ignored and the motion adjust's
+-- bCanAdjustZAxis off, the body stood still mid-step while the animation played on, and the step came to rest where the body
+-- was. So while the hands play a step both are off (put back once the game's step is over), and only the hands move the body.
+-- The animation is kept with the hands by the ability component's GlobalPlayRate (a write mid-step takes), and paused with
+-- PauseAbility (it freezes the pose) while the hands are not ahead of it: nothing found plays a step backwards. Its progress is
+-- counted from the rate it played at over time.
+local STEP_LENGTH = 46.3
+local STEP_SPEED = 107 -- cm/s at play rate 1
+local STEP_CATCH_UP_SECONDS = 0.1 -- the rate asks the step to close its gap to the hands in this time
+local STEP_MAX_RATE = 2
+local STEP_RATE_QUANTUM = 0.05 -- the rate is written in these steps, so it isn't written again on every tick
+local ROOT_MOTION_IGNORE = 1 -- ERootMotionMode::IgnoreRootMotion
+local ROOT_MOTION_DEFAULT = 2 -- ERootMotionMode::RootMotionFromEverything, the pawn's mode when measured
+local EMPTY_NAME = uevrUtils.fname_from_string("")
+
+-- 1 for an Up step, -1 for a Down step, nil for any other ability name.
+local function getStepDirection(name)
+	if name == nil then return nil end
+	if string.find(name, "ABL_ClimbLadder_Up_C", 1, true) ~= nil then return 1 end
+	if string.find(name, "ABL_ClimbLadder_Down_C", 1, true) ~= nil then return -1 end
+	return nil
+end
+
+---@class LadderStep
+---@field component any
+---@field ability any
+---@field baseRate number GlobalPlayRate before the step, put back when it is let go
+---@field rate number GlobalPlayRate written last
+---@field paused boolean
+---@field played number cm of the step played so far
+---@field clock number os.clock() when played was last brought up to date
+---@type LadderStep|nil
+local currentStep = nil -- the step libs/mechanisms holds, until it is finished or cancelled
+local stepAsked = false -- libs/mechanisms asked for a step (startStep) that hasn't started yet
+
+-- What playing a step with the hands changed, put back once the game's step is over (the pre-engine tick at the end).
+---@class LadderStepOverrides
+---@field animInstance any
+---@field rootMotionMode integer
+---@field tasks any[] motion adjust tasks whose bCanAdjustZAxis was turned off
+---@type LadderStepOverrides|nil
+local stepOverrides = nil
+local motionAdjustTasks = {} -- ability address -> its motion adjust tasks (read once)
+local tasksWarned = false
+
+-- The ability's motion adjust tasks, or nil when they can't be read. m_Tasks is a TArray, so it is read with libs/core/plugin.
+local function getMotionAdjustTasks(ability)
+	local address = ability:get_address()
+	local tasks = motionAdjustTasks[address]
+	if tasks ~= nil then return tasks end
+	local all = plugin.getProperty(ability, "m_Tasks")
+	if type(all) ~= "table" then return nil end
+	tasks = {}
+	for _, task in ipairs(all) do
+		local class = task ~= nil and task.get_class ~= nil and task:get_class() or nil
+		if class ~= nil and string.find(class:get_fname():to_string(), "MotionAdjustTask", 1, true) ~= nil then
+			tasks[#tasks + 1] = task
+		end
+	end
+	motionAdjustTasks[address] = tasks
+	return tasks
+end
+
+-- Keeps the game from moving the body while the hands play a step: root motion is ignored, and the ability's (when given) motion
+-- adjust leaves Z alone.
+local function holdBodyStill(ability)
+	if stepOverrides == nil then
+		local mesh = uevrUtils.getValid(pawn, {"Mesh"})
+		local animInstance = mesh ~= nil and mesh:GetAnimInstance() or nil
+		if animInstance == nil then return end
+		stepOverrides = {animInstance = animInstance, rootMotionMode = tonumber(animInstance.RootMotionMode) or ROOT_MOTION_DEFAULT,
+			tasks = {}}
+		animInstance:SetRootMotionMode(ROOT_MOTION_IGNORE)
+	end
+	if ability == nil then return end
+	local tasks = getMotionAdjustTasks(ability)
+	if tasks == nil then
+		if not tasksWarned then
+			tasksWarned = true
+			uevrUtils.print("Ladder: could not read the step's tasks, so the game still moves the body during it", LogLevel.Warning)
+		end
+		return
+	end
+	for _, task in ipairs(tasks) do
+		if task.bCanAdjustZAxis == true then
+			task.bCanAdjustZAxis = false
+			stepOverrides.tasks[#stepOverrides.tasks + 1] = task
+		end
+	end
+end
+
+-- Lets the game move the body again.
+local function letBodyMove()
+	if stepOverrides == nil then return end
+	local animInstance = uevrUtils.getValid(stepOverrides.animInstance)
+	if animInstance ~= nil then animInstance:SetRootMotionMode(stepOverrides.rootMotionMode) end
+	for _, task in ipairs(stepOverrides.tasks) do
+		if uevrUtils.getValid(task) ~= nil then task.bCanAdjustZAxis = true end
+	end
+	stepOverrides = nil
+end
+
+local function pauseStep(step, value)
+	if step.paused == value then return end
+	local component = uevrUtils.getValid(step.component)
+	if component ~= nil then component:PauseAbility(value, step.ability) end
+	step.paused = value
+end
+
+local function setStepRate(step, rate)
+	if step.rate == rate then return end
+	local component = uevrUtils.getValid(step.component)
+	if component ~= nil then component.GlobalPlayRate = rate end
+	step.rate = rate
+end
+
+-- Lets the step play on at the rate it had and forgets it. The body is let move once the game's step is over.
+local function releaseStep()
+	stepAsked = false
+	if currentStep ~= nil then
+		setStepRate(currentStep, currentStep.baseRate)
+		pauseStep(currentStep, false)
+	end
+	currentStep = nil
+end
+
+-- The game adapter's ladder table (libs/mechanisms' Ladder type).
+M.mechanismFacts = {
+	gripPriority = GRIP_PRIORITY.LADDER,
+	isIdle = function()
+		local ability = getClimbAbility()
+		return ability ~= nil and string.find(ability, "ABL_ClimbLadder_Idle", 1, true) ~= nil
+	end,
+	isDismounting = function()
+		local ability = getClimbAbility()
+		return ability ~= nil and string.find(ability, "Dismount", 1, true) ~= nil
+	end,
+	getRange = function(actor)
+		return actor:GetLadderBottomZ() + LOWEST_IDLE_ABOVE_BOTTOM, actor:GetLadderTopZ() - HIGHEST_IDLE_BELOW_TOP
+	end,
+	-- One rung per segment. Measured live on BP_Ladder3 (2026-11-19): the ladder is GetLadderHeight() stacked segments of
+	-- GetMeshHeight() each (12 x 25 cm = top - bottom: SM_UN_Ladder_Bot, 10 instances of SM_UN_Ladder_Mid, SM_UN_Ladder_Top_A,
+	-- each mesh 0 to 25 cm tall). The rung is taken to be at the middle of its segment, which fits the hand spots placed on a
+	-- rung (112 cm above the root, 12 cm into a segment).
+	getRungs = function(actor)
+		local bottom, count, pitch = actor:GetLadderBottomZ(), actor:GetLadderHeight(), actor:GetMeshHeight()
+		if bottom == nil or count == nil or pitch == nil or count < 2 or pitch <= 0 then return nil end
+		return count, bottom + (count - 1) * pitch + pitch / 2, pitch
+	end,
+	-- The actor's origin is the bottom of the rung axis and its forward faces away from the player: the rungs face along x, and
+	-- the player is on the - side.
+	getFrame = function(actor) return actor, "x", -1 end,
+	stepLength = STEP_LENGTH,
+	-- The tick before the game starts the step, so its first tick doesn't move the body either.
+	startStep = function()
+		stepAsked = true
+		holdBodyStill(nil)
+	end,
+	getStep = function()
+		local direction = getStepDirection(getClimbAbility())
+		if direction == nil then return nil end
+		local component = uevrUtils.getValid(pawn, {"AblAbilityComponent"})
+		if component == nil then return nil end
+		local ability = component:GetActiveAbility_New(EMPTY_NAME)
+		if ability == nil then return nil end
+		releaseStep()
+		holdBodyStill(ability)
+		local baseRate = tonumber(component.GlobalPlayRate)
+		if baseRate == nil or baseRate <= 0 then baseRate = 1 end
+		currentStep = {component = component, ability = ability, baseRate = baseRate, rate = baseRate, paused = false, played = 0,
+			clock = os.clock()}
+		return currentStep, direction
+	end,
+	-- Steers the step's play rate so it closes its gap to the hands' share of it, paused while it is not behind them (it can't go
+	-- back).
+	holdStep = function(_, step, phase)
+		if step == nil or step ~= currentStep then return end
+		local now = os.clock()
+		if not step.paused then step.played = math.min(STEP_LENGTH, step.played + (now - step.clock) * step.rate * STEP_SPEED) end
+		step.clock = now
+		local rate = (phase * STEP_LENGTH - step.played) / STEP_CATCH_UP_SECONDS / STEP_SPEED
+		rate = math.floor(math.max(0, math.min(STEP_MAX_RATE, rate)) / STEP_RATE_QUANTUM + 0.5) * STEP_RATE_QUANTUM
+		if rate <= 0 then
+			pauseStep(step, true)
+		else
+			setStepRate(step, rate)
+			pauseStep(step, false)
+		end
+	end,
+	finishStep = function() releaseStep() end,
+	cancelStep = function() releaseStep() end,
+}
+
+-- A climbing grip is hidden from main.lua's head gestures (its input callback at priority 20 reads the left hand's ear and mouth
+-- grips on every frame of a press) and from every pre-input callback after them, so pulling a hand down past the face while
+-- climbing never opens the menu or drinks a potion: libs/mechanisms hides it from the game only. The library's climb claim is
+-- named "mechanism_<entry ID>:climb" (a stage's mechanism is "<entry ID>:<stage>", its grip claim "mechanism_" .. that name).
+local HEAD_GESTURE_INPUT_PRIORITY = 20
+local climbOwners = {} -- grip owner name -> whether it is a Ladder entry's climb (worked out once per name)
+local function isClimbOwner(owner)
+	if owner == nil then return false end
+	local known = climbOwners[owner]
+	if known == nil then
+		known = false
+		for _, mechanism in ipairs(mechanisms.getMechanisms()) do
+			if mechanism:getType() == "ladder" and owner == "mechanism_" .. mechanism:getName() .. ":climb" then known = true end
+		end
+		climbOwners[owner] = known
+	end
+	return known
+end
+grip.registerHider("ladder_mechanism", function(hand)
+	return enabled and isClimbOwner(grip.getOwner(hand))
+end, {fromPriority = HEAD_GESTURE_INPUT_PRIORITY + 1})
+
+-- Once a step the hands played is over (the game plays some other ability, or the player is off the ladder), the game moves the body
+-- again. Nothing to do on most ticks.
+uevr.sdk.callbacks.on_pre_engine_tick(function()
+	if stepOverrides == nil or currentStep ~= nil or stepAsked then return end
+	if getStepDirection(getClimbAbility()) == nil then letBodyMove() end
+end)
+
+-- A step paused, or the body held still, when the scripts reset would leave the player stuck on the ladder.
+uevr.params.sdk.callbacks.on_script_reset(function()
+	releaseStep()
+	letBodyMove()
+end)
 
 return M

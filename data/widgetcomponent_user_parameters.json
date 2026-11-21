@@ -1,0 +1,23 @@
+{
+    "3b363951-91bd-436d-8595-1c4cdf365ef3": {
+        "attachTo": "Left Hand"
+    },
+    "3f9ccfd9-3399-4fdb-b2fb-eafb2ac0d890": {
+        "attachTo": 999
+    },
+    "98ab8991-47a8-4c80-a3cc-31ab419a6ce4": {
+        "attachTo": "Left Hand"
+    },
+    "bd9be329-16f8-4052-991b-11e99150f38c": {
+        "attachTo": 999
+    },
+    "default": {
+        "attachTo": "Left Hand"
+    },
+    "f405ba27-169b-484e-b7ac-10a31020164e": {
+        "attachTo": "Left Hand"
+    },
+    "fe110750-d193-45a5-b5de-e661422d4a6f": {
+        "attachTo": "Right Hand"
+    }
+}

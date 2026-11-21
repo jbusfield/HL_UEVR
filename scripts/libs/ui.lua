@@ -325,7 +325,13 @@ local function updateUI(force)
 
     if uiState["fadeCamera_last"] ~= uiState["fadeCamera"] then
         if uiState["fadeCamera"] == true then
-            uevrUtils.fadeCamera(0.1, true, false, true)
+            -- The animated fade does not advance while the game is paused; optionally use a manual fade then.
+            local advancedOptions = getParameter("advanced_options")
+            if advancedOptions ~= nil and advancedOptions["useManualFadeOnPause"] == true and uevrUtils.isGamePaused() then
+                uevrUtils.fadeCameraManual(0.1, true, false, true)
+            else
+                uevrUtils.fadeCamera(0.1, true, false, true)
+            end
         else
             uevrUtils.stopFadeCamera()
         end

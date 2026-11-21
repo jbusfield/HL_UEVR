@@ -9,6 +9,17 @@ local M = {}
 local status = {}
 local accessoryStatus = {}
 
+-- Values are the 1-based index of the "Activation Requirement" combo in config/accessories_config_dev.lua.
+-- Keep in sync with that list.
+M.ActivationHand = {
+	None = 1,
+	LeftProximity = 2, RightProximity = 3, EitherProximity = 4,
+	LeftProximityMontage = 5, RightProximityMontage = 6, EitherProximityMontage = 7,
+	LeftAlways = 8, RightAlways = 9, EitherAlways = 10,
+	LeftGrip = 11, RightGrip = 12, EitherGrip = 13,
+	LeftGripToggle = 14, RightGripToggle = 15, EitherGripToggle = 16,
+}
+
 -- Getting accessory parameters from config file currently
 -- local parametersFileName = "accessories_parameters"
 -- local parameters = {}
@@ -51,36 +62,58 @@ function M.setReleaseDelay(seconds)
 	return true
 end
 
--- A game may supply a non-attachment component and the accessory config key
--- associated with it. Games that do not set a provider keep the existing path.
-local targetProvider = nil
-local targetProviderErrorReported = false
-function M.setTargetProvider(provider)
-	if provider ~= nil and type(provider) ~= "function" then return false end
-	if provider == nil and targetProvider ~= nil and accessoryStatus.targetAccessories ~= nil then
-		for _, hand in ipairs({Handed.Left, Handed.Right}) do
-			if accessoryStatus.targetAccessories[hand] ~= nil then
-				M.attachHandToTargetAccessory(hand, nil)
-			end
-		end
-	end
-	targetProvider = provider
-	targetProviderErrorReported = false
-	return true
+-- Targets: a game or another module can put a hand on a component that isn't an attachment (a mount's mesh, a mechanism),
+-- with the accessories saved under a config key. Each source registers on the target callback:
+--     uevrUtils.registerUEVRCallback(accessories.TARGET_CALLBACK, function(hand) return answer, priority end)
+--     answer: {target = component, key = accessory config key}, or nil while the source has nothing for that hand. Keep one
+--         table per hand and refill it: it is asked several times per tick.
+--     priority: number - the highest answer wins. The mod supplies its sources' numbers; accessories.TargetPriority gives
+--         spaced defaults (Low, Normal, High) for a module that is given none. On a tie the last callback to run wins, so give
+--         sources that can answer at the same time different numbers.
+-- A source must not throw: it is asked on every tick and is not protected. With no source the existing path is kept.
+-- Sources are read by a 300 ms timer: a source whose answer just changed (a hand took hold) calls accessories.forceUpdate() so
+-- the hand moves on that tick.
+M.TARGET_CALLBACK = "accessory_target"
+M.TargetPriority = {Low = 10, Normal = 50, High = 100}
+
+local function hasTargetSources()
+	return uevrUtils.hasUEVRCallbacks(M.TARGET_CALLBACK)
 end
 
 local function getProvidedTarget(hand)
-	if targetProvider == nil then return nil, nil end
-	local ok, target, configKey = pcall(targetProvider, hand)
-	if not ok then
-		if not targetProviderErrorReported then
-			M.print("Target provider failed: " .. tostring(target), LogLevel.Error)
-			targetProviderErrorReported = true
+	local answer = uevrUtils.executeUEVRCallbacksWithPriorityResult(M.TARGET_CALLBACK, hand)
+	if type(answer) ~= "table" then return nil, nil end
+	return uevrUtils.getValid(answer.target), answer.key
+end
+
+-- The older single-function form, kept for existing games: provider(hand) -> component, configKey, answered at
+-- TargetPriority.Normal. Setting another replaces it; nil removes it and takes the hands off its targets.
+local legacyProvider = nil
+local legacyAnswers = {}
+local function legacyTarget(hand)
+	if legacyProvider == nil then return nil end
+	local target, configKey = legacyProvider(hand)
+	if target == nil then return nil end
+	local answer = legacyAnswers[hand]
+	if answer == nil then answer = {}; legacyAnswers[hand] = answer end
+	answer.target, answer.key = target, configKey
+	return answer, M.TargetPriority.Normal
+end
+
+function M.setTargetProvider(provider)
+	if provider ~= nil and type(provider) ~= "function" then return false end
+	if provider == nil then
+		if legacyProvider ~= nil and accessoryStatus.targetAccessories ~= nil then
+			for _, hand in ipairs({Handed.Left, Handed.Right}) do
+				if accessoryStatus.targetAccessories[hand] ~= nil then M.attachHandToTargetAccessory(hand, nil) end
+			end
 		end
-		return nil, nil
+		uevrUtils.unregisterUEVRCallback(M.TARGET_CALLBACK, legacyTarget)
+	else
+		uevrUtils.registerUEVRCallback(M.TARGET_CALLBACK, legacyTarget)
 	end
-	targetProviderErrorReported = false
-	return uevrUtils.getValid(target), configKey
+	legacyProvider = provider
+	return true
 end
 
 function M.getPrimaryMarkerParams(accessoryParams)
@@ -140,8 +173,109 @@ function M.accessoryHasTimeMarkers(accessoryParams)
 	return (startTime ~= 0 or endTime ~= 0)
 end
 
+-- Label/ID-based overrides applied at read time. Stored params are never modified or persisted;
+-- matching accessories are returned as shallow copies with the rule's fields written over every marker.
+local overrides = {} -- ordered list of { key, match, set }
+
+local function shallowCopy(orig)
+	local copy = {}
+	for k, v in pairs(orig) do
+		copy[k] = v
+	end
+	return copy
+end
+
+local function ruleMatches(match, accessoryID, accessoryParams)
+	if match.label ~= nil and accessoryParams.label ~= match.label then return false end
+	if match.accessoryID ~= nil and accessoryID ~= match.accessoryID then return false end
+	return true
+end
+
+local function applyFields(target, set)
+	for field, value in pairs(set) do
+		target[field] = value
+	end
+end
+
+local function resolveAccessory(accessoryID, accessoryParams)
+	if accessoryParams == nil or #overrides == 0 then return accessoryParams end
+	local view = accessoryParams
+	for _, rule in ipairs(overrides) do
+		if ruleMatches(rule.match, accessoryID, accessoryParams) then
+			if view == accessoryParams then
+				view = shallowCopy(accessoryParams)
+				if type(view.markers) == "table" then
+					local markers = {}
+					for i, marker in ipairs(view.markers) do
+						markers[i] = shallowCopy(marker)
+					end
+					view.markers = markers
+				end
+			end
+			if type(view.markers) == "table" then
+				for _, marker in ipairs(view.markers) do
+					applyFields(marker, rule.set)
+				end
+			else
+				applyFields(view, rule.set)
+			end
+		end
+	end
+	return view
+end
+
+local function resolveList(list)
+	if list == nil or #overrides == 0 then return list end
+	local view = nil
+	for accessoryID, accessoryParams in pairs(list) do
+		local resolved = resolveAccessory(accessoryID, accessoryParams)
+		if resolved ~= accessoryParams and view == nil then
+			view = shallowCopy(list)
+		end
+		if view ~= nil then view[accessoryID] = resolved end
+	end
+	return view or list
+end
+
+-- rule = { match = { label = "Offhand Grip", accessoryID = nil }, set = { activation_hand = M.ActivationHand.LeftGrip, ... } }
+-- A matching rule overwrites the listed fields on every marker of every matching accessory.
+-- Later rules win per field. Re-using a key replaces that rule.
+function M.setOverride(key, rule)
+	if type(key) ~= "string" or type(rule) ~= "table" or type(rule.match) ~= "table" or type(rule.set) ~= "table" then
+		M.print("setOverride: expected (string key, { match = {}, set = {} })", LogLevel.Warning)
+		return false
+	end
+	local entry = { key = key, match = rule.match, set = rule.set }
+	for i, existing in ipairs(overrides) do
+		if existing.key == key then
+			overrides[i] = entry
+			return true
+		end
+	end
+	table.insert(overrides, entry)
+	return true
+end
+
+function M.clearOverride(key)
+	for i, existing in ipairs(overrides) do
+		if existing.key == key then
+			table.remove(overrides, i)
+			return true
+		end
+	end
+	return false
+end
+
+function M.getOverrides()
+	local result = {}
+	for _, rule in ipairs(overrides) do
+		table.insert(result, { key = rule.key, match = rule.match, set = rule.set })
+	end
+	return result
+end
+
 function M.getAccessoryParams(accessoryID)
-    return accessoriesConfigDev.getAccessoryParams(accessoryID)
+    return resolveAccessory(accessoryID, accessoriesConfigDev.getAccessoryParams(accessoryID))
     -- local accessoriesList = paramManager:get("accessories") or {}
     -- for attachmentID, accessories in pairs(accessoriesList) do
     --     for aID, accessoryParams in pairs(accessories) do
@@ -154,15 +288,21 @@ function M.getAccessoryParams(accessoryID)
 end
 
 function M.getAccessoriesForAttachment(attachmentID)
-    return accessoriesConfigDev.getAccessoriesForAttachment(attachmentID)
+    return resolveList(accessoriesConfigDev.getAccessoriesForAttachment(attachmentID))
     -- if attachmentID == nil or attachmentID == "" then
     --     return {}
     -- end
     -- return paramManager:get({"accessories", attachmentID}) or {}
 end
 
+-- Copies every accessory saved under one attachment ID to another, each with a new ID. Accessories already under the target
+-- are kept. Returns the number copied.
+function M.copyAccessories(fromAttachmentID, toAttachmentID)
+    return accessoriesConfigDev.copyAccessories(fromAttachmentID, toAttachmentID)
+end
+
 function M.getAccessoryParamsForAttachment(attachmentID, accessoryID)
-    return accessoriesConfigDev.getAccessoryParamsForAttachment(attachmentID, accessoryID)
+    return resolveAccessory(accessoryID, accessoriesConfigDev.getAccessoryParamsForAttachment(attachmentID, accessoryID))
     -- if attachmentID == nil or accessoryID == nil then
     --     return nil
     -- end
@@ -660,7 +800,7 @@ function M.attachHandToTargetAccessory(handed, accessoryID, targetComponent, con
 
 	uevrUtils.executeUEVRCallbacks("on_accessory_attach", handed, target,
 		socketName, markerParams.attach_type or 0,
-		markerParams.location or {0, 0, 0}, markerParams.rotation or {0, 0, 0})
+		markerParams.location or {0, 0, 0}, markerParams.rotation or {0, 0, 0}, markerParams.keep_rotation == true)
 	local gripAnim = markerParams.grip_animation
 	uevrUtils.executeUEVRCallbacks("on_accessory_animation", handed,
 		(type(gripAnim) == "string" and gripAnim ~= "") and gripAnim or nil)
@@ -765,7 +905,7 @@ function M.attachHandToAccessory(handed, accessoryID, useMontageProximity, animI
 					--attachHandToTarget(handed, currentAttachment, socketName, markerParams.attach_type or 0, markerParams.location or {0,0,0}, markerParams.rotation or {0,0,0})
 					-- Flatten nested MC hierarchy once for a stable hand attach; restore on detach.
 					cacheAndReparentAttachmentToMotionController(handed, currentAttachment)
-					uevrUtils.executeUEVRCallbacks("on_accessory_attach", handed, currentAttachment, markerParams.socket_name or "", markerParams.attach_type or 0, markerParams.location or {0,0,0}, markerParams.rotation or {0,0,0})
+					uevrUtils.executeUEVRCallbacks("on_accessory_attach", handed, currentAttachment, markerParams.socket_name or "", markerParams.attach_type or 0, markerParams.location or {0,0,0}, markerParams.rotation or {0,0,0}, markerParams.keep_rotation == true)
 
 					-- Set grip animation from accessory params
 					local gripAnim = markerParams.grip_animation
@@ -836,7 +976,7 @@ end
 
 uevrUtils.registerUEVRCallback("on_accessory_preview_changed", function(handed, accessoryID, enabled, markerIndex)
 	local targetAccessory = accessoryStatus.targetAccessories and accessoryStatus.targetAccessories[handed]
-	if targetProvider == nil and targetAccessory ~= nil then
+	if not hasTargetSources() and targetAccessory ~= nil then
 		if not enabled or accessoryID == targetAccessory.accessoryID then
 			M.attachHandToTargetAccessory(handed, targetAccessory.accessoryID,
 				targetAccessory.target, targetAccessory.configKey,
@@ -844,14 +984,14 @@ uevrUtils.registerUEVRCallback("on_accessory_preview_changed", function(handed, 
 		end
 		return
 	end
-	if enabled and targetProvider ~= nil and accessoryID ~= nil then
+	if enabled and hasTargetSources() and accessoryID ~= nil then
 		local target, configKey = getProvidedTarget(handed)
 		if target ~= nil and configKey ~= nil and M.getAccessoryParamsForAttachment(configKey, accessoryID) ~= nil then
 			M.attachHandToTargetAccessory(handed, accessoryID, target, configKey, { markerIndex = markerIndex })
 			return
 		end
 	end
-	if not enabled and targetProvider ~= nil and updateTargetAccessoryForHand ~= nil then
+	if not enabled and hasTargetSources() and updateTargetAccessoryForHand ~= nil then
 		local activeID, priority
 		if handed == Handed.Right then
 			activeID, priority = executeIsRightAccessoryCallback()
@@ -892,6 +1032,11 @@ local gripInput = {
 local attachmentSelections = {}
 local targetSelections = {}
 
+-- Priority of the grip reader below. It only reads the grips, so it must run before callbacks that rewrite them
+-- (remap turns a grip into another button at the default 0). It must still run below deliberate hiders that keep
+-- consumed grips away from accessories (e.g. a palette hider at 5.9, grip.lua at 90). Callbacks with equal
+-- priority run in no defined order, so this must not be 0.
+local GRIP_INPUT_PRIORITY = 1
 uevrUtils.registerOnPreInputGetStateCallback(function(retval, userIndex, state)
 	if userIndex ~= 0 or state == nil or state.Gamepad == nil
 		or XINPUT_GAMEPAD_LEFT_SHOULDER == nil or XINPUT_GAMEPAD_RIGHT_SHOULDER == nil then return end
@@ -914,7 +1059,7 @@ uevrUtils.registerOnPreInputGetStateCallback(function(retval, userIndex, state)
 		end
 		input.held = held
 	end
-end)
+end, GRIP_INPUT_PRIORITY)
 
 local function isActivationForHand(mode, hand)
 	return (mode == 2 or mode == 11 or mode == 14) and hand == Handed.Left
@@ -922,8 +1067,8 @@ local function isActivationForHand(mode, hand)
 		or mode == 4 or mode == 13 or mode == 16
 end
 
-local function gripDistance(handLocation, component, marker, attachmentID)
-	if handLocation == nil then return nil end
+-- World location of a marker on its component (socket + rotated marker offset + offhand offset).
+local function markerWorldLocation(component, marker, attachmentID)
 	local socketName = marker.socket_name or ""
 	local targetLoc, targetRot
 	if socketName ~= "" and component.GetSocketLocation ~= nil and component.GetSocketRotation ~= nil then
@@ -943,7 +1088,14 @@ local function gripDistance(handLocation, component, marker, attachmentID)
 		---@diagnostic disable-next-line: need-check-nil
 		offset.X, offset.Y, offset.Z = offset.X + extra.X, offset.Y + extra.Y, offset.Z + extra.Z
 	end
-	return uevrUtils.distanceBetween(handLocation, targetLoc + uevrUtils.rotateVector(offset, targetRot))
+	return targetLoc + uevrUtils.rotateVector(offset, targetRot)
+end
+
+local function gripDistance(handLocation, component, marker, attachmentID)
+	if handLocation == nil then return nil end
+	local markerLocation = markerWorldLocation(component, marker, attachmentID)
+	if markerLocation == nil then return nil end
+	return uevrUtils.distanceBetween(handLocation, markerLocation)
 end
 
 local function closestAccessory(hand, component, attachmentID, list, handLocation, firstMode, lastMode)
@@ -1098,7 +1250,7 @@ local function releaseGripSelections()
 end
 
 local function proximityAccessoryForHand(hand)
-	if targetProvider ~= nil then
+	if hasTargetSources() then
 		local target = getProvidedTarget(hand)
 		if target ~= nil then attachmentSelections[hand] = nil; return nil end
 	end
@@ -1137,6 +1289,65 @@ function M.isGripHandEngaged(hand)
 	local list = M.getAccessoriesForAttachment(attachmentID)
 	return list ~= nil and closestAccessory(hand, attachment, attachmentID, list, handLocation, 11, 16) ~= nil
 end
+
+-- Two-hand aim query. Returns { accessoryID, attachmentID } when `hand` currently has an active
+-- accessory on the gripped weapon whose primary marker has "Off Hand Aim" (offhand_aim) checked;
+-- otherwise nil. Like the grip activation above, the weapon is the one gripped by the right hand.
+function M.getOffhandAimState(hand)
+	if hand ~= Handed.Left and hand ~= Handed.Right then return nil end
+	local accessoryID = accessoryStatus[hand == Handed.Left and "activeLeftAccessory" or "activeRightAccessory"]
+	if accessoryID == nil then return nil end
+	local attachment = attachments.getCurrentGrippedAttachment(Handed.Right)
+	if attachment == nil then return nil end
+	local attachmentID = attachments.getAttachmentIDFromAttachment(attachment)
+	if attachmentID == nil or attachmentID == "" then return nil end
+	local marker = M.getPrimaryMarkerParams(M.getAccessoryParamsForAttachment(attachmentID, accessoryID))
+	if marker == nil or marker.offhand_aim ~= true then return nil end
+	return { accessoryID = accessoryID, attachmentID = attachmentID }
+end
+
+-- True when any accessory of the attachment has "Off Hand Aim" checked on its primary marker.
+function M.hasOffhandAimAccessory(attachmentID)
+	local list = M.getAccessoriesForAttachment(attachmentID)
+	if list == nil then return false end
+	for _, params in pairs(list) do
+		local marker = M.getPrimaryMarkerParams(params)
+		if marker ~= nil and marker.offhand_aim == true then return true end
+	end
+	return false
+end
+
+-- World location of the "Off Hand Aim" marker's grip point on the weapon gripped by the right hand,
+-- for the attachment `attachmentID` (nil when it has no such accessory or the weapon isn't gripped).
+function M.getOffhandAimGripLocation(attachmentID)
+	local list = M.getAccessoriesForAttachment(attachmentID)
+	if list == nil then return nil end
+	local attachment = attachments.getCurrentGrippedAttachment(Handed.Right)
+	if attachment == nil or attachments.getAttachmentIDFromAttachment(attachment) ~= attachmentID then return nil end
+	for _, params in pairs(list) do
+		local marker = M.getPrimaryMarkerParams(params)
+		if marker ~= nil and marker.offhand_aim == true then
+			return markerWorldLocation(attachment, marker, attachmentID)
+		end
+	end
+	return nil
+end
+
+-- World location of an accessory's primary marker on a component that is not a gripped attachment (a target accessory, see
+-- attachHandToTargetAccessory): where the accessory accessoryID saved under configKey puts a hand on targetComponent.
+-- nil when there is no such accessory or the component cannot give the marker's transform.
+function M.getTargetAccessoryLocation(configKey, accessoryID, targetComponent)
+	local target = uevrUtils.getValid(targetComponent)
+	if target == nil or type(configKey) ~= "string" or configKey == "" or accessoryID == nil then return nil end
+	local marker = M.getPrimaryMarkerParams(M.getAccessoryParamsForAttachment(configKey, accessoryID))
+	if marker == nil then return nil end
+	return markerWorldLocation(target, marker, nil)
+end
+
+-- Profiling for the virtual gunstock's queries (passthrough unless uevrUtils.profiler is enabled).
+M.getOffhandAimState = uevrUtils.profiler:wrap("VGS: accessories.getOffhandAimState", M.getOffhandAimState)
+M.hasOffhandAimAccessory = uevrUtils.profiler:wrap("VGS: accessories.hasOffhandAimAccessory", M.hasOffhandAimAccessory)
+M.getOffhandAimGripLocation = uevrUtils.profiler:wrap("VGS: accessories.getOffhandAimGripLocation", M.getOffhandAimGripLocation)
 
 -- Feed proximity as another "opinion" into the same montage/preview resolution path.
 uevrUtils.registerUEVRCallback("active_left_accessory", function()
@@ -1194,7 +1405,7 @@ end
 
 local function checkAccessories(isMontage, animInstance, montageObject)
 	local rawActiveRightAccessory, priority = executeIsRightAccessoryCallback()
-	if targetProvider ~= nil then updateTargetAccessoryForHand(Handed.Right, rawActiveRightAccessory, priority) end
+	if hasTargetSources() then updateTargetAccessoryForHand(Handed.Right, rawActiveRightAccessory, priority) end
 	local targetAccessories = accessoryStatus.targetAccessories or {}
 	local rightMonitor = status["montageMonitor"] and status["montageMonitor"][Handed.Right]
 	if rightMonitor ~= nil and rightMonitor["accessoryID"] ~= rawActiveRightAccessory then
@@ -1215,7 +1426,7 @@ local function checkAccessories(isMontage, animInstance, montageObject)
     end
 
 	local rawActiveLeftAccessory, priority = executeIsLeftAccessoryCallback()
-	if targetProvider ~= nil then updateTargetAccessoryForHand(Handed.Left, rawActiveLeftAccessory, priority) end
+	if hasTargetSources() then updateTargetAccessoryForHand(Handed.Left, rawActiveLeftAccessory, priority) end
 	targetAccessories = accessoryStatus.targetAccessories or {}
 	local leftMonitor = status["montageMonitor"] and status["montageMonitor"][Handed.Left]
 	if leftMonitor ~= nil and leftMonitor["accessoryID"] ~= rawActiveLeftAccessory then
@@ -1351,6 +1562,12 @@ uevrUtils.setInterval(300, function()
 	local isMontage = (status["montageMonitor"] ~= nil)
 	checkAccessories(isMontage)
 end)
+
+-- One pass of the timer's work now (e.g. a target source whose answer just changed), as attachments.forceGripUpdate does.
+function M.forceUpdate()
+	if isDisabled then return end
+	checkAccessories(status["montageMonitor"] ~= nil)
+end
 -- ----------------------------------------------------------------
 
 -- If an accessory marker has set an explicit grip animation (e.g. "sniper"),

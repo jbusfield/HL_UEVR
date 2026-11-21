@@ -544,6 +544,35 @@
             "two_handed": false,
             "use_laser": false,
             "weight": 0
+        },
+        {
+            "animation": "bottle",
+            "any_child": false,
+            "any_parent": false,
+            "child": "SM_QuestItem_Generic_Note",
+            "id": "Actor_SM_QuestItem_Generic_Note",
+            "location": [
+                -14.300000190734863,
+                0.699999988079071,
+                10.699999809265137
+            ],
+            "melee": false,
+            "parent": "Actor",
+            "rotation": [
+                85.5,
+                -46.79999923706055,
+                37.599998474121094
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "scoped": false,
+            "strip_child_suffix_length": false,
+            "two_handed": false,
+            "use_laser": false,
+            "weight": 0
         }
     ],
     "baseOffsets": {

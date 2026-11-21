@@ -56,6 +56,27 @@ Usage
             A start claim that yields on the press's first frame (e.g. a ladder whose grab fails) leaves the press exactly as the other
             claims decided it.
 
+        Interact
+            A grip that presses the game's interact button for whatever the game's prompt is on, with the prompt showing the grip's
+            button instead of the game's (grip.registerInteract). In VR a hand takes hold of things, so a prompt asking for the grip
+            fits where one asking for A or X does not. It is an ordinary start claim, so the mod's priorities decide what a press
+            does: a higher claim (e.g. libs/grabbable grabbing the item the prompt is on) takes the press, and the prompt still shows
+            the grip, which is what gets pressed either way. One check, on an interval on the game thread, decides both what the
+            prompt shows and whether the claim claims, so the prompt shows the grip exactly when a grip press will act. The game
+            supplies only what is its own: what the prompt is on, the prompt's objects, and the two button values.
+
+        Busy hands
+            A hand holding something with its grip released (e.g. libs/grabbable's toggle grip) uses its next press for that. The
+            system holding it says so with an event, and an interact then leaves the game's own button on the prompt:
+                uevrUtils.executeUEVRCallbacks(grip.HAND_BUSY_EVENT, hand, name, busy)
+            name is the system's own name; a hand is busy until every name that marked it busy has cleared it.
+
+        Claimed prompts
+            Another system can take the game's prompt for itself (e.g. libs/mechanisms, whose mechanisms are worked by reaching
+            out a hand, changes the prompt to say so). It says so with an event, and interacts then leave the prompt and the grip
+            alone until it is cleared:
+                uevrUtils.executeUEVRCallbacks(grip.PROMPT_CLAIMED_EVENT, name, claimed)
+
     Rules
         - Priorities are plain numbers chosen by the mod; grip.lua defines no feature-specific values. Conventional levels:
               grip.LOW = 10, grip.NORMAL = 50, grip.HIGH = 100
@@ -99,6 +120,64 @@ Usage
                 hiding any, so a hider checking both grips sees them as they were before grip.lua's own hiding)
         options (optional):
             fromPriority: number - also hide from pre-input callbacks below this priority
+    grip.isHandBusy(hand) -> boolean
+        True while a system has marked the hand busy with grip.HAND_BUSY_EVENT (see Busy hands).
+    grip.isPromptClaimed() -> boolean
+        True while a system has claimed the game's prompt with grip.PROMPT_CLAIMED_EVENT (see Claimed prompts).
+
+    grip.registerInteract(options) -> Interact|nil
+        options:
+            name: string (default "interact") - the owner name of its claim
+            priority: number (default grip.LOW) - below the claims that should take a press first (grabbing, gestures)
+            hands: {Handed, ...} (default {Handed.Left}) - the grips that interact
+            button: XINPUT button (required) - the game's interact button, held for as long as an owned grip is held
+            getInteractTarget: function() -> any|nil (required)
+                What the game's interaction prompt is on right now, or nil: an actor, the prompt's widget, any value that tells one
+                target from another. It runs on every interval, so keep it to native property reads (no object scans, find_uobject
+                or plugin bridge calls there; cache what those find).
+            canClaim: function(hand) -> boolean (optional) - false leaves the grip and the prompt alone (menus, cutscenes)
+            prompt: table (optional) - the prompt's button shows the grip's instead (through libs/prompts)
+                getPrompts: function(target) -> prompt|{prompt, ...}|nil (required)
+                    The target's prompt objects (e.g. the image that shows the button). Called when the target changes, and again
+                    while it gave nothing or a prompt it gave has gone away; not on every interval.
+                get, set: as in libs/prompts (required), e.g. prompts.brushResource()
+                from: value|function() -> value (optional) - the game's own value for the interact button; a prompt showing
+                    anything else (another button, another input device) is left alone
+                to: value|function(hand, target) -> value (required) - the grip's value
+                equals: as in libs/prompts (optional)
+            interval: ms (default 250) - how often the target and the prompt are checked
+            hide: grip.Hide value (default grip.Hide.Game) - Game keeps the grip's own action (e.g. an item wheel) from the game
+            enabled: boolean (default false)
+        Returns nil when a required option is missing.
+
+        Interact:setEnabled(value)
+            Disabling puts the prompt back and gives up a press it owns.
+        Interact:isEnabled() -> boolean
+        Interact:isReady(hand) -> boolean
+            Whether a press of the hand's grip starting now would be claimed (as of the last check).
+        Interact:getTarget() -> any|nil
+            The target as of the last check.
+        Interact:update()
+            Checks now (it also runs on the interval).
+
+        A hand is ready while there is a target, canClaim allows it, the hand is not busy (see Busy hands) and its grip is not
+        already down for something else. The prompt shows the first ready hand's value. While another system has claimed the
+        prompt (see Claimed prompts) there is no target.
+
+        Example (Silent Hill f: the prompt is one of a few pooled icon widgets, and the one in its Prompt state is the target):
+
+            grip.registerInteract({
+                priority = GRIP_PRIORITY.INTERACT,
+                button = XINPUT_GAMEPAD_A,
+                getInteractTarget = getActivePromptWidget,
+                canClaim = canClaim,
+                prompt = {
+                    getPrompts = function(widget) return uevrUtils.getValid(widget, {"PromptButtonIcon"}) end,
+                    get = getIcon, set = setIcon, -- prompts.brushResource()
+                    from = function() return prompts.loadAsset(A_ICON) end,
+                    to = function() return prompts.loadAsset(LB_ICON) end,
+                },
+            })
 
     Press info (read-only table)
         hand: Handed
@@ -223,6 +302,9 @@ M.PRE_INPUT_PRIORITY = 90
 M.POST_INPUT_PRIORITY = -150
 
 local OWNER_CHANGED = "grip_owner_changed"
+M.HAND_BUSY_EVENT = "grip_hand_busy_change"
+M.PROMPT_CLAIMED_EVENT = "grip_prompt_claimed_change"
+local interacts = {} -- in registration order: the objects made by registerInteract
 
 local hands = {Handed.Left, Handed.Right}
 local gripButtons = {[Handed.Left] = XINPUT_GAMEPAD_LEFT_SHOULDER, [Handed.Right] = XINPUT_GAMEPAD_RIGHT_SHOULDER}
@@ -338,6 +420,10 @@ local function onPreInput(retval, userIndex, state)
 			end
 			setOwner(press, resolveOwner(press, state, chordName, chordPriority, chordHide))
 			if press.owner ~= nil and press.ownerHide == M.Hide.Systems then uevrUtils.unpressButton(state, gripButtons[hand]) end
+			-- A press an interact owns holds the game's interact button.
+			for _, interact in ipairs(interacts) do
+				if press.owner == interact.name then uevrUtils.pressButton(state, interact.button) end
+			end
 		end
 	end
 end
@@ -455,6 +541,165 @@ end
 
 function M.registerOwnerChangeCallback(func)
 	uevrUtils.registerUEVRCallback(OWNER_CHANGED, func)
+end
+
+------------------- Busy hands -------------------
+local busyHands = {[Handed.Left] = {}, [Handed.Right] = {}} -- hand -> {name -> true}
+
+uevrUtils.registerUEVRCallback(M.HAND_BUSY_EVENT, function(hand, name, busy)
+	if busyHands[hand] == nil or type(name) ~= "string" then return end
+	busyHands[hand][name] = busy == true or nil
+end)
+
+function M.isHandBusy(hand)
+	return busyHands[hand] ~= nil and next(busyHands[hand]) ~= nil
+end
+
+------------------- Claimed prompts -------------------
+local claimedPrompts = {} -- name -> true
+
+uevrUtils.registerUEVRCallback(M.PROMPT_CLAIMED_EVENT, function(name, claimed)
+	if type(name) ~= "string" then return end
+	claimedPrompts[name] = claimed == true or nil
+end)
+
+function M.isPromptClaimed()
+	return next(claimedPrompts) ~= nil
+end
+
+------------------- Interact -------------------
+-- A grip presses the game's interact button for what the game's prompt is on, and the prompt shows the grip's button. update (on
+-- an interval, on the game thread) decides both: it sets each hand's ready flag and what the prompt shows from the same check. The
+-- claim only reads the flag, so nothing of the game's is touched in the input callback.
+local Interact = {}
+Interact.__index = Interact
+
+local function resolve(value, ...)
+	if type(value) == "function" then return value(...) end
+	return value
+end
+
+-- What tells one target from another: a UObject's address, any other value itself.
+local function getTargetKey(target)
+	if type(target) == "userdata" and target.get_address ~= nil then return target:get_address() end
+	return target
+end
+
+local function toPromptList(result)
+	if result == nil then return nil end
+	if type(result) == "table" then return result end
+	return {result}
+end
+
+local function hasLivePrompts(list)
+	if list == nil or #list == 0 then return false end
+	for _, prompt in ipairs(list) do
+		if uevrUtils.getValid(prompt) == nil then return false end
+	end
+	return true
+end
+
+local function isHandReady(self, hand, target)
+	if target == nil or M.isHandBusy(hand) then return false end
+	-- A grip already down for something else can't start an interact (it stays ready during a press of its own).
+	local press = presses[hand]
+	if press ~= nil and press.owner ~= self.name then return false end
+	return self.canClaim == nil or self.canClaim(hand) ~= false
+end
+
+function Interact:update()
+	local target = nil
+	-- A prompt another system has claimed (e.g. a mechanism worked by hand) is not an interact's.
+	if self.enabled and not M.isPromptClaimed() then
+		target = self.getInteractTarget()
+		if type(target) == "userdata" then target = uevrUtils.getValid(target) end
+	end
+	local readyHand = nil
+	for _, hand in ipairs(self.hands) do
+		local ready = isHandReady(self, hand, target)
+		self.ready[hand] = ready
+		if ready and readyHand == nil then readyHand = hand end
+	end
+	self.target, self.readyHand = target, readyHand
+	if self.override == nil then return end
+	local key = getTargetKey(target)
+	if key ~= self.targetKey then
+		-- Games reuse prompt objects, so the last target's prompt is put back before it can show up on something else.
+		self.override:restore()
+		self.targetKey, self.prompts = key, nil
+	end
+	if target ~= nil and not hasLivePrompts(self.prompts) then self.prompts = toPromptList(self.prompt.getPrompts(target)) end
+	self.override:update()
+end
+
+function Interact:setEnabled(value)
+	self.enabled = value == true
+	self:update()
+	if not self.enabled then
+		for _, hand in ipairs(self.hands) do M.yield(hand, self.name) end
+	end
+end
+
+function Interact:isEnabled()
+	return self.enabled
+end
+
+function Interact:isReady(hand)
+	return self.ready[hand] == true
+end
+
+function Interact:getTarget()
+	return self.target
+end
+
+function M.registerInteract(options)
+	options = options or {}
+	local prompt = options.prompt
+	if type(options.getInteractTarget) ~= "function" or options.button == nil then return nil end
+	if prompt ~= nil and (type(prompt.getPrompts) ~= "function" or type(prompt.get) ~= "function" or type(prompt.set) ~= "function"
+		or prompt.to == nil) then return nil end
+	local self = setmetatable({
+		name = options.name or "interact",
+		priority = options.priority or M.LOW,
+		hands = options.hands or {Handed.Left},
+		button = options.button,
+		getInteractTarget = options.getInteractTarget,
+		canClaim = options.canClaim,
+		prompt = prompt,
+		enabled = options.enabled == true,
+		ready = {}, -- hand -> boolean, as of the last update
+	}, Interact)
+	if prompt ~= nil then
+		-- Required here so mods that never register an interact don't load libs/prompts. No timer of its own: update drives it, so
+		-- the prompt changes in the same check that sets the ready flags.
+		local prompts = require("libs/prompts")
+		self.override = prompts.new({
+			interval = false,
+			enabled = true,
+			getPrompts = function() return self.prompts end,
+			get = prompt.get,
+			set = prompt.set,
+			equals = prompt.equals,
+			getReplacement = function(_, original)
+				if self.readyHand == nil then return nil end
+				if prompt.from ~= nil then
+					local from = resolve(prompt.from)
+					if from == nil or not self.override.equals(original, from) then return nil end
+				end
+				return resolve(prompt.to, self.readyHand, self.target)
+			end,
+		})
+	end
+	interacts[#interacts + 1] = self
+	M.registerClaim(self.name, function(hand)
+		if self.ready[hand] then return self.priority end
+		return nil
+	end, {hide = options.hide})
+	uevrUtils.setInterval(options.interval or 250, function() self:update() end)
+	uevrUtils.registerLevelChangeCallback(function()
+		self.target, self.targetKey, self.prompts, self.readyHand, self.ready = nil, nil, nil, nil, {}
+	end)
+	return self
 end
 
 return M

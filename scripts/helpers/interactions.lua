@@ -240,6 +240,38 @@ function M.isHoldingItem(hand)
 end
 ------------------- End physical item grab -------------------
 
+------------------- Mechanisms (libs/mechanisms) -------------------
+-- The game adapter for libs/mechanisms. Ladders only for now (libs/mechanisms' Ladder type, see helpers/ladder): the player is busy
+-- with the ladder they are climbing. The game puts the player on a ladder by itself, so nothing is ever offered (the entry's Use Get
+-- On is off). helpers/ladder supplies the ladder facts. The library scans only while a ladder ability runs.
+local ladder = require('helpers/ladder')
+local mechanisms = require('libs/mechanisms')
+local hands = require('libs/hands')
+local ik = require('libs/ik')
+mechanisms.setGameAdapter({
+	isBusy = ladder.isClimbing,
+	isOffered = function() return false end,
+	-- The config UI's "In front of you": the ladder being climbed.
+	getCurrent = function()
+		local actor = ladder.getCurrentLadder()
+		if actor == nil then return nil end
+		return actor, mechanisms.State.Busy
+	end,
+	isAllowed = function() return not uevrUtils.isInCutscene() end,
+	-- Not while the hands are being rebuilt (the same check as helpers/mounts' accessory meshes).
+	isHandReady = function(hand)
+		local handsType = configui.getValue("hands_type") or 1
+		if handsType == 1 and #hands.getHandComponentsForHand(hand) == 0 then return false end
+		if handsType == 2 and not ik.exists() then return false end
+		return true
+	end,
+	isScanNeeded = function() return ladder.getCurrentLadder() ~= nil end,
+	ladder = ladder.mechanismFacts,
+})
+mechanisms.setScanOptimize(true)
+mechanisms.init()
+------------------- End mechanisms -------------------
+
 uevr.params.sdk.callbacks.on_script_reset(function()
 	reset()
 end)
