@@ -97,5 +97,6 @@ The HUD widgets can be placed on your hands instead of the HUD for better immers
 Thanks to LukasBlaster for finding a fix for world based widget environmental lighting issues.<BR>
 Thanks to JoeyHodge for his tireless work fixing UEVR<BR>
 Thanks to Pande4360 and DJ for their work in getting this mod off the ground<BR>
+Thanks to ShadoWalkeR for recommending Vosk as a voice recognition solution
 
-
+Optional Vosk recognizer uses Vosk (Apache 2.0) and the vosk-model-small-en-us-0.15 model (Apache 2.0); see plugins/voice/vosk/THIRD_PARTY_NOTICES.txt
